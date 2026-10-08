@@ -6,12 +6,14 @@
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const GRID = 10;
   const MIN_SIZE = 24;
+  const MAX_RADIUS = 40;
+  const MAX_BORDER = 12;
   const SMALL_W = 90;
   const SMALL_H = 70;
   const SIDES = ['top', 'right', 'bottom', 'left'];
   const NORMALS = { top: [0, -1], right: [1, 0], bottom: [0, 1], left: [-1, 0] };
 
-  const PALETTE = [
+  const DEFAULT_PALETTE = [
     '#ffffff', '#f1f5f9', '#cbd5e1', '#94a3b8', '#64748b', '#334155', '#0f172a',
     '#fee2e2', '#ffedd5', '#fef9c3', '#dcfce7', '#ccfbf1', '#dbeafe', '#e0e7ff', '#f3e8ff', '#fce7f3',
     '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#6366f1', '#a855f7', '#ec4899',
@@ -67,6 +69,8 @@
 
   const icon = (name) => h('span', { class: 'mi' }, name);
 
+  const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
+
   function contrastColor(bg) {
     const m = /^#([0-9a-f]{6})$/i.exec(bg || '');
     if (!m) return '#0f172a';
@@ -84,6 +88,7 @@
   const nameInput = $('#schema-name');
   const toastEl = $('#toast');
   const libraryDialog = $('#library-dialog');
+  const paletteDialog = $('#palette-dialog');
   const importFile = $('#import-file');
 
   // ---------- state ----------
@@ -97,15 +102,16 @@
   let lastSnapshot = JSON.stringify(schema);
   let tempLink = null; // { from, x, y, target } while dragging a new link
   let iconPickerOpen = false;
+  let colorPickerConn = null; // which colour chooser is open in the inspector: a connector id or a block field key
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
-  function freshBlockId(taken) {
+  function freshBlockId(taken, prefix = 'block') {
     let n = 1;
-    while (taken.has('block-' + n)) n++;
-    return 'block-' + n;
+    while (taken.has(`${prefix}-${n}`)) n++;
+    return `${prefix}-${n}`;
   }
 
   // Coerces arbitrary parsed JSON into a valid schema; throws if it is not one at all.
@@ -114,6 +120,10 @@
       throw new Error('Not a schematic file: "blocks" array is missing.');
     }
     const out = emptySchema(String(raw.name || 'Untitled'));
+    out.radius = clamp(num(raw.radius, 8), 0, MAX_RADIUS);
+    if (Array.isArray(raw.palette)) {
+      out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
+    }
     const blockIds = new Set();
     const connIds = new Set();
 
@@ -124,12 +134,12 @@
       blockIds.add(id);
 
       const connectors = [];
-      for (const c of Array.isArray(b.connectors) ? b.connectors : []) {
+      for (const c of Array.isArray(b.connectors) && b.kind !== 'group' ? b.connectors : []) {
         if (!c || typeof c !== 'object') continue;
         let cid = String(c.id ?? '').trim();
         if (!cid || connIds.has(cid)) cid = uid('c');
         connIds.add(cid);
-        const conn = { id: cid, name: String(c.name ?? ''), side: SIDES.includes(c.side) ? c.side : 'right' };
+        const conn = { id: cid, name: String(c.name ?? ''), side: SIDES.includes(c.side) ? c.side : 'right', color: String(c.color ?? '') };
         if (c.ref) conn.ref = String(c.ref);
         connectors.push(conn);
       }
@@ -145,15 +155,16 @@
         icon: String(b.icon ?? ''),
         background: String(b.background || '#ffffff'),
         border: String(b.border || '#334155'),
+        borderWidth: clamp(num(b.borderWidth, 2), 0, MAX_BORDER),
         x: num(b.x, 0),
         y: num(b.y, 0),
         width: Math.max(MIN_SIZE, num(b.width, 140)),
         height: Math.max(MIN_SIZE, num(b.height, 90)),
-        radius: Math.max(0, num(b.radius, 8)),
         attributes,
         connectors,
       });
-      if (b.cloneGroup) out.blocks[out.blocks.length - 1].cloneGroup = String(b.cloneGroup);
+      if (b.kind === 'group') out.blocks[out.blocks.length - 1].kind = 'group';
+      else if (b.cloneGroup) out.blocks[out.blocks.length - 1].cloneGroup = String(b.cloneGroup);
     }
 
     const linkIds = new Set();
@@ -164,6 +175,7 @@
       if (!id || linkIds.has(id)) id = uid('l');
       linkIds.add(id);
       out.links.push({ id, from: l.from, to: l.to, color: String(l.color ?? '') });
+      if (out.blocks.some((b) => b.kind === 'group' && b.id === l.via)) out.links[out.links.length - 1].via = l.via;
     }
     // Make clone groups consistent, whatever the file said.
     pruneCloneGroups(out);
@@ -230,7 +242,11 @@
   function restore(snap) {
     schema = JSON.parse(snap);
     lastSnapshot = snap;
-    if (selection && !selectedItem()) selection = null;
+    if (selection?.type === 'block' && !findBlock(selection.id)) selection = null;
+    if (selection?.type === 'link') {
+      const ids = selection.ids.filter(findLink);
+      selection = ids.length ? { type: 'link', ids } : null;
+    }
     saveCurrent();
     refreshAll();
   }
@@ -252,6 +268,7 @@
     libName = name;
     selection = null;
     iconPickerOpen = false;
+    colorPickerConn = null;
     undoStack = [];
     redoStack = [];
     lastSnapshot = JSON.stringify(schema);
@@ -280,7 +297,7 @@
   // Blocks sharing a cloneGroup are identical except for ID and position. Their connectors are
   // matched by `ref`, since each clone needs its own connector ids for links.
 
-  const CLONE_SHARED = ['name', 'icon', 'background', 'border', 'width', 'height', 'radius'];
+  const CLONE_SHARED = ['name', 'icon', 'background', 'border', 'borderWidth', 'width', 'height'];
 
   const cloneMembers = (block, s = schema) =>
     (block.cloneGroup ? s.blocks.filter((b) => b.cloneGroup === block.cloneGroup) : [block]);
@@ -299,7 +316,7 @@
       b.connectors = source.connectors.map((c) => {
         const own = mine.get(c.ref);
         mine.delete(c.ref);
-        return { id: own?.id ?? uid('c'), name: c.name, side: c.side, ref: c.ref };
+        return { id: own?.id ?? uid('c'), name: c.name, side: c.side, color: c.color || '', ref: c.ref };
       });
       for (const c of mine.values()) dropped.add(c.id);
     }
@@ -345,10 +362,7 @@
     renderInspector();
   }
 
-  function selectedItem() {
-    if (!selection) return null;
-    return selection.type === 'block' ? findBlock(selection.id) : findLink(selection.id);
-  }
+  const selectedLinks = () => (selection?.type === 'link' ? selection.ids.map(findLink).filter(Boolean) : []);
 
   // Connectors are spread evenly along their side.
   function connectorLocal(block, conn) {
@@ -376,6 +390,15 @@
     return `M${a.x},${a.y} C${a.x + a.nx * d},${a.y + a.ny * d} ${b.x + b.nx * d},${b.y + b.ny * d} ${b.x},${b.y}`;
   }
 
+  // An explicit link colour wins; otherwise the link takes its connectors' colour, black if they disagree.
+  function linkColor(link) {
+    if (link.color) return link.color;
+    const a = findConnector(link.from)?.conn.color || '';
+    const b = findConnector(link.to)?.conn.color || '';
+    if (a && b && a.toLowerCase() !== b.toLowerCase()) return '#000000';
+    return a || b;
+  }
+
   function addBlock(at) {
     const rect = viewport.getBoundingClientRect();
     const width = 140;
@@ -392,8 +415,8 @@
       icon: '',
       background: '#ffffff',
       border: '#334155',
+      borderWidth: 2,
       x, y, width, height,
-      radius: 8,
       attributes: [],
       connectors: [],
     };
@@ -420,27 +443,109 @@
     schema.links = schema.links.filter((l) => l.from !== conn.id && l.to !== conn.id);
   }
 
+  // Deleting a link group only dissolves it: its links stay and run directly again.
   function deleteSelection() {
-    const item = selectedItem();
-    if (!item) return;
-    if (selection.type === 'block') {
-      const ids = new Set(item.connectors.map((c) => c.id));
+    const block = selectedBlock();
+    const links = selectedLinks();
+    if (block) {
+      const ids = new Set(block.connectors.map((c) => c.id));
       schema.links = schema.links.filter((l) => !ids.has(l.from) && !ids.has(l.to));
-      schema.blocks = schema.blocks.filter((b) => b !== item);
+      for (const l of schema.links) if (l.via === block.id) delete l.via;
+      schema.blocks = schema.blocks.filter((b) => b !== block);
       pruneCloneGroups();
+    } else if (links.length) {
+      schema.links = schema.links.filter((l) => !links.includes(l));
     } else {
-      schema.links = schema.links.filter((l) => l !== item);
+      return;
     }
     select(null);
     commit();
   }
 
+  // ---------- link groups ----------
+  // A group block (kind: 'group') has no connectors. Links with `via` set to its id are drawn
+  // into its left side and out of its right side.
+
+  const groupBlocks = () => schema.blocks.filter((b) => b.kind === 'group');
+
+  // Where each grouped link enters and leaves its group block.
+  function groupRoutes() {
+    const routes = new Map();
+    const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+    for (const g of groupBlocks()) {
+      const left = { x: g.x, y: g.y + g.height / 2 };
+      const right = { x: g.x + g.width, y: left.y };
+      const items = [];
+      for (const link of schema.links) {
+        if (link.via !== g.id) continue;
+        let a = connectorWorld(link.from);
+        let b = connectorWorld(link.to);
+        if (!a || !b) continue;
+        // Links have no direction: the nearer end comes in on the left.
+        if (dist(b, left) + dist(a, right) < dist(a, left) + dist(b, right)) [a, b] = [b, a];
+        items.push({ link, a, b });
+      }
+      // Same order on both sides, so a link can be followed through the block.
+      items.sort((p, q) => p.a.y - q.a.y);
+      items.forEach(({ link, a, b }, i) => {
+        const y = g.y + (g.height * (i + 1)) / (items.length + 1);
+        routes.set(link.id, {
+          a,
+          b,
+          entry: { x: g.x, y, nx: -1, ny: 0 },
+          exit: { x: g.x + g.width, y, nx: 1, ny: 0 },
+        });
+      });
+    }
+    return routes;
+  }
+
+  function groupLinks(links) {
+    if (links.length < 2) return;
+    const ends = links.flatMap((l) => [connectorWorld(l.from), connectorWorld(l.to)]).filter(Boolean);
+    const width = 120;
+    const height = Math.max(60, snap(links.length * 20 + 20));
+    const cx = ends.reduce((sum, p) => sum + p.x, 0) / ends.length;
+    const cy = ends.reduce((sum, p) => sum + p.y, 0) / ends.length;
+    const block = {
+      id: freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'group'),
+      name: 'Group',
+      icon: '',
+      background: '#f1f5f9',
+      border: '#64748b',
+      borderWidth: 2,
+      x: snap(cx - width / 2),
+      y: snap(cy - height / 2),
+      width,
+      height,
+      attributes: [],
+      connectors: [],
+      kind: 'group',
+    };
+    schema.blocks.push(block);
+    for (const l of links) l.via = block.id;
+    select({ type: 'block', id: block.id });
+    commit();
+  }
+
+  function setLinksGroup(links, groupId) {
+    for (const l of links) {
+      if (groupId) l.via = groupId;
+      else delete l.via;
+    }
+    commit();
+    render();
+    renderInspector();
+  }
+
   function select(next) {
     syncClones(selectedBlock());
-    const same = (selection && next && selection.type === next.type && selection.id === next.id) || (!selection && !next);
+    const key = (sel) => (sel ? sel.type + ':' + (sel.type === 'link' ? sel.ids.join(',') : sel.id) : '');
+    const same = key(selection) === key(next);
     selection = next;
     if (!same) {
       iconPickerOpen = false;
+      colorPickerConn = null;
       renderInspector();
     }
     render();
@@ -488,7 +593,7 @@
       el.classList.toggle('clone-sibling', !isSelected && Boolean(activeGroup) && block.cloneGroup === activeGroup);
 
       // Rebuild the inside only when something visible changed, so elements survive clicks and drags.
-      const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.radius,
+      const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.borderWidth, schema.radius,
         block.width, block.height, block.connectors, Boolean(block.cloneGroup)]);
       if (el._sig !== sig) {
         el._sig = sig;
@@ -514,7 +619,8 @@
     const body = h('div', { class: 'block-body' + (small ? ' small' : '') });
     body.style.background = block.background;
     body.style.borderColor = block.border;
-    body.style.borderRadius = block.radius + 'px';
+    body.style.borderWidth = block.borderWidth + 'px';
+    body.style.borderRadius = schema.radius + 'px';
     body.style.color = contrastColor(block.background);
     if (block.icon) {
       const ic = h('span', { class: 'mi block-icon' }, block.icon);
@@ -536,6 +642,10 @@
       dot.dataset.conn = conn.id;
       dot.style.left = x + 'px';
       dot.style.top = y + 'px';
+      if (conn.color) {
+        dot.style.background = conn.color;
+        dot.style.borderColor = `color-mix(in srgb, ${conn.color} 65%, black)`;
+      }
       parts.push(dot);
       if (conn.name) {
         const label = h('div', { class: 'conn-label ' + conn.side }, conn.name);
@@ -556,14 +666,17 @@
 
   function drawLinks() {
     const nodes = [];
+    const routes = groupRoutes();
     for (const link of schema.links) {
       const a = connectorWorld(link.from);
       const b = connectorWorld(link.to);
       if (!a || !b) continue;
-      const d = linkPath(a, b);
-      if (selection?.type === 'link' && selection.id === link.id) nodes.push(svgPath('link-halo', d));
+      const route = routes.get(link.id);
+      const d = route ? `${linkPath(route.a, route.entry)} ${linkPath(route.exit, route.b)}` : linkPath(a, b);
+      if (selection?.type === 'link' && selection.ids.includes(link.id)) nodes.push(svgPath('link-halo', d));
       const line = svgPath('link', d);
-      if (link.color) line.style.stroke = link.color;
+      const color = linkColor(link);
+      if (color) line.style.stroke = color;
       const hit = svgPath('link-hit', d);
       hit.dataset.link = link.id;
       nodes.push(line, hit);
@@ -757,7 +870,14 @@
         startMove(e, block);
       }
     } else if (linkEl) {
-      select({ type: 'link', id: linkEl.dataset.link });
+      const id = linkEl.dataset.link;
+      if ((e.shiftKey || e.metaKey || e.ctrlKey) && selection?.type === 'link') {
+        // Shift/Ctrl/⌘+click adds or removes a link from the selection.
+        const ids = selection.ids.includes(id) ? selection.ids.filter((x) => x !== id) : [...selection.ids, id];
+        select(ids.length ? { type: 'link', ids } : null);
+      } else {
+        select({ type: 'link', ids: [id] });
+      }
     } else {
       select(null);
       startPan(e);
@@ -806,7 +926,11 @@
       redo();
     } else if (mod && key === 'd') {
       e.preventDefault();
-      if (selection?.type === 'block') duplicateBlock(selectedItem());
+      const block = selectedBlock();
+      if (block && block.kind !== 'group') duplicateBlock(block);
+    } else if (mod && key === 'g') {
+      e.preventDefault();
+      groupLinks(selectedLinks());
     } else if (key === 'delete' || key === 'backspace') {
       e.preventDefault();
       deleteSelection();
@@ -832,36 +956,54 @@
     return input;
   }
 
-  function numberInput(value, min, step, apply) {
-    const input = h('input', { type: 'number', value, min, step });
+  function slider(value, min, max, apply) {
+    const input = h('input', { type: 'range', min, max, step: 1, value });
+    const label = h('span', { class: 'slider-value' }, value + ' px');
     input.addEventListener('input', () => {
-      const v = Number(input.value);
-      if (input.value === '' || !Number.isFinite(v)) return;
-      apply(Math.max(min, v));
+      apply(Number(input.value));
+      label.textContent = input.value + ' px';
       render();
     });
-    input.addEventListener('change', () => {
-      commit();
-      renderInspector();
-    });
-    return input;
+    input.addEventListener('change', commit);
+    return h('div', { class: 'slider' }, input, label);
   }
 
-  function swatches(current, apply) {
+  // One-line colour setting: a button showing the current colour; the palette opens below on click.
+  function colorField(label, key, value, apply) {
+    const none = value === 'transparent';
+    const dot = h('span', { class: 'color-dot' + (none ? ' none' : '') });
+    if (!none) dot.style.background = value;
+    const button = h('button', {
+      class: 'color-button',
+      title: 'Click to choose a colour',
+      onclick: (e) => {
+        e.preventDefault();
+        colorPickerConn = colorPickerConn === key ? null : key;
+        renderInspector();
+      },
+    }, dot, none ? 'none' : value);
+    const out = [field(label, button)];
+    if (colorPickerConn === key) out.push(h('div', { class: 'conn-colors' }, swatches(value, apply)));
+    return out;
+  }
+
+  // Colour chooser over the schema's palette. `none` is the value the crossed swatch stands for.
+  function swatches(current, apply, none = 'transparent') {
     const pick = (color) => {
       apply(color);
       commit();
       render();
       renderInspector();
     };
+    const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
     const wrap = h('div', { class: 'swatches' });
     wrap.append(h('button', {
-      class: 'swatch none' + (current === 'transparent' ? ' active' : ''),
+      class: 'swatch none' + (current === none ? ' active' : ''),
       title: 'None',
-      onclick: () => pick('transparent'),
+      onclick: () => pick(none),
     }));
-    for (const color of PALETTE) {
-      const b = h('button', { class: 'swatch' + (current === color ? ' active' : ''), title: color, onclick: () => pick(color) });
+    for (const color of schema.palette) {
+      const b = h('button', { class: 'swatch' + (same(current, color) ? ' active' : ''), title: color, onclick: () => pick(color) });
       b.style.background = color;
       wrap.append(b);
     }
@@ -869,7 +1011,7 @@
       type: 'color',
       class: 'swatch',
       title: 'Custom colour',
-      value: /^#[0-9a-f]{6}$/i.test(current) ? current : '#ffffff',
+      value: isHex(current) ? current : '#ffffff',
     });
     custom.addEventListener('input', () => {
       apply(custom.value);
@@ -877,6 +1019,17 @@
     });
     custom.addEventListener('change', () => pick(custom.value));
     wrap.append(custom);
+    if (isHex(current) && !schema.palette.some((c) => same(c, current))) {
+      wrap.append(h('button', {
+        class: 'swatch add',
+        title: `Add ${current} to the palette`,
+        onclick: () => {
+          schema.palette.push(current.toLowerCase());
+          commit();
+          renderInspector();
+        },
+      }, icon('add')));
+    }
     return wrap;
   }
 
@@ -945,8 +1098,18 @@
       }, sideIcon(conn.side)),
       choices,
     );
-    return h('div', { class: 'row' },
+    const colorButton = h('button', {
+      class: 'icon-only',
+      title: conn.color ? `Colour ${conn.color} — click to change` : 'No colour — click to choose',
+      onclick: () => {
+        colorPickerConn = colorPickerConn === conn.id ? null : conn.id;
+        renderInspector();
+      },
+    }, h('span', { class: 'color-dot' + (conn.color ? '' : ' none') }));
+    if (conn.color) colorButton.firstChild.style.background = conn.color;
+    const row = h('div', { class: 'row' },
       boundInput(conn.name, (v) => { conn.name = v; }, { placeholder: 'Connector name' }),
+      colorButton,
       picker,
       h('button', {
         class: 'icon-only',
@@ -964,6 +1127,9 @@
         },
       }, icon('delete')),
     );
+    if (colorPickerConn !== conn.id) return row;
+    const colors = h('div', { class: 'conn-colors' }, swatches(conn.color || '', (c) => { conn.color = c; }, ''));
+    return h('div', {}, row, colors);
   }
 
   function closeSidePickers() {
@@ -975,10 +1141,11 @@
   });
 
   function renderInspector() {
-    const item = selectedItem();
-    if (!item) inspector.replaceChildren(...emptyInspector());
-    else if (selection.type === 'block') inspector.replaceChildren(...blockInspector(item));
-    else inspector.replaceChildren(...linkInspector(item));
+    const block = selectedBlock();
+    const links = selectedLinks();
+    if (block) inspector.replaceChildren(...blockInspector(block));
+    else if (links.length) inspector.replaceChildren(...linkInspector(links));
+    else inspector.replaceChildren(...emptyInspector());
   }
 
   function emptyInspector() {
@@ -992,6 +1159,7 @@
         h('li', {}, 'Add connectors in this panel, then drag from one connector to another to link them.'),
         h('li', {}, 'Shift+drag a connector to move it along or between sides.'),
         h('li', {}, 'Click a link to select it; Delete removes the selection.'),
+        h('li', {}, 'Shift+click links to select several, then group them into a block they all run through.'),
         h('li', {}, 'Clone a block to get linked copies that always change together.'),
         h('li', {}, 'Hold Alt while moving or resizing to ignore the grid.'),
       ),
@@ -1000,6 +1168,7 @@
 
   function blockInspector(block) {
     const out = [];
+    const isGroup = block.kind === 'group';
 
     // --- basics
     const idInput = h('input', { type: 'text', value: block.id, spellcheck: false });
@@ -1015,6 +1184,7 @@
         idInput.classList.remove('invalid');
         return;
       }
+      for (const l of schema.links) if (l.via === block.id) l.via = v;
       block.id = v;
       idInput.value = v;
       if (selection?.type === 'block') selection.id = v;
@@ -1029,7 +1199,7 @@
     }, { placeholder: 'none' });
 
     out.push(
-      h('h3', {}, 'Block'),
+      h('h3', {}, isGroup ? 'Link group' : 'Block'),
       field('Name', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
       field('ID', idInput),
       field('Icon', h('div', { class: 'row', style: 'margin:0' },
@@ -1049,46 +1219,39 @@
     );
     if (iconPickerOpen) out.push(iconPicker(block));
 
-    // --- colours
+    // --- appearance
     out.push(
-      h('h3', {}, 'Background'),
-      swatches(block.background, (c) => { block.background = c; }),
-      h('h3', {}, 'Border'),
-      swatches(block.border, (c) => { block.border = c; }),
+      h('h3', {}, 'Appearance'),
+      ...colorField('Background', 'block:background', block.background, (c) => { block.background = c; }),
+      ...colorField('Border', 'block:border', block.border, (c) => { block.border = c; }),
+      field('Border width', slider(block.borderWidth, 0, MAX_BORDER, (v) => { block.borderWidth = v; })),
     );
 
-    // --- geometry
-    out.push(
-      h('h3', {}, 'Size'),
-      field('Width', numberInput(block.width, MIN_SIZE, GRID, (v) => { block.width = v; })),
-      field('Height', numberInput(block.height, MIN_SIZE, GRID, (v) => { block.height = v; })),
-      field('Corners', numberInput(block.radius, 0, 1, (v) => { block.radius = v; })),
-    );
-
-    // --- connectors, grouped by side
-    out.push(h('h3', {}, 'Connectors'));
-    for (const side of SIDES) {
-      const list = sideConnectors(block, side);
-      if (!list.length) continue;
-      out.push(h('div', { class: 'side-group' }, sideIcon(side), side));
-      for (const conn of list) out.push(connectorRow(block, conn));
-    }
-    out.push(
-      h('div', { class: 'row' },
-        h('span', { class: 'row-label' }, 'Add'),
+    if (isGroup) {
+      out.push(...groupedLinksSection(block));
+    } else {
+      // --- connectors, grouped by side
+      out.push(h('div', { class: 'section-head' },
+        h('h3', {}, 'Connectors'),
         ...SIDES.map((side) => h('button', {
           class: 'icon-only',
           title: `Add connector on the ${side} side`,
           onclick: () => {
-            block.connectors.push({ id: uid('c'), name: '', side });
+            block.connectors.push({ id: uid('c'), name: '', side, color: '' });
             commit();
             render();
             renderInspector();
           },
         }, sideIcon(side))),
-      ),
-      h('p', { class: 'note' }, 'Shift+drag a connector on the canvas to move or reorder it.'),
-    );
+      ));
+      for (const side of SIDES) {
+        const list = sideConnectors(block, side);
+        if (!list.length) continue;
+        out.push(h('div', { class: 'side-group' }, sideIcon(side), side));
+        for (const conn of list) out.push(connectorRow(block, conn));
+      }
+      out.push(h('p', { class: 'note' }, 'Shift+drag a connector on the canvas to move or reorder it.'));
+    }
 
     // --- custom attributes
     out.push(h('h3', {}, 'Attributes'));
@@ -1131,32 +1294,88 @@
     }
 
     // --- actions
-    out.push(
-      h('h3', {}, 'Actions'),
-      h('div', { class: 'row wrap' },
+    out.push(h('h3', {}, 'Actions'));
+    if (isGroup) {
+      out.push(
+        h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('call_split'), 'Ungroup links')),
+        h('p', { class: 'note' }, 'Ungrouping removes this block; its links stay and run directly again.'),
+      );
+    } else {
+      out.push(h('div', { class: 'row wrap' },
         h('button', { title: 'Linked copy: changes apply to all clones', onclick: () => cloneBlock(block) }, icon('copy_all'), 'Clone'),
         h('button', { title: 'Independent copy', onclick: () => duplicateBlock(block) }, icon('content_copy'), 'Duplicate'),
         h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete block'),
-      ),
-    );
+      ));
+    }
     return out;
   }
 
-  function linkInspector(link) {
-    const describe = (id) => {
+  function describeLink(link) {
+    const end = (id) => {
       const found = findConnector(id);
       if (!found) return '?';
       return `${found.block.name || found.block.id} · ${found.conn.name || found.conn.side}`;
     };
-    return [
-      h('h3', {}, 'Link'),
-      h('p', {}, `${describe(link.from)}  →  ${describe(link.to)}`),
+    return `${end(link.from)}  →  ${end(link.to)}`;
+  }
+
+  function groupedLinksSection(block) {
+    const links = schema.links.filter((l) => l.via === block.id);
+    const out = [h('h3', {}, `Grouped links (${links.length})`)];
+    for (const link of links) {
+      out.push(h('div', { class: 'row' },
+        h('span', { class: 'grow' }, describeLink(link)),
+        h('button', {
+          class: 'icon-only',
+          title: 'Take this link out of the group',
+          onclick: () => setLinksGroup([link], null),
+        }, icon('close')),
+      ));
+    }
+    if (!links.length) out.push(h('p', {}, 'No links pass through this group. Select a link to add it here.'));
+    return out;
+  }
+
+  function linkInspector(links) {
+    const single = links.length === 1;
+    const out = [h('h3', {}, single ? 'Link' : `${links.length} links selected`)];
+    if (single) out.push(h('p', {}, describeLink(links[0])));
+    else out.push(h('ul', {}, ...links.map((l) => h('li', {}, describeLink(l)))));
+
+    // --- grouping
+    const groups = groupBlocks();
+    const current = links.every((l) => (l.via || '') === (links[0].via || '')) ? links[0].via || '' : null;
+    out.push(h('h3', {}, 'Group'));
+    if (groups.length) {
+      const groupSelect = h('select', {},
+        current === null ? h('option', { value: '?', selected: true, disabled: true }, '(mixed)') : null,
+        h('option', { value: '', selected: current === '' }, 'Not grouped'),
+        ...groups.map((g) => h('option', { value: g.id, selected: current === g.id }, `${g.name || g.id} (${g.id})`)),
+      );
+      groupSelect.addEventListener('change', () => setLinksGroup(links, groupSelect.value));
+      out.push(field('Runs via', groupSelect));
+    }
+    out.push(
+      h('div', { class: 'row' }, h('button', {
+        disabled: links.length < 2,
+        title: 'Create a group block these links run through (Ctrl/⌘+G)',
+        onclick: () => groupLinks(links),
+      }, icon('merge'), 'Group into new block')),
+      h('p', { class: 'note' }, single
+        ? 'Shift+click more links to select several, then group them.'
+        : 'Shift+click a link to add it to or remove it from the selection.'),
+    );
+
+    // --- colour
+    const color = links.every((l) => l.color === links[0].color) ? links[0].color || '' : null;
+    out.push(
       h('h3', {}, 'Colour'),
-      swatches(link.color || 'transparent', (c) => { link.color = c === 'transparent' ? '' : c; }),
-      h('p', { class: 'note' }, 'The crossed swatch restores the default colour.'),
+      swatches(color, (c) => { for (const l of links) l.color = c; }, ''),
+      h('p', { class: 'note' }, 'With no colour set (crossed swatch) a link follows its connectors: their colour, or black if the two differ.'),
       h('h3', {}, 'Actions'),
-      h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete link')),
-    ];
+      h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), single ? 'Delete link' : 'Delete links')),
+    );
+    return out;
   }
 
   // ---------- toolbar, library, import/export ----------
@@ -1260,6 +1479,48 @@
     }));
   }
 
+  function openSettings() {
+    $('#schema-params').replaceChildren(
+      field('Corner radius', slider(schema.radius, 0, MAX_RADIUS, (v) => { schema.radius = v; })),
+    );
+    renderPalette();
+    paletteDialog.showModal();
+  }
+
+  function renderPalette() {
+    const list = $('#palette-list');
+    list.replaceChildren(...schema.palette.map((color) => {
+      const b = h('button', {
+        class: 'swatch removable',
+        title: `Remove ${color}`,
+        onclick: () => {
+          schema.palette = schema.palette.filter((c) => c !== color);
+          paletteChanged();
+        },
+      }, icon('close'));
+      b.style.background = color;
+      b.style.color = contrastColor(color);
+      return b;
+    }));
+    if (!schema.palette.length) list.append(h('div', { class: 'empty' }, 'The palette is empty.'));
+  }
+
+  function paletteChanged() {
+    commit();
+    renderPalette();
+    renderInspector();
+  }
+
+  function addPaletteColor() {
+    const color = $('#palette-new').value.toLowerCase();
+    if (schema.palette.includes(color)) {
+      toast(`${color} is already in the palette.`, true);
+      return;
+    }
+    schema.palette.push(color);
+    paletteChanged();
+  }
+
   function exportJson() {
     document.activeElement?.blur?.();
     commit();
@@ -1292,6 +1553,10 @@
     'save': saveToLibrary,
     'library': openLibrary,
     'close-library': () => libraryDialog.close(),
+    'settings': openSettings,
+    'close-palette': () => paletteDialog.close(),
+    'palette-add': addPaletteColor,
+    'palette-reset': () => { schema.palette = [...DEFAULT_PALETTE]; paletteChanged(); },
     'export': exportJson,
     'import': () => importFile.click(),
     'add-block': () => addBlock(),
@@ -1306,6 +1571,10 @@
   document.addEventListener('click', (e) => {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (action) actions[action]?.();
+  });
+
+  paletteDialog.addEventListener('click', (e) => {
+    if (e.target === paletteDialog) paletteDialog.close(); // backdrop
   });
 
   libraryDialog.addEventListener('click', (e) => {

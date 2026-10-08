@@ -24,6 +24,7 @@
     <button data-action="import" title="Import JSON file"><span class="mi">upload</span>Import</button>
     <span class="sep"></span>
     <button data-action="add-block" class="primary" title="Add block (or double-click the canvas)"><span class="mi">add_box</span>Add block</button>
+    <button data-action="settings" title="Schema parameters: corner radius, colour palette"><span class="mi">tune</span>Schema</button>
 
     <span class="spacer"></span>
     <button data-action="undo" class="icon-only" title="Undo (Ctrl/⌘+Z)"><span class="mi">undo</span></button>
@@ -53,6 +54,26 @@
       <button data-action="close-library" class="icon-only" title="Close"><span class="mi">close</span></button>
     </header>
     <div id="library-list"></div>
+  </dialog>
+
+  <dialog id="palette-dialog">
+    <header>
+      <h2>Schema parameters</h2>
+      <button data-action="close-palette" class="icon-only" title="Close"><span class="mi">close</span></button>
+    </header>
+    <div class="dialog-body">
+      <h3>Blocks</h3>
+      <div id="schema-params"></div>
+      <h3>Colour palette</h3>
+      <p class="note">These colours are offered everywhere in this schema and are saved with it. Click a colour to remove it; blocks, connectors and links already using it keep their colour.</p>
+      <div id="palette-list" class="swatches large"></div>
+      <div class="row">
+        <input type="color" id="palette-new" value="#3b82f6" title="New colour">
+        <button data-action="palette-add"><span class="mi">add</span>Add colour</button>
+        <span class="spacer"></span>
+        <button data-action="palette-reset" title="Restore the default palette">Reset to default</button>
+      </div>
+    </div>
   </dialog>
 
   <input type="file" id="import-file" accept=".json,application/json" hidden>
