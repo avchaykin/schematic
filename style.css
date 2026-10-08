@@ -141,6 +141,16 @@ main { flex: 1; display: flex; min-height: 0; }
 /* ---------- links ---------- */
 
 .link { fill: none; stroke: var(--link); stroke-width: 2; stroke-linecap: round; }
+.link-label {
+  font: 500 10px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  fill: var(--ink);
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  text-anchor: middle;
+  pointer-events: none;
+}
 .link-outline { fill: none; stroke: #94a3b8; stroke-width: 4; stroke-linecap: round; }
 .link-halo { fill: none; stroke: var(--accent); stroke-width: 7; stroke-opacity: .3; stroke-linecap: round; }
 .link-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }

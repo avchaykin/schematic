@@ -121,6 +121,14 @@
     return `${prefix}-${n}`;
   }
 
+  function normalizeAttributes(raw) {
+    const out = [];
+    for (const a of Array.isArray(raw) ? raw : []) {
+      if (a && typeof a === 'object') out.push({ name: String(a.name ?? ''), value: String(a.value ?? '') });
+    }
+    return out;
+  }
+
   // Coerces arbitrary parsed JSON into a valid schema; throws if it is not one at all.
   function normalizeSchema(raw) {
     if (!raw || typeof raw !== 'object' || !Array.isArray(raw.blocks)) {
@@ -151,11 +159,6 @@
         connectors.push(conn);
       }
 
-      const attributes = [];
-      for (const a of Array.isArray(b.attributes) ? b.attributes : []) {
-        if (a && typeof a === 'object') attributes.push({ name: String(a.name ?? ''), value: String(a.value ?? '') });
-      }
-
       out.blocks.push({
         id,
         name: String(b.name ?? ''),
@@ -167,7 +170,7 @@
         y: num(b.y, 0),
         width: Math.max(MIN_SIZE, num(b.width, 140)),
         height: Math.max(MIN_SIZE, num(b.height, 90)),
-        attributes,
+        attributes: normalizeAttributes(b.attributes),
         connectors,
       });
       if (b.kind === 'group') {
@@ -184,7 +187,14 @@
       let id = String(l.id ?? '').trim();
       if (!id || linkIds.has(id)) id = uid('l');
       linkIds.add(id);
-      out.links.push({ id, from: l.from, to: l.to, color: String(l.color ?? '') });
+      out.links.push({
+        id,
+        from: l.from,
+        to: l.to,
+        color: String(l.color ?? ''),
+        name: String(l.name ?? ''),
+        attributes: normalizeAttributes(l.attributes),
+      });
       if (out.blocks.some((b) => b.kind === 'group' && b.id === l.via)) out.links[out.links.length - 1].via = l.via;
     }
     // Make clone groups consistent, whatever the file said.
@@ -398,6 +408,15 @@
   function linkPath(a, b) {
     const d = clamp(Math.hypot(b.x - a.x, b.y - a.y) * 0.5, 30, 220);
     return `M${a.x},${a.y} C${a.x + a.nx * d},${a.y + a.ny * d} ${b.x + b.nx * d},${b.y + b.ny * d} ${b.x},${b.y}`;
+  }
+
+  // Point halfway along the curve linkPath(a, b) draws.
+  function linkMidpoint(a, b) {
+    const d = clamp(Math.hypot(b.x - a.x, b.y - a.y) * 0.5, 30, 220);
+    return {
+      x: (a.x + 3 * (a.x + a.nx * d) + 3 * (b.x + b.nx * d) + b.x) / 8,
+      y: (a.y + 3 * (a.y + a.ny * d) + 3 * (b.y + b.ny * d) + b.y) / 8,
+    };
   }
 
   // In order: the link's own colour, its group's link colour, then its connectors' colour
@@ -680,6 +699,7 @@
 
   function drawLinks() {
     const nodes = [];
+    const labels = []; // drawn last, above every line
     const routes = groupRoutes();
     for (const link of schema.links) {
       const a = connectorWorld(link.from);
@@ -696,13 +716,23 @@
       const hit = svgPath('link-hit', d);
       hit.dataset.link = link.id;
       nodes.push(line, hit);
+      if (link.name) {
+        // A grouped link is labelled on its way into the group.
+        const mid = route ? linkMidpoint(route.a, route.entry) : linkMidpoint(a, b);
+        const text = document.createElementNS(SVG_NS, 'text');
+        text.setAttribute('class', 'link-label');
+        text.setAttribute('x', mid.x);
+        text.setAttribute('y', mid.y - 5);
+        text.textContent = link.name;
+        labels.push(text);
+      }
     }
     if (tempLink) {
       const a = connectorWorld(tempLink.from);
       const b = (tempLink.target && connectorWorld(tempLink.target)) || { x: tempLink.x, y: tempLink.y, nx: 0, ny: 0 };
       if (a) nodes.push(svgPath('link-temp', linkPath(a, b)));
     }
-    linksG.replaceChildren(...nodes);
+    linksG.replaceChildren(...nodes, ...labels);
   }
 
   // ---------- view ----------
@@ -848,7 +878,14 @@
       if (to) {
         const exists = schema.links.some((l) => (l.from === fromId && l.to === to) || (l.from === to && l.to === fromId));
         if (!exists) {
-          schema.links.push({ id: uid('l'), from: fromId, to, color: '' });
+          schema.links.push({
+            id: freshBlockId(new Set(schema.links.map((l) => l.id)), 'link'),
+            from: fromId,
+            to,
+            color: '',
+            name: '',
+            attributes: [],
+          });
           commit();
         }
       }
@@ -1156,6 +1193,59 @@
     if (!e.target.closest?.('.side-picker')) closeSidePickers();
   });
 
+  // ID input for a block or link: must be non-empty and unique among `siblings`.
+  // `onRename(newId)` runs just before the id changes, to fix up references to the old one.
+  function idField(item, siblings, kind, onRename) {
+    const taken = (v) => !v || siblings.some((x) => x !== item && x.id === v);
+    const input = h('input', { type: 'text', value: item.id, spellcheck: false });
+    input.addEventListener('input', () => input.classList.toggle('invalid', taken(input.value.trim())));
+    input.addEventListener('change', () => {
+      const v = input.value.trim();
+      if (taken(v)) {
+        toast(v ? `ID "${v}" is already used by another ${kind}.` : 'ID cannot be empty.', true);
+        input.value = item.id;
+        input.classList.remove('invalid');
+        return;
+      }
+      onRename(v);
+      item.id = v;
+      input.value = v;
+      commit();
+      render();
+    });
+    return input;
+  }
+
+  // Free-form name/value pairs on a block or link.
+  function attributesSection(owner) {
+    const out = [h('h3', {}, 'Attributes')];
+    for (const attr of owner.attributes) {
+      out.push(h('div', { class: 'row' },
+        boundInput(attr.name, (v) => { attr.name = v; }, { placeholder: 'name' }),
+        boundInput(attr.value, (v) => { attr.value = v; }, { placeholder: 'value' }),
+        h('button', {
+          class: 'icon-only',
+          title: 'Remove attribute',
+          onclick: () => {
+            owner.attributes = owner.attributes.filter((a) => a !== attr);
+            commit();
+            renderInspector();
+          },
+        }, icon('delete')),
+      ));
+    }
+    out.push(h('div', { class: 'row' }, h('button', {
+      onclick: () => {
+        owner.attributes.push({ name: '', value: '' });
+        commit();
+        renderInspector();
+        const rows = inspector.querySelectorAll('input[placeholder="name"]');
+        rows[rows.length - 1]?.focus();
+      },
+    }, icon('add'), 'Add attribute')));
+    return out;
+  }
+
   function renderInspector() {
     const block = selectedBlock();
     const links = selectedLinks();
@@ -1187,25 +1277,9 @@
     const isGroup = block.kind === 'group';
 
     // --- basics
-    const idInput = h('input', { type: 'text', value: block.id, spellcheck: false });
-    idInput.addEventListener('input', () => {
-      const v = idInput.value.trim();
-      idInput.classList.toggle('invalid', !v || schema.blocks.some((b) => b !== block && b.id === v));
-    });
-    idInput.addEventListener('change', () => {
-      const v = idInput.value.trim();
-      if (!v || schema.blocks.some((b) => b !== block && b.id === v)) {
-        toast(v ? `ID "${v}" is already used by another block.` : 'ID cannot be empty.', true);
-        idInput.value = block.id;
-        idInput.classList.remove('invalid');
-        return;
-      }
-      for (const l of schema.links) if (l.via === block.id) l.via = v;
-      block.id = v;
-      idInput.value = v;
-      if (selection?.type === 'block') selection.id = v;
-      commit();
-      render();
+    const idInput = idField(block, schema.blocks, 'block', (id) => {
+      for (const l of schema.links) if (l.via === block.id) l.via = id;
+      selection = { type: 'block', id };
     });
 
     const preview = h('span', { class: 'mi icon-preview' }, block.icon);
@@ -1269,32 +1343,7 @@
       out.push(h('p', { class: 'note' }, 'Shift+drag a connector on the canvas to move or reorder it.'));
     }
 
-    // --- custom attributes
-    out.push(h('h3', {}, 'Attributes'));
-    for (const attr of block.attributes) {
-      out.push(h('div', { class: 'row' },
-        boundInput(attr.name, (v) => { attr.name = v; }, { placeholder: 'name' }),
-        boundInput(attr.value, (v) => { attr.value = v; }, { placeholder: 'value' }),
-        h('button', {
-          class: 'icon-only',
-          title: 'Remove attribute',
-          onclick: () => {
-            block.attributes = block.attributes.filter((a) => a !== attr);
-            commit();
-            renderInspector();
-          },
-        }, icon('delete')),
-      ));
-    }
-    out.push(h('div', { class: 'row' }, h('button', {
-      onclick: () => {
-        block.attributes.push({ name: '', value: '' });
-        commit();
-        renderInspector();
-        const rows = inspector.querySelectorAll('input[placeholder="name"]');
-        rows[rows.length - 1]?.focus();
-      },
-    }, icon('add'), 'Add attribute')));
+    out.push(...attributesSection(block));
 
     // --- clones
     if (block.cloneGroup) {
@@ -1375,8 +1424,14 @@
   function linkInspector(links) {
     const single = links.length === 1;
     const out = [h('h3', {}, single ? 'Link' : `${links.length} links selected`)];
-    if (single) out.push(h('p', {}, describeLink(links[0])));
-    else out.push(h('ul', {}, ...links.map((l) => h('li', {}, describeLink(l)))));
+    if (single) {
+      const link = links[0];
+      out.push(
+        field('Name', boundInput(link.name, (v) => { link.name = v; })),
+        field('ID', idField(link, schema.links, 'link', (id) => { selection = { type: 'link', ids: [id] }; })),
+        h('p', { class: 'note' }, describeLink(link)),
+      );
+    } else out.push(h('ul', {}, ...links.map((l) => h('li', {}, describeLink(l)))));
 
     // --- grouping
     const groups = groupBlocks();
@@ -1408,6 +1463,9 @@
       h('h3', {}, 'Colour'),
       swatches(color, (c) => { for (const l of links) l.color = c; }, ''),
       h('p', { class: 'note' }, 'With no colour set (crossed swatch) a link takes its group\'s links colour if it is in one, otherwise its connectors\' colour (black if the two differ).'),
+    );
+    if (single) out.push(...attributesSection(links[0]));
+    out.push(
       h('h3', {}, 'Actions'),
       h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), single ? 'Delete link' : 'Delete links')),
     );
