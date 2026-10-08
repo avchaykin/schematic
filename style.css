@@ -141,6 +141,7 @@ main { flex: 1; display: flex; min-height: 0; }
 /* ---------- links ---------- */
 
 .link { fill: none; stroke: var(--link); stroke-width: 2; stroke-linecap: round; }
+.link-outline { fill: none; stroke: #94a3b8; stroke-width: 4; stroke-linecap: round; }
 .link-halo { fill: none; stroke: var(--accent); stroke-width: 7; stroke-opacity: .3; stroke-linecap: round; }
 .link-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
 .link-temp { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }

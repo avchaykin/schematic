@@ -71,6 +71,13 @@
 
   const isHex = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
 
+  function isPale(color) {
+    const m = /^#([0-9a-f]{6})$/i.exec(color || '');
+    if (!m) return false;
+    const n = parseInt(m[1], 16);
+    return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 > 0.9;
+  }
+
   function contrastColor(bg) {
     const m = /^#([0-9a-f]{6})$/i.exec(bg || '');
     if (!m) return '#0f172a';
@@ -677,6 +684,8 @@
       const line = svgPath('link', d);
       const color = linkColor(link);
       if (color) line.style.stroke = color;
+      // White and near-white lines get a thin grey edge so they stay visible on the canvas.
+      if (isPale(color)) nodes.push(svgPath('link-outline', d));
       const hit = svgPath('link-hit', d);
       hit.dataset.link = link.id;
       nodes.push(line, hit);
