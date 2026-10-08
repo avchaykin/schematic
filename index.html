@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schematic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="toolbar">
+    <span class="brand"><span class="mi">schema</span>Schematic</span>
+    <input id="schema-name" type="text" placeholder="Schema name" spellcheck="false" aria-label="Schema name">
+    <span id="dirty" title="Unsaved changes" hidden>●</span>
+
+    <span class="sep"></span>
+    <button data-action="new" title="New schema"><span class="mi">note_add</span>New</button>
+    <button data-action="save" title="Save to browser storage (Ctrl/⌘+S)"><span class="mi">save</span>Save</button>
+    <button data-action="library" title="Load or delete saved schemas"><span class="mi">folder_open</span>Load</button>
+    <span class="sep"></span>
+    <button data-action="export" title="Export as JSON file"><span class="mi">download</span>Export</button>
+    <button data-action="import" title="Import JSON file"><span class="mi">upload</span>Import</button>
+    <span class="sep"></span>
+    <button data-action="add-block" class="primary" title="Add block (or double-click the canvas)"><span class="mi">add_box</span>Add block</button>
+
+    <span class="spacer"></span>
+    <button data-action="undo" class="icon-only" title="Undo (Ctrl/⌘+Z)"><span class="mi">undo</span></button>
+    <button data-action="redo" class="icon-only" title="Redo (Ctrl/⌘+Shift+Z)"><span class="mi">redo</span></button>
+    <span class="sep"></span>
+    <button data-action="zoom-out" class="icon-only" title="Zoom out"><span class="mi">remove</span></button>
+    <button data-action="zoom-reset" id="zoom-label" title="Reset zoom to 100%">100%</button>
+    <button data-action="zoom-in" class="icon-only" title="Zoom in"><span class="mi">add</span></button>
+    <button data-action="fit" class="icon-only" title="Fit schema to view"><span class="mi">fit_screen</span></button>
+  </header>
+
+  <main>
+    <div id="viewport">
+      <svg id="links"><g id="links-g"></g></svg>
+      <div id="world"></div>
+      <div id="hint">
+        Drag a connector to link · Shift+drag a connector to move it · Drag background to pan · Ctrl/⌘+scroll to zoom
+      </div>
+      <div id="toast" hidden></div>
+    </div>
+    <aside id="inspector"></aside>
+  </main>
+
+  <dialog id="library-dialog">
+    <header>
+      <h2>Saved schemas</h2>
+      <button data-action="close-library" class="icon-only" title="Close"><span class="mi">close</span></button>
+    </header>
+    <div id="library-list"></div>
+  </dialog>
+
+  <input type="file" id="import-file" accept=".json,application/json" hidden>
+  <script src="app.js"></script>
+</body>
+</html>
