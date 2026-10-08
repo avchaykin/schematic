@@ -170,7 +170,10 @@
         attributes,
         connectors,
       });
-      if (b.kind === 'group') out.blocks[out.blocks.length - 1].kind = 'group';
+      if (b.kind === 'group') {
+        out.blocks[out.blocks.length - 1].kind = 'group';
+        out.blocks[out.blocks.length - 1].linkColor = String(b.linkColor ?? '');
+      }
       else if (b.cloneGroup) out.blocks[out.blocks.length - 1].cloneGroup = String(b.cloneGroup);
     }
 
@@ -397,9 +400,12 @@
     return `M${a.x},${a.y} C${a.x + a.nx * d},${a.y + a.ny * d} ${b.x + b.nx * d},${b.y + b.ny * d} ${b.x},${b.y}`;
   }
 
-  // An explicit link colour wins; otherwise the link takes its connectors' colour, black if they disagree.
+  // In order: the link's own colour, its group's link colour, then its connectors' colour
+  // (black if the two connectors disagree).
   function linkColor(link) {
     if (link.color) return link.color;
+    const group = link.via ? findBlock(link.via) : null;
+    if (group?.linkColor) return group.linkColor;
     const a = findConnector(link.from)?.conn.color || '';
     const b = findConnector(link.to)?.conn.color || '';
     if (a && b && a.toLowerCase() !== b.toLowerCase()) return '#000000';
@@ -528,6 +534,7 @@
       attributes: [],
       connectors: [],
       kind: 'group',
+      linkColor: '',
     };
     schema.blocks.push(block);
     for (const l of links) l.via = block.id;
@@ -978,8 +985,8 @@
   }
 
   // One-line colour setting: a button showing the current colour; the palette opens below on click.
-  function colorField(label, key, value, apply) {
-    const none = value === 'transparent';
+  function colorField(label, key, value, apply, noneValue = 'transparent') {
+    const none = value === noneValue;
     const dot = h('span', { class: 'color-dot' + (none ? ' none' : '') });
     if (!none) dot.style.background = value;
     const button = h('button', {
@@ -992,7 +999,7 @@
       },
     }, dot, none ? 'none' : value);
     const out = [field(label, button)];
-    if (colorPickerConn === key) out.push(h('div', { class: 'conn-colors' }, swatches(value, apply)));
+    if (colorPickerConn === key) out.push(h('div', { class: 'conn-colors' }, swatches(value, apply, noneValue)));
     return out;
   }
 
@@ -1330,16 +1337,36 @@
 
   function groupedLinksSection(block) {
     const links = schema.links.filter((l) => l.via === block.id);
-    const out = [h('h3', {}, `Grouped links (${links.length})`)];
+    const out = [
+      h('h3', {}, `Grouped links (${links.length})`),
+      ...colorField('Links colour', 'block:linkColor', block.linkColor || '', (c) => { block.linkColor = c; }, ''),
+    ];
     for (const link of links) {
+      const key = 'link:' + link.id;
+      const dot = h('span', { class: 'color-dot' + (link.color ? '' : ' none') });
+      if (link.color) dot.style.background = link.color;
       out.push(h('div', { class: 'row' },
         h('span', { class: 'grow' }, describeLink(link)),
+        h('button', {
+          class: 'icon-only',
+          title: link.color ? `This link's own colour: ${link.color}` : 'No colour of its own — click to set one',
+          onclick: () => {
+            colorPickerConn = colorPickerConn === key ? null : key;
+            renderInspector();
+          },
+        }, dot),
         h('button', {
           class: 'icon-only',
           title: 'Take this link out of the group',
           onclick: () => setLinksGroup([link], null),
         }, icon('close')),
       ));
+      if (colorPickerConn === key) {
+        out.push(h('div', { class: 'conn-colors' }, swatches(link.color || '', (c) => { link.color = c; }, '')));
+      }
+    }
+    if (links.length) {
+      out.push(h('p', { class: 'note' }, 'A link uses its own colour if it has one, then the group\'s links colour, then its connectors\' colour.'));
     }
     if (!links.length) out.push(h('p', {}, 'No links pass through this group. Select a link to add it here.'));
     return out;
@@ -1380,7 +1407,7 @@
     out.push(
       h('h3', {}, 'Colour'),
       swatches(color, (c) => { for (const l of links) l.color = c; }, ''),
-      h('p', { class: 'note' }, 'With no colour set (crossed swatch) a link follows its connectors: their colour, or black if the two differ.'),
+      h('p', { class: 'note' }, 'With no colour set (crossed swatch) a link takes its group\'s links colour if it is in one, otherwise its connectors\' colour (black if the two differ).'),
       h('h3', {}, 'Actions'),
       h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), single ? 'Delete link' : 'Delete links')),
     );
