@@ -22,6 +22,7 @@
     <span class="sep"></span>
     <button data-action="export" title="Export as JSON file"><span class="mi">download</span>Export</button>
     <button data-action="import" title="Import JSON file"><span class="mi">upload</span>Import</button>
+    <button data-action="json" title="Show and edit the schema as JSON"><span class="mi">data_object</span>JSON</button>
     <span class="sep"></span>
     <button data-action="add-block" class="primary" title="Add block (or double-click the canvas)"><span class="mi">add_box</span>Add block</button>
     <button data-action="settings" title="Schema parameters: corner radius, colour palette"><span class="mi">tune</span>Schema</button>
@@ -72,6 +73,23 @@
         <button data-action="palette-add"><span class="mi">add</span>Add colour</button>
         <span class="spacer"></span>
         <button data-action="palette-reset" title="Restore the default palette">Reset to default</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="json-dialog">
+    <header>
+      <h2>Schema JSON</h2>
+      <button data-action="json-close" class="icon-only" title="Close"><span class="mi">close</span></button>
+    </header>
+    <div class="dialog-body">
+      <textarea id="json-text" spellcheck="false" autocomplete="off" aria-label="Schema JSON"></textarea>
+      <div id="json-error" hidden></div>
+      <div class="row">
+        <span class="note">Edit the text, then Apply to replace the schema. Apply can be undone.</span>
+        <span class="spacer"></span>
+        <button data-action="json-close">Cancel</button>
+        <button data-action="json-apply" class="primary"><span class="mi">check</span>Apply</button>
       </div>
     </div>
   </dialog>

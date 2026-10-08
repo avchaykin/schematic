@@ -96,6 +96,9 @@
   const toastEl = $('#toast');
   const libraryDialog = $('#library-dialog');
   const paletteDialog = $('#palette-dialog');
+  const jsonDialog = $('#json-dialog');
+  const jsonText = $('#json-text');
+  const jsonError = $('#json-error');
   const importFile = $('#import-file');
 
   // ---------- state ----------
@@ -1615,6 +1618,52 @@
     paletteChanged();
   }
 
+  // ---------- JSON view ----------
+
+  function openJson() {
+    document.activeElement?.blur?.();
+    commit();
+    jsonText.value = JSON.stringify(schema, null, 2);
+    jsonError.hidden = true;
+    jsonDialog.showModal();
+    jsonText.setSelectionRange(0, 0);
+    jsonText.scrollTop = 0;
+  }
+
+  function parseJsonText() {
+    try {
+      const next = normalizeSchema(JSON.parse(jsonText.value));
+      jsonError.hidden = true;
+      return next;
+    } catch (err) {
+      jsonError.textContent = err.message;
+      jsonError.hidden = false;
+      return null;
+    }
+  }
+
+  // Replaces the schema with the edited JSON as one undoable step.
+  function applyJson() {
+    const next = parseJsonText();
+    if (!next) return;
+    schema = next;
+    if (selection?.type === 'block' && !findBlock(selection.id)) selection = null;
+    if (selection?.type === 'link') {
+      const ids = selection.ids.filter(findLink);
+      selection = ids.length ? { type: 'link', ids } : null;
+    }
+    commit();
+    refreshAll();
+    jsonDialog.close();
+    toast('JSON applied to the schema');
+  }
+
+  jsonText.addEventListener('input', parseJsonText);
+
+  jsonDialog.addEventListener('click', (e) => {
+    if (e.target === jsonDialog) jsonDialog.close(); // backdrop
+  });
+
   function exportJson() {
     document.activeElement?.blur?.();
     commit();
@@ -1652,6 +1701,9 @@
     'palette-add': addPaletteColor,
     'palette-reset': () => { schema.palette = [...DEFAULT_PALETTE]; paletteChanged(); },
     'export': exportJson,
+    'json': openJson,
+    'json-apply': applyJson,
+    'json-close': () => jsonDialog.close(),
     'import': () => importFile.click(),
     'add-block': () => addBlock(),
     'undo': undo,

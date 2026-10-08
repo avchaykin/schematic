@@ -399,3 +399,23 @@ dialog h2 { margin: 0; font-size: 15px; }
 }
 .dialog-body h3:first-child { margin-top: 0; }
 .icon-grid button { padding: 3px 0; min-width: 0; }
+
+/* ---------- JSON dialog ---------- */
+
+#json-dialog { width: min(860px, calc(100vw - 32px)); }
+#json-text {
+  display: block;
+  width: 100%;
+  height: min(60vh, 560px);
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre;
+  resize: vertical;
+  tab-size: 2;
+}
+#json-error { margin-top: 8px; color: var(--danger); font-size: 12px; }
+#json-dialog .row .note { margin: 0; }
