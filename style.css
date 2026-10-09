@@ -456,3 +456,6 @@ dialog h2 { margin: 0; font-size: 15px; }
   .brand-text { display: none; }
   #schema-name { width: 150px; }
 }
+
+/* Preview of the link connector a Shift-drop would create. */
+.junction-ghost { fill: #fff; stroke: var(--accent); stroke-width: 2; }

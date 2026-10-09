@@ -834,8 +834,19 @@
     }
     if (tempLink) {
       const a = connectorWorld(tempLink.from);
-      const b = (tempLink.target && connectorWorld(tempLink.target)) || { x: tempLink.x, y: tempLink.y, nx: 0, ny: 0 };
+      // The far end: a connector under the pointer, the link connector about to be created, or the pointer.
+      const b = (tempLink.target && connectorWorld(tempLink.target))
+        || (tempLink.ghost && { ...tempLink.ghost, nx: 0, ny: 0, axis: 'horizontal' })
+        || { x: tempLink.x, y: tempLink.y, nx: 0, ny: 0 };
       if (a) nodes.push(svgPath('link-temp', linkPath(aim(a, b), aim(b, a))));
+      if (a && tempLink.ghost) {
+        const dot = document.createElementNS(SVG_NS, 'circle');
+        dot.setAttribute('class', 'junction-ghost');
+        dot.setAttribute('cx', tempLink.ghost.x);
+        dot.setAttribute('cy', tempLink.ghost.y);
+        dot.setAttribute('r', 5);
+        nodes.push(dot);
+      }
     }
     linksG.replaceChildren(...nodes, ...labels);
   }
@@ -1008,22 +1019,40 @@
 
   function startLink(e, fromId) {
     const p = toWorld(e);
-    tempLink = { from: fromId, x: p.x, y: p.y, target: null };
+    tempLink = { from: fromId, x: p.x, y: p.y, target: null, ghost: null };
     const targetAt = (ev) => {
       const id = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.connector')?.dataset.conn;
       return id && id !== fromId ? id : null;
     };
-    drag((ev) => {
-      Object.assign(tempLink, toWorld(ev), { target: targetAt(ev) });
-      render();
-    }, (ev) => {
-      let to = targetAt(ev);
-      tempLink = null;
-      // Released over empty canvas with Shift held: put a link connector there and link to it.
+    // With Shift held over empty canvas, releasing creates a link connector: where it would go.
+    const ghostAt = (ev, shift) => {
       const over = document.elementFromPoint(ev.clientX, ev.clientY);
-      if (!to && ev.shiftKey && viewport.contains(over) && !over.closest('.block')) {
-        const at = toWorld(ev);
-        const junction = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), snap(at.x), snap(at.y));
+      if (!shift || targetAt(ev) || !over || !viewport.contains(over) || over.closest('.block')) return null;
+      const at = toWorld(ev);
+      return { x: snap(at.x), y: snap(at.y) };
+    };
+    let last = e;
+    const update = (shift) => {
+      Object.assign(tempLink, toWorld(last), { target: targetAt(last), ghost: ghostAt(last, shift) });
+      render();
+    };
+    // Shift can be pressed or released without the pointer moving.
+    const onKey = (ev) => {
+      if (ev.key === 'Shift') update(ev.type === 'keydown');
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    drag((ev) => {
+      last = ev;
+      update(ev.shiftKey);
+    }, (ev) => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+      let to = targetAt(ev);
+      const ghost = ghostAt(ev, ev.shiftKey);
+      tempLink = null;
+      if (ghost) {
+        const junction = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), ghost.x, ghost.y);
         schema.blocks.push(junction);
         to = junction.connectors[0].id;
         select({ type: 'block', id: junction.id });
