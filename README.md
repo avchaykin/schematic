@@ -46,6 +46,9 @@ Everything else works offline.
 - Colour priority: the link's own colour, then its group's links colour, then the colour of a block
   connector it ends at, then the colour of a link connector it ends at. Two block connectors (or two
   link connectors) with different colours give a black link.
+- A new link starts with the colour of the connector it is drawn from. From an uncoloured link
+  connector it takes the colour its existing links share. Such links keep following that connector's
+  colour when it changes. A link connector created by a Shift-drop takes the same colour.
 - White and very pale links get a thin grey edge so they stay visible.
 
 ### Link connectors

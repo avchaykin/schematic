@@ -486,6 +486,7 @@
       b.connectors = source.connectors.map((c) => {
         const own = mine.get(c.ref);
         mine.delete(c.ref);
+        if (own) setConnectorColor(own, c.color || '', s); // so links on this clone follow the change too
         return { id: own?.id ?? uid('c'), name: c.name, side: c.side, color: c.color || '', ref: c.ref };
       });
       for (const c of mine.values()) dropped.add(c.id);
@@ -1316,6 +1317,26 @@
     });
   }
 
+  // The colour a new link drawn from this connector starts with: the connector's own colour, or,
+  // for an uncoloured link connector, the one colour its coloured links share.
+  function inheritedColor(connId) {
+    const source = findConnector(connId);
+    if (!source) return '';
+    if (source.conn.color) return source.conn.color;
+    if (source.block.kind !== 'junction') return '';
+    const colors = new Set(schema.links.filter((l) => (l.from === connId || l.to === connId) && l.color).map((l) => l.color.toLowerCase()));
+    return colors.size === 1 ? [...colors][0] : '';
+  }
+
+  // Changes a connector's colour. Links that took their colour from it keep following it.
+  function setConnectorColor(conn, color, s = schema) {
+    const old = (conn.color || '').toLowerCase();
+    if (old && old !== color.toLowerCase()) {
+      for (const l of s.links) if ((l.from === conn.id || l.to === conn.id) && l.color.toLowerCase() === old) l.color = color;
+    }
+    conn.color = color;
+  }
+
   // Shift+drag: pick up the link ends on a connector and drop them on another one. Takes the
   // selected links attached there if any, otherwise every link attached.
   function startReattach(e, fromId, picked) {
@@ -1392,8 +1413,9 @@
       let to = targetAt(ev);
       const ghost = ghostAt(ev, ev.shiftKey);
       tempLink = null;
+      const color = inheritedColor(fromId);
       if (ghost) {
-        const junction = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), ghost.x, ghost.y);
+        const junction = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), ghost.x, ghost.y, { color });
         schema.blocks.push(junction);
         to = junction.connectors[0].id;
         select({ type: 'block', id: junction.id });
@@ -1405,7 +1427,7 @@
             id: freshBlockId(new Set(schema.links.map((l) => l.id)), 'link'),
             from: fromId,
             to,
-            color: '',
+            color,
             style: 'solid',
             name: '',
             description: '',
@@ -1770,7 +1792,7 @@
       }, icon('delete')),
     );
     if (colorPickerConn !== conn.id) return row;
-    const colors = h('div', { class: 'conn-colors' }, swatches(conn.color || '', (c) => { conn.color = c; }, ''));
+    const colors = h('div', { class: 'conn-colors' }, swatches(conn.color || '', (c) => setConnectorColor(conn, c), ''));
     return h('div', {}, row, colors);
   }
 
@@ -2001,7 +2023,7 @@
       field('Name', boundInput(block.name, (v) => { block.name = v; nameEdited(block); }, { 'data-role': 'block-name' })),
       field('ID', idField(block)),
       descriptionField(block),
-      ...colorField('Colour', 'block:junction', conn.color || '', (c) => { conn.color = c; }, ''),
+      ...colorField('Colour', 'block:junction', conn.color || '', (c) => setConnectorColor(conn, c), ''),
       h('div', { class: 'field' }, h('span', {}, 'Links go'), h('div', { class: 'segmented' },
         ...[['horizontal', 'swap_horiz', 'Left/right'], ['vertical', 'swap_vert', 'Up/down']].map(([axis, glyph, label]) => h('button', {
           class: block.axis === axis ? 'active' : '',
