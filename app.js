@@ -122,7 +122,7 @@
   let colorPickerConn = null; // which colour chooser is open in the inspector: a connector id or a block field key
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -251,6 +251,8 @@
     }
     const out = emptySchema(String(raw.name || 'Untitled'));
     out.radius = clamp(num(raw.radius, 8), 0, MAX_RADIUS);
+    out.junctionSize = clamp(num(raw.junctionSize, 12), 6, 32);
+    out.linkWidth = clamp(num(raw.linkWidth, 2), 1, 10);
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
@@ -932,6 +934,8 @@
     drawLinks();
     world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
     framesLayer.style.transform = world.style.transform;
+    viewport.style.setProperty('--link-width', schema.linkWidth + 'px');
+    viewport.style.setProperty('--junction-size', schema.junctionSize + 'px');
     linksG.setAttribute('transform', `translate(${view.x} ${view.y}) scale(${view.zoom})`);
     const cell = GRID * 2 * view.zoom;
     viewport.style.backgroundSize = `${cell}px ${cell}px`;
@@ -1108,7 +1112,9 @@
       const color = linkColor(link);
       if (color) line.style.stroke = color;
       // White and near-white lines get a thin grey edge so they stay visible on the canvas.
-      const dash = LINK_DASH[link.style];
+      // Dash lengths grow with the line width so dashes and dots keep their look.
+      const w = schema.linkWidth;
+      const dash = { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style];
       if (dash) line.setAttribute('stroke-dasharray', dash);
       if (isPale(color)) {
         const outline = svgPath('link-outline', d);
@@ -1141,7 +1147,7 @@
         dot.setAttribute('class', 'junction-ghost');
         dot.setAttribute('cx', tempLink.ghost.x);
         dot.setAttribute('cy', tempLink.ghost.y);
-        dot.setAttribute('r', 5);
+        dot.setAttribute('r', schema.junctionSize / 2 - 1);
         nodes.push(dot);
       }
     }
@@ -2359,6 +2365,10 @@
   function openSettings() {
     $('#schema-params').replaceChildren(
       field('Corner radius', slider(schema.radius, 0, MAX_RADIUS, (v) => { schema.radius = v; })),
+    );
+    $('#schema-link-params').replaceChildren(
+      field('Line width', slider(schema.linkWidth, 1, 10, (v) => { schema.linkWidth = v; })),
+      field('Link connector size', slider(schema.junctionSize, 6, 32, (v) => { schema.junctionSize = v; })),
     );
     renderPalette();
     paletteDialog.showModal();

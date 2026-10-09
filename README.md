@@ -94,6 +94,7 @@ Everything else works offline.
 ### Schema parameters
 
 - Corner radius for all blocks.
+- Line width of all links, and the size of all link connectors.
 - A colour palette stored with the schema and offered wherever a colour is chosen.
   Colours can be added and removed.
 
