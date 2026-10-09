@@ -1960,7 +1960,7 @@
     return [
       h('h3', {}, `${blocks.length} elements selected`),
       h('ul', {}, ...blocks.map((b) => h('li', {}, label(b)))),
-      h('p', { class: 'note' }, 'Drag any of them to move them all. Shift+click an element to add it or take it out; click one to select it alone.'),
+      h('p', { class: 'note' }, 'Drag any of them to move them all (a link connector by its arrows handle). Shift+click an element to add it or take it out; click one to select it alone.'),
       h('h3', {}, 'Actions'),
       h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete selected')),
     ];

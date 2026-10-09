@@ -443,7 +443,8 @@ dialog h2 { margin: 0; font-size: 15px; }
   font-size: 14px;
   cursor: move;
 }
-.block.junction.selected .junction-move { display: block; }
+.block.junction.selected .junction-move,
+.block.junction.multi .junction-move { display: block; }
 .junction-label { transform: translate(-50%, 10px); }
 
 /* The toolbar wraps onto a second row instead of scrolling when the window is narrow. */
