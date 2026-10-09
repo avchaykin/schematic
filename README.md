@@ -3,6 +3,10 @@
 A browser-based editor for drawing schemas made of blocks and the links between them.
 Plain HTML, CSS and JavaScript: no build step, no server, no dependencies.
 
+![Schematic with an example schema](docs/images/overview.png)
+
+New to the tool? See the illustrated guide: [Working with Schematic](docs/guide.md).
+
 ## Running
 
 Open `index.html` in a browser.
@@ -46,8 +50,8 @@ Everything else works offline.
 
 - A free-standing dot, like a block's connector but placed anywhere on the canvas.
 - Any number of links can start or end at it, all meeting in one point.
-- Created from the toolbar, or by holding Shift while dropping a new link on empty canvas: the link
-  connector appears there with the link attached.
+- Created from the toolbar, or by holding Shift while dropping a new link on empty canvas: a preview
+  dot shows where the link connector will appear, with the link attached.
 - Links leave it at a right angle: left or right by default, or up or down if set so.
 - It has a name, ID, colour and custom attributes; its colour is passed on to its links unless a block connector
   at the other end has a colour of its own.
@@ -112,3 +116,4 @@ Everything else works offline.
 - `index.html` — page structure, toolbar and dialogs
 - `style.css` — styling
 - `app.js` — the whole application
+- `docs/guide.md` — illustrated guide to working with the tool
