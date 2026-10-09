@@ -521,3 +521,15 @@ dialog h2 { margin: 0; font-size: 15px; }
 .frame-edge.left { left: -4px; }
 .frame-edge.right { right: -4px; }
 .block.frame .handle { pointer-events: auto; }
+
+/* ---------- multiple selection ---------- */
+
+#marquee {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: rgb(37 99 235 / .08);
+  pointer-events: none;
+}
+.block.multi { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.block.junction.multi { outline: none; }
+.block.junction.multi .connector { box-shadow: 0 0 0 3px rgb(37 99 235 / .45); }

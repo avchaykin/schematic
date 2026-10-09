@@ -103,6 +103,8 @@ Everything else works offline.
 ### Canvas
 
 - Pan by dragging the background; zoom with Ctrl/⌘+scroll or the toolbar; fit the schema to the view.
+- Shift+drag on empty canvas draws a selection box; Shift+click adds or removes single elements.
+  Dragging one selected element moves them all, and Delete removes them all.
 - Blocks snap to a 10 px grid; hold Alt to move or resize freely.
 - Undo and redo.
 
@@ -117,6 +119,7 @@ Everything else works offline.
 | Reattach links to another connector | Shift+drag from the connector they are on |
 | Move or reorder a connector | Alt+drag it |
 | Move a link connector | Drag its arrows handle, or Alt+drag the dot |
+| Select several elements | Shift+drag on empty canvas, or Shift+click them |
 | Select several links | Shift+click (or Ctrl/⌘+click) |
 | Group selected links | Ctrl/⌘+G |
 | Duplicate the selected block | Ctrl/⌘+D |

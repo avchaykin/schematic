@@ -18,6 +18,9 @@ The screen has three parts: the **toolbar** at the top, the **canvas** in the mi
 
 Blocks snap to a grid; hold Alt while dragging to place them freely.
 
+To move several elements at once, Shift+drag on empty canvas to draw a selection box around them
+(or Shift+click them one by one), then drag any one of them.
+
 ## 2. Add connectors
 
 Connectors are the dots on a block's sides that links attach to.

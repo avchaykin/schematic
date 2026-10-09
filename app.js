@@ -203,6 +203,7 @@
     if (!isLink) for (const l of s.links) if (l.via === item.id) l.via = id;
     if (s === schema && selection) {
       if (!isLink && selection.type === 'block' && selection.id === item.id) selection = { type: 'block', id };
+      if (!isLink && selection.type === 'blocks') selection = { type: 'blocks', ids: selection.ids.map((x) => (x === item.id ? id : x)) };
       if (isLink && selection.type === 'link') selection = { type: 'link', ids: selection.ids.map((x) => (x === item.id ? id : x)) };
     }
     item.id = id;
@@ -408,11 +409,7 @@
   function restore(snap) {
     schema = JSON.parse(snap);
     lastSnapshot = snap;
-    if (selection?.type === 'block' && !findBlock(selection.id)) selection = null;
-    if (selection?.type === 'link') {
-      const ids = selection.ids.filter(findLink);
-      selection = ids.length ? { type: 'link', ids } : null;
-    }
+    validateSelection();
     saveCurrent();
     refreshAll();
   }
@@ -529,6 +526,29 @@
     commit();
     render();
     renderInspector();
+  }
+
+  // Every selected element (block, title, frame, ...), whether one or several are selected.
+  function selectedBlocks() {
+    if (selection?.type === 'block') return [findBlock(selection.id)].filter(Boolean);
+    if (selection?.type === 'blocks') return selection.ids.map(findBlock).filter(Boolean);
+    return [];
+  }
+
+  // Selection for a list of element ids: none, one (with its panel) or several.
+  function blockSelection(ids) {
+    if (!ids.length) return null;
+    return ids.length === 1 ? { type: 'block', id: ids[0] } : { type: 'blocks', ids };
+  }
+
+  // Drops anything from the selection that no longer exists (after undo, JSON edits, ...).
+  function validateSelection() {
+    if (selection?.type === 'link') {
+      const ids = selection.ids.filter(findLink);
+      selection = ids.length ? { type: 'link', ids } : null;
+    } else if (selection) {
+      selection = blockSelection(selectedBlocks().map((b) => b.id));
+    }
   }
 
   const selectedLinks = () => (selection?.type === 'link' ? selection.ids.map(findLink).filter(Boolean) : []);
@@ -704,13 +724,14 @@
 
   // Deleting a link group only dissolves it: its links stay and run directly again.
   function deleteSelection() {
-    const block = selectedBlock();
+    const blocks = selectedBlocks();
     const links = selectedLinks();
-    if (block) {
-      const ids = new Set(block.connectors.map((c) => c.id));
-      schema.links = schema.links.filter((l) => !ids.has(l.from) && !ids.has(l.to));
-      for (const l of schema.links) if (l.via === block.id) delete l.via;
-      schema.blocks = schema.blocks.filter((b) => b !== block);
+    if (blocks.length) {
+      const connIds = new Set(blocks.flatMap((b) => b.connectors.map((c) => c.id)));
+      const blockIds = new Set(blocks.map((b) => b.id));
+      schema.links = schema.links.filter((l) => !connIds.has(l.from) && !connIds.has(l.to));
+      for (const l of schema.links) if (blockIds.has(l.via)) delete l.via;
+      schema.blocks = schema.blocks.filter((b) => !blocks.includes(b));
       pruneCloneGroups();
     } else if (links.length) {
       schema.links = schema.links.filter((l) => !links.includes(l));
@@ -800,7 +821,7 @@
 
   function select(next) {
     syncClones(selectedBlock());
-    const key = (sel) => (sel ? sel.type + ':' + (sel.type === 'link' ? sel.ids.join(',') : sel.id) : '');
+    const key = (sel) => (sel ? sel.type + ':' + (sel.ids ? sel.ids.join(',') : sel.id) : '');
     const same = key(selection) === key(next);
     selection = next;
     if (!same) {
@@ -851,6 +872,7 @@
       el.style.height = block.height + 'px';
       const isSelected = selection?.type === 'block' && selection.id === block.id;
       el.classList.toggle('selected', isSelected);
+      el.classList.toggle('multi', selection?.type === 'blocks' && selection.ids.includes(block.id));
       el.classList.toggle('clone-sibling', !isSelected && Boolean(activeGroup) && block.cloneGroup === activeGroup);
 
       // Rebuild the inside only when something visible changed, so elements survive clicks and drags.
@@ -1110,10 +1132,16 @@
     });
   }
 
-  function startMove(e, block) {
+  // Drags `block`; `others` (the rest of a multi-selection) and the contents of any frame among
+  // them follow by the same amount. `onClick` runs instead of a commit if the pointer never moved.
+  function startMove(e, block, others = [], onClick = null) {
     const start = toWorld(e);
     const origin = { x: block.x, y: block.y };
-    const carried = (block.kind === 'frame' ? frameContents(block) : []).map((b) => ({ b, x: b.x, y: b.y }));
+    const group = new Set(others);
+    for (const b of [block, ...others]) if (b.kind === 'frame') for (const inner of frameContents(b)) group.add(inner);
+    group.delete(block);
+    const carried = [...group].map((b) => ({ b, x: b.x, y: b.y }));
+    let moved = false;
     drag((ev) => {
       const p = toWorld(ev);
       const x = origin.x + p.x - start.x;
@@ -1124,8 +1152,42 @@
         item.b.x = item.x + block.x - origin.x;
         item.b.y = item.y + block.y - origin.y;
       }
+      moved = moved || block.x !== origin.x || block.y !== origin.y;
       render();
-    }, commit);
+    }, () => {
+      if (!moved && onClick) onClick();
+      else commit();
+    });
+  }
+
+  // Shift+drag on empty canvas: rubber-band selection of elements.
+  function startMarquee(e) {
+    const rect = viewport.getBoundingClientRect();
+    const startScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const startWorld = toWorld(e);
+    const box = h('div', { id: 'marquee' });
+    viewport.append(box);
+    drag((ev) => {
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      box.style.left = Math.min(x, startScreen.x) + 'px';
+      box.style.top = Math.min(y, startScreen.y) + 'px';
+      box.style.width = Math.abs(x - startScreen.x) + 'px';
+      box.style.height = Math.abs(y - startScreen.y) + 'px';
+    }, (ev) => {
+      box.remove();
+      const end = toWorld(ev);
+      const l = Math.min(startWorld.x, end.x);
+      const r = Math.max(startWorld.x, end.x);
+      const t = Math.min(startWorld.y, end.y);
+      const b = Math.max(startWorld.y, end.y);
+      const hit = schema.blocks.filter((k) => {
+        const inside = k.x >= l && k.y >= t && k.x + k.width <= r && k.y + k.height <= b;
+        // A frame surrounds whatever is dragged over inside it, so it must be enclosed to count.
+        return k.kind === 'frame' ? inside : k.x <= r && k.x + k.width >= l && k.y <= b && k.y + k.height >= t;
+      });
+      select(blockSelection(hit.map((k) => k.id)));
+    });
   }
 
   function startResize(e, block, dir) {
@@ -1289,7 +1351,14 @@
     const handleEl = target.closest('.handle');
     const linkEl = target.closest('[data-link]');
 
-    if (block) {
+    if (block && e.shiftKey && !connEl && !handleEl) {
+      // Shift+click adds an element to the selection or takes it out.
+      const ids = selectedBlocks().map((b) => b.id);
+      select(blockSelection(ids.includes(block.id) ? ids.filter((id) => id !== block.id) : [...ids, block.id]));
+    } else if (block && !connEl && selection?.type === 'blocks' && selection.ids.includes(block.id)) {
+      // Dragging one of several selected elements moves them all; a plain click selects just this one.
+      startMove(e, block, selectedBlocks().filter((b) => b !== block), () => select({ type: 'block', id: block.id }));
+    } else if (block) {
       const picked = selection?.type === 'link' ? selection.ids : []; // read before the selection changes
       select({ type: 'block', id: block.id });
       if (connEl) {
@@ -1313,6 +1382,8 @@
       } else {
         select({ type: 'link', ids: [id] });
       }
+    } else if (e.shiftKey) {
+      startMarquee(e);
     } else {
       select(null);
       startPan(e);
@@ -1684,7 +1755,8 @@
   function renderInspector() {
     const block = selectedBlock();
     const links = selectedLinks();
-    if (block) inspector.replaceChildren(...blockInspector(block));
+    if (selection?.type === 'blocks') inspector.replaceChildren(...multiInspector(selectedBlocks()));
+    else if (block) inspector.replaceChildren(...blockInspector(block));
     else if (links.length) inspector.replaceChildren(...linkInspector(links));
     else inspector.replaceChildren(...emptyInspector());
   }
@@ -1706,6 +1778,7 @@
         h('li', {}, 'Add a link connector for a free-standing dot where several links meet, or hold Shift when dropping a new link on empty canvas to create one there.'),
         h('li', {}, 'Title adds free text to the schema.'),
         h('li', {}, 'Frame adds a titled area behind the schema; what lies inside it moves with it.'),
+        h('li', {}, 'Shift+drag on empty canvas, or Shift+click elements, to select several and move them together.'),
         h('li', {}, 'Hold Alt while moving or resizing to ignore the grid.'),
       ),
     ];
@@ -1754,6 +1827,17 @@
         h('button', { onclick: () => duplicateBlock(block) }, icon('content_copy'), 'Duplicate'),
         h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete title'),
       ),
+    ];
+  }
+
+  function multiInspector(blocks) {
+    const label = (b) => b.name || b.id;
+    return [
+      h('h3', {}, `${blocks.length} elements selected`),
+      h('ul', {}, ...blocks.map((b) => h('li', {}, label(b)))),
+      h('p', { class: 'note' }, 'Drag any of them to move them all. Shift+click an element to add it or take it out; click one to select it alone.'),
+      h('h3', {}, 'Actions'),
+      h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete selected')),
     ];
   }
 
@@ -2184,11 +2268,7 @@
     const next = parseJsonText();
     if (!next) return;
     schema = next;
-    if (selection?.type === 'block' && !findBlock(selection.id)) selection = null;
-    if (selection?.type === 'link') {
-      const ids = selection.ids.filter(findLink);
-      selection = ids.length ? { type: 'link', ids } : null;
-    }
+    validateSelection();
     commit();
     refreshAll();
     jsonDialog.close();
