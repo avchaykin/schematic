@@ -133,7 +133,7 @@
 
   // A link connector ("junction"): a free-standing dot that any number of links can meet at.
   // Stored as a zero-size block with a single connector, so links attach to it like to any other.
-  function junctionBlock(id, x, y, { name = '', description = '', attributes = [], connectorId = uid('c'), color = '', axis = 'horizontal' } = {}) {
+  function junctionBlock(id, x, y, { name = '', description = '', attributes = [], connectorId = uid('c'), color = '', borderColor = '', axis = 'horizontal' } = {}) {
     return {
       id,
       name,
@@ -144,6 +144,7 @@
       height: 0,
       attributes,
       connectors: [{ id: connectorId, name: '', side: 'center', color }],
+      borderColor, // colour of the dot's outline; '' keeps the default
       axis, // links leave it left/right ('horizontal') or up/down ('vertical')
       kind: 'junction',
     };
@@ -283,6 +284,7 @@
           attributes: normalizeAttributes(b.attributes),
           connectorId: cid,
           color: String(c.color ?? ''),
+          borderColor: String(b.borderColor ?? ''),
           axis: b.axis === 'vertical' ? 'vertical' : 'horizontal',
         }));
         continue;
@@ -961,7 +963,7 @@
       // Rebuild the inside only when something visible changed, so elements survive clicks and drags.
       const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.borderWidth, block.borderStyle, schema.radius,
         block.width, block.height, block.connectors, Boolean(block.cloneGroup),
-        block.kind, block.fontSize, block.color, block.align]);
+        block.kind, block.fontSize, block.color, block.align, block.borderColor]);
       if (el._sig !== sig) {
         el._sig = sig;
         buildBlock(el, block);
@@ -993,6 +995,7 @@
       dot.style.background = conn.color;
       dot.style.borderColor = `color-mix(in srgb, ${conn.color} 65%, black)`;
     }
+    if (block.borderColor) dot.style.borderColor = block.borderColor;
     const parts = [dot, h('div', { class: 'mi junction-move', title: 'Drag to move' }, 'open_with')];
     if (block.name) parts.push(h('div', { class: 'conn-label junction-label' }, block.name));
     el.replaceChildren(...parts);
@@ -2024,6 +2027,7 @@
       field('ID', idField(block)),
       descriptionField(block),
       ...colorField('Colour', 'block:junction', conn.color || '', (c) => setConnectorColor(conn, c), ''),
+      ...colorField('Border', 'block:junction-border', block.borderColor || '', (c) => { block.borderColor = c; }, ''),
       h('div', { class: 'field' }, h('span', {}, 'Links go'), h('div', { class: 'segmented' },
         ...[['horizontal', 'swap_horiz', 'Left/right'], ['vertical', 'swap_vert', 'Up/down']].map(([axis, glyph, label]) => h('button', {
           class: block.axis === axis ? 'active' : '',
