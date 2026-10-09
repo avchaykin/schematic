@@ -479,16 +479,20 @@
     };
   }
 
-  // In order: the link's own colour, its group's link colour, then its connectors' colour
-  // (black if the two connectors disagree).
+  // In order: the link's own colour, its group's links colour, the colour of a block connector it
+  // ends at, then the colour of a link connector it ends at. Two ends of the same kind with
+  // different colours give black.
   function linkColor(link) {
     if (link.color) return link.color;
     const group = link.via ? findBlock(link.via) : null;
     if (group?.linkColor) return group.linkColor;
-    const a = findConnector(link.from)?.conn.color || '';
-    const b = findConnector(link.to)?.conn.color || '';
-    if (a && b && a.toLowerCase() !== b.toLowerCase()) return '#000000';
-    return a || b;
+    const ends = [findConnector(link.from), findConnector(link.to)].filter((end) => end?.conn.color);
+    for (const onJunction of [false, true]) {
+      const colors = ends.filter((end) => (end.block.kind === 'junction') === onJunction).map((end) => end.conn.color);
+      if (colors.length === 2 && colors[0].toLowerCase() !== colors[1].toLowerCase()) return '#000000';
+      if (colors.length) return colors[0];
+    }
+    return '';
   }
 
   function addJunction() {
@@ -1617,7 +1621,7 @@
       }
     }
     if (links.length) {
-      out.push(h('p', { class: 'note' }, 'A link uses its own colour if it has one, then the group\'s links colour, then its connectors\' colour.'));
+      out.push(h('p', { class: 'note' }, 'A link uses its own colour if it has one, then the group\'s links colour, then a block connector\'s colour, then a link connector\'s colour.'));
     }
     if (!links.length) out.push(h('p', {}, 'No links pass through this group. Select a link to add it here.'));
     return out;
@@ -1666,7 +1670,7 @@
       h('h3', {}, 'Appearance'),
       styleField('Line style', style, (v) => { for (const l of links) l.style = v; }),
       swatches(color, (c) => { for (const l of links) l.color = c; }, ''),
-      h('p', { class: 'note' }, 'With no colour set (crossed swatch) a link takes its group\'s links colour if it is in one, otherwise its connectors\' colour (black if the two differ).'),
+      h('p', { class: 'note' }, 'With no colour set (crossed swatch) a link takes, in this order: its group\'s links colour, the colour of a block connector it ends at, the colour of a link connector it ends at. Two block connectors (or two link connectors) with different colours give black.'),
     );
     if (single) out.push(...attributesSection(links[0]));
     out.push(

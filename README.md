@@ -37,8 +37,9 @@ Everything else works offline.
   If some of those links are selected, only they move; otherwise all of them do.
 - Each link has a name (drawn on the link), an ID, a colour, a line style (solid, dashed or dotted)
   and custom attributes.
-- Colour priority: the link's own colour, then its group's links colour, then its connectors' colour.
-  If the two connectors have different colours, the link is black.
+- Colour priority: the link's own colour, then its group's links colour, then the colour of a block
+  connector it ends at, then the colour of a link connector it ends at. Two block connectors (or two
+  link connectors) with different colours give a black link.
 - White and very pale links get a thin grey edge so they stay visible.
 
 ### Link connectors
@@ -46,7 +47,8 @@ Everything else works offline.
 - A free-standing dot, like a block's connector but placed anywhere on the canvas.
 - Any number of links can start or end at it, all meeting in one point.
 - Links leave it at a right angle: left or right by default, or up or down if set so.
-- It has a name, ID, colour and custom attributes; its colour is passed on to its links like any connector's.
+- It has a name, ID, colour and custom attributes; its colour is passed on to its links unless a block connector
+  at the other end has a colour of its own.
 - Drag from the dot to start a link; drag its arrows handle, or Alt+drag the dot, to move it.
 
 ### Clones
