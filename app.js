@@ -166,6 +166,52 @@
     };
   }
 
+  // ---------- ids ----------
+  // Until the user types an ID themselves (customId), an element's id follows its name.
+
+  const DEFAULT_ID = /^(block|group|junction|title|frame|link)-\d+$/;
+
+  const slugify = (text) => String(text).trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+
+  // Whether `id` is one the tool would have produced for an element with this name.
+  function looksDerived(id, name) {
+    const slug = slugify(name);
+    return DEFAULT_ID.test(id) || /^l[a-z0-9]{5,9}$/.test(id)
+      || (slug !== '' && (id === slug || (id.startsWith(slug + '-') && /^\d+$/.test(id.slice(slug.length + 1)))));
+  }
+
+  // The id an element should have given its name: the name in id form, numbered if already taken.
+  function derivedId(item, s = schema) {
+    const isLink = s.links.includes(item);
+    const taken = new Set((isLink ? s.links : s.blocks).filter((x) => x !== item).map((x) => x.id));
+    const slug = slugify(item.name || '');
+    if (!slug) {
+      return DEFAULT_ID.test(item.id) && !taken.has(item.id) ? item.id : freshBlockId(taken, isLink ? 'link' : item.kind || 'block');
+    }
+    const suffix = item.id.startsWith(slug + '-') ? item.id.slice(slug.length + 1) : null;
+    if ((item.id === slug || (suffix !== null && /^\d+$/.test(suffix))) && !taken.has(item.id)) return item.id;
+    if (!taken.has(slug)) return slug;
+    let n = 2;
+    while (taken.has(`${slug}-${n}`)) n++;
+    return `${slug}-${n}`;
+  }
+
+  // Changes an id and everything that refers to it.
+  function setId(item, id, s = schema) {
+    if (item.id === id) return;
+    const isLink = s.links.includes(item);
+    if (!isLink) for (const l of s.links) if (l.via === item.id) l.via = id;
+    if (s === schema && selection) {
+      if (!isLink && selection.type === 'block' && selection.id === item.id) selection = { type: 'block', id };
+      if (isLink && selection.type === 'link') selection = { type: 'link', ids: selection.ids.map((x) => (x === item.id ? id : x)) };
+    }
+    item.id = id;
+  }
+
+  function followName(item, s = schema) {
+    if (!item.customId) setId(item, derivedId(item, s), s);
+  }
+
   // A frame: a titled rectangle drawn beneath everything else. Whatever lies inside it moves with it.
   function frameBlock(id, x, y, o = {}) {
     return {
@@ -205,12 +251,14 @@
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
     const blockIds = new Set();
+    const customIds = new Set(); // ids that do not follow from the name, so were typed in
     const connIds = new Set();
 
     for (const b of raw.blocks) {
       if (!b || typeof b !== 'object') continue;
       let id = String(b.id ?? '').trim();
       if (!id || blockIds.has(id)) id = freshBlockId(blockIds);
+      else if (b.customId === true || !looksDerived(id, b.name ?? '')) customIds.add(id);
       blockIds.add(id);
 
       if (b.kind === 'frame') {
@@ -271,12 +319,16 @@
       else if (b.cloneGroup) out.blocks[out.blocks.length - 1].cloneGroup = String(b.cloneGroup);
     }
 
+    for (const block of out.blocks) if (customIds.has(block.id)) block.customId = true;
+
     const linkIds = new Set();
     for (const l of Array.isArray(raw.links) ? raw.links : []) {
       if (!l || typeof l !== 'object') continue;
       if (!connIds.has(l.from) || !connIds.has(l.to) || l.from === l.to) continue;
       let id = String(l.id ?? '').trim();
+      let custom = false;
       if (!id || linkIds.has(id)) id = uid('l');
+      else custom = l.customId === true || !looksDerived(id, l.name ?? '');
       linkIds.add(id);
       out.links.push({
         id,
@@ -289,6 +341,7 @@
         attributes: normalizeAttributes(l.attributes),
       });
       if (out.blocks.some((b) => b.kind === 'group' && b.id === l.via)) out.links[out.links.length - 1].via = l.via;
+      if (custom) out.links[out.links.length - 1].customId = true;
     }
     // Make clone groups consistent, whatever the file said.
     pruneCloneGroups(out);
@@ -424,6 +477,7 @@
     const dropped = new Set();
     for (const b of siblings) {
       for (const key of CLONE_SHARED) b[key] = source[key];
+      followName(b, s);
       b.attributes = source.attributes.map((a) => ({ ...a }));
       const mine = new Map(b.connectors.map((c) => [c.ref, c]));
       b.connectors = source.connectors.map((c) => {
@@ -461,6 +515,8 @@
     copy.y += GRID * 2;
     copy.connectors.forEach((c) => { c.id = uid('c'); });
     schema.blocks.push(copy);
+    delete copy.customId;
+    followName(copy);
     select({ type: 'block', id: copy.id });
     commit();
   }
@@ -561,6 +617,7 @@
 
   function addElement(block) {
     schema.blocks.push(block);
+    followName(block);
     select({ type: 'block', id: block.id });
     commit();
   }
@@ -620,6 +677,7 @@
       connectors: [],
     };
     schema.blocks.push(block);
+    followName(block);
     select({ type: 'block', id: block.id });
     commit();
   }
@@ -633,6 +691,8 @@
     delete copy.cloneGroup;
     copy.connectors.forEach((c) => { c.id = uid('c'); delete c.ref; });
     schema.blocks.push(copy);
+    delete copy.customId;
+    followName(copy);
     select({ type: 'block', id: copy.id });
     commit();
   }
@@ -722,6 +782,7 @@
       linkColor: '',
     };
     schema.blocks.push(block);
+    followName(block);
     for (const l of links) l.via = block.id;
     select({ type: 'block', id: block.id });
     commit();
@@ -1549,25 +1610,45 @@
 
   // ID input for a block or link: must be non-empty and unique among `siblings`.
   // `onRename(newId)` runs just before the id changes, to fix up references to the old one.
-  function idField(item, siblings, kind, onRename) {
-    const taken = (v) => !v || siblings.some((x) => x !== item && x.id === v);
-    const input = h('input', { type: 'text', value: item.id, spellcheck: false });
-    input.addEventListener('input', () => input.classList.toggle('invalid', taken(input.value.trim())));
+  function idField(item) {
+    const isLink = schema.links.includes(item);
+    const clash = (v) => (isLink ? schema.links : schema.blocks).some((x) => x !== item && x.id === v);
+    const input = h('input', {
+      type: 'text',
+      value: item.id,
+      spellcheck: false,
+      title: 'Follows the name until you type an ID here. Clear it to follow the name again.',
+      'data-role': 'item-id',
+    });
+    input.addEventListener('input', () => input.classList.toggle('invalid', clash(input.value.trim())));
     input.addEventListener('change', () => {
       const v = input.value.trim();
-      if (taken(v)) {
-        toast(v ? `ID "${v}" is already used by another ${kind}.` : 'ID cannot be empty.', true);
+      if (clash(v)) {
+        toast(`ID "${v}" is already used by another ${isLink ? 'link' : 'block'}.`, true);
         input.value = item.id;
         input.classList.remove('invalid');
         return;
       }
-      onRename(v);
-      item.id = v;
-      input.value = v;
+      if (v) {
+        item.customId = true;
+        setId(item, v);
+      } else {
+        // Cleared: back to following the name.
+        delete item.customId;
+        followName(item);
+      }
+      input.value = item.id;
       commit();
       render();
     });
     return input;
+  }
+
+  // Call after an element's name was edited: its id follows unless the user set one.
+  function nameEdited(item) {
+    followName(item);
+    const input = inspector.querySelector('[data-role="item-id"]');
+    if (input && document.activeElement !== input) input.value = item.id;
   }
 
   // Free-form name/value pairs on a block or link.
@@ -1650,13 +1731,14 @@
     const text = h('textarea', { rows: 2, value: block.name, spellcheck: false, 'data-role': 'block-name' });
     text.addEventListener('input', () => {
       block.name = text.value;
+      nameEdited(block);
       render();
     });
     text.addEventListener('change', commit);
     return [
       h('h3', {}, 'Title'),
       field('Text', text),
-      field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
+      field('ID', idField(block)),
       descriptionField(block),
       h('h3', {}, 'Appearance'),
       field('Text size', slider(block.fontSize, 8, 96, (v) => { block.fontSize = v; })),
@@ -1679,8 +1761,8 @@
     const inside = frameContents(block).length;
     return [
       h('h3', {}, 'Frame'),
-      field('Title', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
-      field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
+      field('Title', boundInput(block.name, (v) => { block.name = v; nameEdited(block); }, { 'data-role': 'block-name' })),
+      field('ID', idField(block)),
       descriptionField(block),
       h('h3', {}, 'Appearance'),
       ...colorField('Background', 'block:background', block.background, (c) => { block.background = c; }),
@@ -1700,8 +1782,8 @@
     const linked = schema.links.filter((l) => l.from === conn.id || l.to === conn.id).length;
     return [
       h('h3', {}, 'Link connector'),
-      field('Name', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
-      field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
+      field('Name', boundInput(block.name, (v) => { block.name = v; nameEdited(block); }, { 'data-role': 'block-name' })),
+      field('ID', idField(block)),
       descriptionField(block),
       ...colorField('Colour', 'block:junction', conn.color || '', (c) => { conn.color = c; }, ''),
       h('div', { class: 'field' }, h('span', {}, 'Links go'), h('div', { class: 'segmented' },
@@ -1732,10 +1814,7 @@
     const isGroup = block.kind === 'group';
 
     // --- basics
-    const idInput = idField(block, schema.blocks, 'block', (id) => {
-      for (const l of schema.links) if (l.via === block.id) l.via = id;
-      selection = { type: 'block', id };
-    });
+    const idInput = idField(block);
 
     const preview = h('span', { class: 'mi icon-preview' }, block.icon);
     const iconInput = boundInput(block.icon, (v) => {
@@ -1745,7 +1824,7 @@
 
     out.push(
       h('h3', {}, isGroup ? 'Link group' : 'Block'),
-      field('Name', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
+      field('Name', boundInput(block.name, (v) => { block.name = v; nameEdited(block); }, { 'data-role': 'block-name' })),
       field('ID', idInput),
       descriptionField(block),
       field('Icon', h('div', { class: 'row', style: 'margin:0' },
@@ -1885,8 +1964,8 @@
     if (single) {
       const link = links[0];
       out.push(
-        field('Name', boundInput(link.name, (v) => { link.name = v; })),
-        field('ID', idField(link, schema.links, 'link', (id) => { selection = { type: 'link', ids: [id] }; })),
+        field('Name', boundInput(link.name, (v) => { link.name = v; nameEdited(link); })),
+        field('ID', idField(link)),
         descriptionField(link),
         h('p', { class: 'note' }, describeLink(link)),
       );

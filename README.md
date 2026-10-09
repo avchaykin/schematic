@@ -24,7 +24,9 @@ Everything else works offline.
 - Move by dragging; resize by dragging an edge or corner of the selected block.
 - The icon sits above the name. When a block is too small for both, only the icon is shown, centred.
 - Icons are picked from a searchable grid or typed in by their Material Symbols name.
-- IDs are editable and must be unique.
+- The ID follows the name (lower case, words joined by dashes, numbered if already taken) until you
+  type one yourself; clearing the ID field makes it follow the name again. IDs are always unique.
+  The same applies to links, titles, frames and link connectors.
 
 ### Connectors
 
