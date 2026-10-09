@@ -114,6 +114,7 @@
   let redoStack = [];
   let lastSnapshot = JSON.stringify(schema);
   let tempLink = null; // { from, x, y, target } while dragging a new link
+  let reattach = null; // { from, links, x, y, target } while dragging link ends off connector `from`
   let iconPickerOpen = false;
   let colorPickerConn = null; // which colour chooser is open in the inspector: a connector id or a block field key
 
@@ -442,6 +443,14 @@
     return { x: found.block.x + lx, y: found.block.y + ly, nx, ny };
   }
 
+  // Where one end ('from' or 'to') of a link is drawn; follows the pointer while that end is being reattached.
+  function linkEnd(link, key) {
+    if (reattach && link[key] === reattach.from && reattach.links.includes(link.id)) {
+      return (reattach.target && connectorWorld(reattach.target)) || { x: reattach.x, y: reattach.y, nx: 0, ny: 0 };
+    }
+    return connectorWorld(link[key]);
+  }
+
   // Cubic curve whose control points lie on each connector's normal, so both ends meet their side at 90°.
   function linkPath(a, b) {
     const d = clamp(Math.hypot(b.x - a.x, b.y - a.y) * 0.5, 30, 220);
@@ -563,8 +572,8 @@
       const items = [];
       for (const link of schema.links) {
         if (link.via !== g.id) continue;
-        let a = connectorWorld(link.from);
-        let b = connectorWorld(link.to);
+        let a = linkEnd(link, 'from');
+        let b = linkEnd(link, 'to');
         if (!a || !b) continue;
         // Links have no direction: the nearer end comes in on the left.
         if (dist(b, left) + dist(a, right) < dist(a, left) + dist(b, right)) [a, b] = [b, a];
@@ -697,7 +706,8 @@
     if (!ordered) world.append(...schema.blocks.map((b) => blockEls.get(b.id)));
 
     for (const el of world.querySelectorAll('.connector.target')) el.classList.remove('target');
-    if (tempLink?.target) world.querySelector(`[data-conn="${CSS.escape(tempLink.target)}"]`)?.classList.add('target');
+    const target = tempLink?.target || reattach?.target;
+    if (target) world.querySelector(`[data-conn="${CSS.escape(target)}"]`)?.classList.add('target');
   }
 
   function buildJunction(el, block) {
@@ -775,8 +785,8 @@
     const labels = []; // drawn last, above every line
     const routes = groupRoutes();
     for (const link of schema.links) {
-      const a = connectorWorld(link.from);
-      const b = connectorWorld(link.to);
+      const a = linkEnd(link, 'from');
+      const b = linkEnd(link, 'to');
       if (!a || !b) continue;
       const route = routes.get(link.id);
       const d = route ? `${linkPath(route.a, route.entry)} ${linkPath(route.exit, route.b)}` : linkPath(a, b);
@@ -916,7 +926,7 @@
     });
   }
 
-  // Shift+drag: the connector follows the pointer to the nearest side and slot.
+  // Alt+drag: the connector follows the pointer to the nearest side and slot.
   function startConnectorMove(block, conn) {
     drag((ev) => {
       const p = toWorld(ev);
@@ -937,6 +947,44 @@
       render();
     }, () => {
       commit();
+      renderInspector();
+    });
+  }
+
+  // Shift+drag: pick up the link ends on a connector and drop them on another one. Takes the
+  // selected links attached there if any, otherwise every link attached.
+  function startReattach(e, fromId, picked) {
+    const attached = schema.links.filter((l) => l.from === fromId || l.to === fromId);
+    const chosen = attached.filter((l) => picked.includes(l.id));
+    const links = chosen.length ? chosen : attached;
+    if (!links.length) {
+      toast('No links on this connector to reattach.', true);
+      return;
+    }
+    const targetAt = (ev) => {
+      const id = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.connector')?.dataset.conn;
+      return id && id !== fromId ? id : null;
+    };
+    reattach = { from: fromId, links: links.map((l) => l.id), ...toWorld(e), target: null };
+    drag((ev) => {
+      Object.assign(reattach, toWorld(ev), { target: targetAt(ev) });
+      render();
+    }, (ev) => {
+      const to = targetAt(ev);
+      reattach = null;
+      let skipped = 0;
+      for (const link of to ? links : []) {
+        const key = link.from === fromId ? 'from' : 'to';
+        const other = key === 'from' ? link.to : link.from;
+        // Never create a link from a connector to itself, or a second link between the same pair.
+        const clash = other === to
+          || schema.links.some((l) => l !== link && ((l.from === to && l.to === other) || (l.from === other && l.to === to)));
+        if (clash) skipped++;
+        else link[key] = to;
+      }
+      if (skipped) toast(`${skipped} link(s) left in place: the same link already exists there.`, true);
+      commit();
+      render();
       renderInspector();
     });
   }
@@ -991,12 +1039,14 @@
     const linkEl = target.closest('[data-link]');
 
     if (block) {
+      const picked = selection?.type === 'link' ? selection.ids : []; // read before the selection changes
       select({ type: 'block', id: block.id });
       if (connEl) {
         const conn = block.connectors.find((c) => c.id === connEl.dataset.conn);
         if (!conn) return;
-        if (e.shiftKey && block.kind === 'junction') startMove(e, block);
-        else if (e.shiftKey) startConnectorMove(block, conn);
+        if (e.altKey && block.kind === 'junction') startMove(e, block);
+        else if (e.altKey) startConnectorMove(block, conn);
+        else if (e.shiftKey) startReattach(e, conn.id, picked);
         else startLink(e, conn.id);
       } else if (handleEl) {
         startResize(e, block, handleEl.dataset.dir);
@@ -1369,7 +1419,8 @@
         h('li', {}, 'Add block or double-click the canvas to create a block.'),
         h('li', {}, 'Select a block to edit it here and to resize it by its edges and corners.'),
         h('li', {}, 'Add connectors in this panel, then drag from one connector to another to link them.'),
-        h('li', {}, 'Shift+drag a connector to move it along or between sides.'),
+        h('li', {}, 'Shift+drag a connector to pick up its links and reattach them to another connector.'),
+        h('li', {}, 'Alt+drag a connector to move it along or between sides.'),
         h('li', {}, 'Click a link to select it; Delete removes the selection.'),
         h('li', {}, 'Shift+click links to select several, then group them into a block they all run through.'),
         h('li', {}, 'Clone a block to get linked copies that always change together.'),
@@ -1388,7 +1439,7 @@
       field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
       ...colorField('Colour', 'block:junction', conn.color || '', (c) => { conn.color = c; }, ''),
       h('p', { class: 'note' }, `${linked} link(s) meet here. Drag from the dot to start a link, or drop a link on it. `
-        + 'To move it, drag the arrows handle or Shift+drag the dot.'),
+        + 'To move it, drag the arrows handle or Alt+drag the dot. Shift+drag the dot to reattach its links elsewhere.'),
       ...attributesSection(block),
       h('h3', {}, 'Actions'),
       h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete link connector')),
@@ -1465,7 +1516,7 @@
         out.push(h('div', { class: 'side-group' }, sideIcon(side), side));
         for (const conn of list) out.push(connectorRow(block, conn));
       }
-      out.push(h('p', { class: 'note' }, 'Shift+drag a connector on the canvas to move or reorder it.'));
+      out.push(h('p', { class: 'note' }, 'Alt+drag a connector on the canvas to move or reorder it. Shift+drag it to reattach its links.'));
     }
 
     out.push(...attributesSection(block));

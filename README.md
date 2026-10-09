@@ -27,12 +27,14 @@ Everything else works offline.
 - Small circles on any side of a block, spread evenly along that side.
 - Optional name, shown next to the connector, and optional colour.
 - Added per side from the block panel, where they are listed grouped by side.
-- Moved to another side from the panel, or by Shift+dragging on the canvas (which also reorders them).
+- Moved to another side from the panel, or by Alt+dragging on the canvas (which also reorders them).
 
 ### Links
 
 - Drag from one connector to another to link them.
 - Links are curves that meet each connector at a right angle to its side.
+- Shift+drag from a connector to pick up the link ends attached to it and drop them on another connector.
+  If some of those links are selected, only they move; otherwise all of them do.
 - Each link has a name (drawn on the link), an ID, a colour, a line style (solid, dashed or dotted)
   and custom attributes.
 - Colour priority: the link's own colour, then its group's links colour, then its connectors' colour.
@@ -44,7 +46,7 @@ Everything else works offline.
 - A free-standing dot, like a block's connector but placed anywhere on the canvas.
 - Any number of links can start or end at it, all meeting in one point.
 - It has a name, ID, colour and custom attributes; its colour is passed on to its links like any connector's.
-- Drag from the dot to start a link; drag its arrows handle, or Shift+drag the dot, to move it.
+- Drag from the dot to start a link; drag its arrows handle, or Alt+drag the dot, to move it.
 
 ### Clones
 
@@ -87,8 +89,9 @@ Everything else works offline.
 | Add a block | Double-click the canvas |
 | Rename a block | Double-click it |
 | Link two connectors | Drag from one to the other |
-| Move or reorder a connector | Shift+drag it |
-| Move a link connector | Drag its arrows handle, or Shift+drag the dot |
+| Reattach links to another connector | Shift+drag from the connector they are on |
+| Move or reorder a connector | Alt+drag it |
+| Move a link connector | Drag its arrows handle, or Alt+drag the dot |
 | Select several links | Shift+click (or Ctrl/⌘+click) |
 | Group selected links | Ctrl/⌘+G |
 | Duplicate the selected block | Ctrl/⌘+D |
