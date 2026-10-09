@@ -2514,12 +2514,9 @@
     if (e.target === jsonDialog) jsonDialog.close(); // backdrop
   });
 
-  function exportJson() {
-    document.activeElement?.blur?.();
-    commit();
-    const blob = new Blob([JSON.stringify(schema, null, 2)], { type: 'application/json' });
+  function downloadJson(fileName, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const fileName = (schema.name.trim() || 'schema').replace(/[^\w.-]+/g, '_') + '.json';
     const a = h('a', { href: url, download: fileName });
     document.body.append(a);
     a.click();
@@ -2527,12 +2524,55 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  function exportJson() {
+    document.activeElement?.blur?.();
+    commit();
+    downloadJson((schema.name.trim() || 'schema').replace(/[^\w.-]+/g, '_') + '.json', schema);
+  }
+
+  // Every saved schema in one file, which Import reads back into the library.
+  function exportLibrary() {
+    const schemas = readLibrary();
+    const count = Object.keys(schemas).length;
+    if (!count) {
+      toast('There are no saved schemas to export.', true);
+      return;
+    }
+    downloadJson('schematic-library.json', { format: 'schematic-library', version: 1, exportedAt: Date.now(), schemas });
+    toast(`Exported ${count} saved schema(s)`);
+  }
+
+  function importLibrary(raw) {
+    const incoming = {};
+    for (const [name, entry] of Object.entries(raw.schemas || {})) {
+      try {
+        const normalized = normalizeSchema(entry?.schema);
+        normalized.name = name;
+        incoming[name] = { savedAt: num(entry.savedAt, Date.now()), schema: normalized };
+      } catch { /* skip entries that are not schemas */ }
+    }
+    const names = Object.keys(incoming);
+    if (!names.length) throw new Error('the file contains no schemas.');
+    const lib = readLibrary();
+    const clashes = names.filter((name) => lib[name]);
+    if (clashes.length && !confirm(`${clashes.length} saved schema(s) with the same name will be replaced:\n${clashes.join(', ')}\n\nContinue?`)) return;
+    if (!writeLibrary({ ...lib, ...incoming })) return;
+    updateChrome();
+    openLibrary();
+    toast(`Imported ${names.length} schema(s) into saved schemas`);
+  }
+
   importFile.addEventListener('change', async () => {
     const file = importFile.files[0];
     importFile.value = '';
     if (!file) return;
     try {
-      const imported = normalizeSchema(JSON.parse(await file.text()));
+      const raw = JSON.parse(await file.text());
+      if (raw?.format === 'schematic-library') {
+        importLibrary(raw);
+        return;
+      }
+      const imported = normalizeSchema(raw);
       if (!confirmDiscard()) return;
       replaceDocument(imported);
       toast(`Imported "${imported.name}" — use Save to keep it in browser storage`);
@@ -2551,6 +2591,7 @@
     'palette-add': addPaletteColor,
     'palette-reset': () => { schema.palette = [...DEFAULT_PALETTE]; paletteChanged(); },
     'export': exportJson,
+    'export-all': exportLibrary,
     'json': openJson,
     'json-apply': applyJson,
     'json-close': () => jsonDialog.close(),

@@ -109,6 +109,8 @@ Click a palette colour to remove it, or pick a new one and press **Add colour**.
 
 - **Save** stores the schema in the browser under its name; **Load** lists saved schemas to open or delete.
 - **Export** downloads a JSON file and **Import** reads one back, for moving schemas between browsers.
+- In the Load dialog, **Export all** puts every saved schema into one file; importing that file
+  restores them all, which is handy as a backup.
 - **JSON** shows the schema as text. Edit it and press **Apply** to replace the schema; errors are
   reported under the text and nothing is applied until they are fixed.
 
