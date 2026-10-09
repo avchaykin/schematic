@@ -110,6 +110,8 @@ Everything else works offline.
 - Pan by dragging the background; zoom with Ctrl/⌘+scroll or the toolbar; fit the schema to the view.
 - Shift+drag on empty canvas draws a selection box; Shift+click adds or removes single elements.
   Dragging one selected element moves them all, and Delete removes them all.
+- Several selected elements can be aligned (left, centre, right, top, middle, bottom) or spread with
+  equal gaps, horizontally or vertically, from the panel.
 - Ctrl/⌘+C, X and V copy, cut and paste the selected elements (blocks, link connectors, titles,
   frames) together with the links between them, also into another schema or tab.
 - Blocks snap to a 10 px grid; hold Alt to move or resize freely.

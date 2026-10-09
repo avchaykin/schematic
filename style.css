@@ -547,3 +547,5 @@ dialog h2 { margin: 0; font-size: 15px; }
 .segmented button { gap: 2px; font-size: 12px; }
 
 .dialog-body .field { grid-template-columns: 130px minmax(0, 1fr); }
+
+#inspector .row > .sep { align-self: stretch; margin: 2px 4px; }

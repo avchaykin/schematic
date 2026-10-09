@@ -1889,7 +1889,7 @@
   function renderInspector() {
     const block = selectedBlock();
     const links = selectedLinks();
-    if (selection?.type === 'blocks') inspector.replaceChildren(...multiInspector(selectedBlocks()));
+    if (selection?.type === 'blocks') inspector.replaceChildren(...multiInspector(selectedBlocks()).filter(Boolean));
     else if (block) inspector.replaceChildren(...blockInspector(block));
     else if (links.length) inspector.replaceChildren(...linkInspector(links));
     else inspector.replaceChildren(...emptyInspector());
@@ -1964,11 +1964,75 @@
     ];
   }
 
+  // Moves the selected elements to line up, or spaces them evenly. `mode` is an edge or centre to
+  // align on ('left', 'hcenter', 'right', 'top', 'vcenter', 'bottom') or 'hspread' / 'vspread'.
+  function arrangeSelection(mode) {
+    const blocks = selectedBlocks();
+    if (blocks.length < 2) return;
+    // A frame takes along the contents that are not themselves being arranged.
+    const carried = new Map(blocks.map((b) => [b, b.kind === 'frame' ? frameContents(b).filter((x) => !blocks.includes(x)) : []]));
+    const moveTo = (b, x, y) => {
+      const dx = Math.round(x) - b.x;
+      const dy = Math.round(y) - b.y;
+      for (const item of [b, ...carried.get(b)]) {
+        item.x += dx;
+        item.y += dy;
+      }
+    };
+    const horizontal = ['left', 'hcenter', 'right', 'hspread'].includes(mode);
+    const pos = horizontal ? 'x' : 'y';
+    const size = horizontal ? 'width' : 'height';
+    const min = Math.min(...blocks.map((b) => b[pos]));
+    const max = Math.max(...blocks.map((b) => b[pos] + b[size]));
+    const place = (b, v) => (horizontal ? moveTo(b, v, b.y) : moveTo(b, b.x, v));
+
+    if (mode === 'hspread' || mode === 'vspread') {
+      // Equal gaps between neighbours; the two outermost elements stay where they are.
+      const sorted = [...blocks].sort((a, b) => a[pos] + a[size] / 2 - (b[pos] + b[size] / 2));
+      const gap = (max - min - sorted.reduce((sum, b) => sum + b[size], 0)) / (sorted.length - 1);
+      let at = min;
+      for (const b of sorted) {
+        place(b, at);
+        at += b[size] + gap;
+      }
+    } else if (mode === 'left' || mode === 'top') {
+      for (const b of blocks) place(b, min);
+    } else if (mode === 'right' || mode === 'bottom') {
+      for (const b of blocks) place(b, max - b[size]);
+    } else {
+      for (const b of blocks) place(b, (min + max) / 2 - b[size] / 2);
+    }
+    commit();
+    render();
+  }
+
   function multiInspector(blocks) {
     const label = (b) => b.name || b.id;
+    const tool = (mode, glyph, title, enabled = true) => h('button', {
+      class: 'icon-only',
+      title,
+      disabled: !enabled,
+      onclick: () => arrangeSelection(mode),
+    }, icon(glyph));
     return [
       h('h3', {}, `${blocks.length} elements selected`),
       h('ul', {}, ...blocks.map((b) => h('li', {}, label(b)))),
+      h('h3', {}, 'Align'),
+      h('div', { class: 'row' },
+        tool('left', 'align_horizontal_left', 'Align left edges'),
+        tool('hcenter', 'align_horizontal_center', 'Align centres horizontally'),
+        tool('right', 'align_horizontal_right', 'Align right edges'),
+        h('span', { class: 'sep' }),
+        tool('top', 'align_vertical_top', 'Align top edges'),
+        tool('vcenter', 'align_vertical_center', 'Align centres vertically'),
+        tool('bottom', 'align_vertical_bottom', 'Align bottom edges'),
+      ),
+      h('h3', {}, 'Spread'),
+      h('div', { class: 'row' },
+        tool('hspread', 'horizontal_distribute', 'Spread horizontally with equal gaps', blocks.length > 2),
+        tool('vspread', 'vertical_distribute', 'Spread vertically with equal gaps', blocks.length > 2),
+      ),
+      blocks.length > 2 ? null : h('p', { class: 'note' }, 'Select three or more elements to spread them.'),
       h('p', { class: 'note' }, 'Drag any of them to move them all (a link connector by its arrows handle). Shift+click an element to add it or take it out; click one to select it alone.'),
       h('h3', {}, 'Actions'),
       h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete selected')),
