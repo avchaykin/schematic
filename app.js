@@ -3,6 +3,7 @@
 
   const LIB_KEY = 'schematic:library';
   const CUR_KEY = 'schematic:current';
+  const CLIP_KEY = 'schematic:clipboard';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const GRID = 10;
   const MIN_SIZE = 24;
@@ -750,6 +751,79 @@
     commit();
   }
 
+  // ---------- copy and paste ----------
+  // The clipboard holds copies of the selected elements and of the links running between them. It is
+  // kept in local storage, so it survives loading another schema and reaches other tabs.
+
+  let pasteCount = 0;
+
+  function copySelection() {
+    const blocks = selectedBlocks();
+    if (!blocks.length) return false;
+    for (const b of blocks) syncClones(b);
+    const connIds = new Set(blocks.flatMap((b) => b.connectors.map((c) => c.id)));
+    const links = schema.links.filter((l) => connIds.has(l.from) && connIds.has(l.to));
+    try {
+      localStorage.setItem(CLIP_KEY, JSON.stringify({ blocks, links }));
+    } catch (err) {
+      toast('Could not copy: ' + err.message, true);
+      return false;
+    }
+    pasteCount = 0;
+    toast(`Copied ${blocks.length} element(s)`);
+    return true;
+  }
+
+  function pasteClipboard() {
+    let clip;
+    try {
+      clip = JSON.parse(localStorage.getItem(CLIP_KEY) || 'null');
+    } catch {
+      clip = null;
+    }
+    if (!clip?.blocks?.length) return;
+    pasteCount++;
+    const shift = GRID * 2 * pasteCount;
+    const connMap = new Map();
+    const blockMap = new Map();
+    const pasted = [];
+    for (const copy of clip.blocks) {
+      const oldId = copy.id;
+      // Copies are independent: not clones of the original, and with ids of their own.
+      delete copy.cloneGroup;
+      delete copy.customId;
+      for (const c of copy.connectors) {
+        const id = uid('c');
+        connMap.set(c.id, id);
+        c.id = id;
+        delete c.ref;
+      }
+      copy.x += shift;
+      copy.y += shift;
+      copy.id = freshBlockId(new Set(schema.blocks.map((b) => b.id)), copy.kind || 'block');
+      schema.blocks.push(copy);
+      followName(copy);
+      blockMap.set(oldId, copy.id);
+      pasted.push(copy.id);
+    }
+    for (const link of clip.links || []) {
+      link.from = connMap.get(link.from);
+      link.to = connMap.get(link.to);
+      if (!link.from || !link.to) continue;
+      if (blockMap.has(link.via)) link.via = blockMap.get(link.via);
+      else delete link.via;
+      delete link.customId;
+      link.id = freshBlockId(new Set(schema.links.map((l) => l.id)), 'link');
+      schema.links.push(link);
+      followName(link);
+    }
+    // Run the result through the same checks as an imported file.
+    schema = normalizeSchema(schema);
+    select(blockSelection(pasted.filter(findBlock)));
+    commit();
+    renderInspector();
+  }
+
   // ---------- link groups ----------
   // A group block (kind: 'group') has no connectors. Links with `via` set to its id are drawn
   // into its left side and out of its right side.
@@ -1371,6 +1445,14 @@
       startMove(e, block, selectedBlocks().filter((b) => b !== block), () => select({ type: 'block', id: block.id }));
     } else if (block) {
       const picked = selection?.type === 'link' ? selection.ids : []; // read before the selection changes
+      if (e.shiftKey && connEl && block.kind === 'junction') {
+        // A link connector is all dot, so Shift+click (no drag) on it toggles it in the selection.
+        const ids = selectedBlocks().map((b) => b.id);
+        const toggled = ids.includes(block.id) ? ids.filter((id) => id !== block.id) : [...ids, block.id];
+        window.addEventListener('pointerup', (ev) => {
+          if (Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) select(blockSelection(toggled));
+        }, { once: true });
+      }
       select({ type: 'block', id: block.id });
       if (connEl) {
         const conn = block.connectors.find((c) => c.id === connEl.dataset.conn);
@@ -1445,6 +1527,16 @@
       e.preventDefault();
       const block = selectedBlock();
       if (block && (!block.kind || block.kind === 'title')) duplicateBlock(block);
+    } else if (mod && key === 'c') {
+      if (copySelection()) e.preventDefault();
+    } else if (mod && key === 'x') {
+      if (copySelection()) {
+        e.preventDefault();
+        deleteSelection();
+      }
+    } else if (mod && key === 'v') {
+      e.preventDefault();
+      pasteClipboard();
     } else if (mod && key === 'g') {
       e.preventDefault();
       groupLinks(selectedLinks());

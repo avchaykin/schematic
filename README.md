@@ -106,6 +106,8 @@ Everything else works offline.
 - Pan by dragging the background; zoom with Ctrl/⌘+scroll or the toolbar; fit the schema to the view.
 - Shift+drag on empty canvas draws a selection box; Shift+click adds or removes single elements.
   Dragging one selected element moves them all, and Delete removes them all.
+- Ctrl/⌘+C, X and V copy, cut and paste the selected elements (blocks, link connectors, titles,
+  frames) together with the links between them, also into another schema or tab.
 - Blocks snap to a 10 px grid; hold Alt to move or resize freely.
 - Undo and redo.
 
@@ -123,6 +125,7 @@ Everything else works offline.
 | Select several elements | Shift+drag on empty canvas, or Shift+click them |
 | Select several links | Shift+click (or Ctrl/⌘+click) |
 | Group selected links | Ctrl/⌘+G |
+| Copy / cut / paste selected elements | Ctrl/⌘+C / Ctrl/⌘+X / Ctrl/⌘+V |
 | Duplicate the selected block | Ctrl/⌘+D |
 | Delete the selection | Delete or Backspace |
 | Undo / redo | Ctrl/⌘+Z / Ctrl/⌘+Shift+Z |
