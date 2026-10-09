@@ -974,7 +974,8 @@
     const chosen = attached.filter((l) => picked.includes(l.id));
     const links = chosen.length ? chosen : attached;
     if (!links.length) {
-      toast('No links on this connector to reattach.', true);
+      // Nothing to pick up: Shift+drag from a free connector draws a new link instead.
+      startLink(e, fromId);
       return;
     }
     const targetAt = (ev) => {
@@ -1016,8 +1017,17 @@
       Object.assign(tempLink, toWorld(ev), { target: targetAt(ev) });
       render();
     }, (ev) => {
-      const to = targetAt(ev);
+      let to = targetAt(ev);
       tempLink = null;
+      // Released over empty canvas with Shift held: put a link connector there and link to it.
+      const over = document.elementFromPoint(ev.clientX, ev.clientY);
+      if (!to && ev.shiftKey && viewport.contains(over) && !over.closest('.block')) {
+        const at = toWorld(ev);
+        const junction = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), snap(at.x), snap(at.y));
+        schema.blocks.push(junction);
+        to = junction.connectors[0].id;
+        select({ type: 'block', id: junction.id });
+      }
       if (to) {
         const exists = schema.links.some((l) => (l.from === fromId && l.to === to) || (l.from === to && l.to === fromId));
         if (!exists) {
@@ -1441,7 +1451,7 @@
         h('li', {}, 'Click a link to select it; Delete removes the selection.'),
         h('li', {}, 'Shift+click links to select several, then group them into a block they all run through.'),
         h('li', {}, 'Clone a block to get linked copies that always change together.'),
-        h('li', {}, 'Add a link connector for a free-standing dot where several links meet.'),
+        h('li', {}, 'Add a link connector for a free-standing dot where several links meet, or hold Shift when dropping a new link on empty canvas to create one there.'),
         h('li', {}, 'Hold Alt while moving or resizing to ignore the grid.'),
       ),
     ];
