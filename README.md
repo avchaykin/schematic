@@ -18,7 +18,7 @@ Everything else works offline.
 
 ### Blocks
 
-- Rounded rectangles with a name, ID, icon, background colour, border colour, border width and
+- Rounded rectangles with a name, ID, description, icon, background colour, border colour, border width and
   border style (solid, dashed or dotted).
 - Any number of custom name/value attributes.
 - Move by dragging; resize by dragging an edge or corner of the selected block.
@@ -39,7 +39,7 @@ Everything else works offline.
 - Links are curves that meet each connector at a right angle to its side.
 - Shift+drag from a connector to pick up the link ends attached to it and drop them on another connector.
   If some of those links are selected, only they move; otherwise all of them do.
-- Each link has a name (drawn on the link), an ID, a colour, a line style (solid, dashed or dotted)
+- Each link has a name (drawn on the link), an ID, a description, a colour, a line style (solid, dashed or dotted)
   and custom attributes.
 - Colour priority: the link's own colour, then its group's links colour, then the colour of a block
   connector it ends at, then the colour of a link connector it ends at. Two block connectors (or two
@@ -53,7 +53,7 @@ Everything else works offline.
 - Created from the toolbar, or by holding Shift while dropping a new link on empty canvas: a preview
   dot shows where the link connector will appear, with the link attached.
 - Links leave it at a right angle: left or right by default, or up or down if set so.
-- It has a name, ID, colour and custom attributes; its colour is passed on to its links unless a block connector
+- It has a name, ID, description, colour and custom attributes; its colour is passed on to its links unless a block connector
   at the other end has a colour of its own.
 - Drag from the dot to start a link; drag its arrows handle, or Alt+drag the dot, to move it.
 

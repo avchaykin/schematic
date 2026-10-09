@@ -130,10 +130,11 @@
 
   // A link connector ("junction"): a free-standing dot that any number of links can meet at.
   // Stored as a zero-size block with a single connector, so links attach to it like to any other.
-  function junctionBlock(id, x, y, { name = '', attributes = [], connectorId = uid('c'), color = '', axis = 'horizontal' } = {}) {
+  function junctionBlock(id, x, y, { name = '', description = '', attributes = [], connectorId = uid('c'), color = '', axis = 'horizontal' } = {}) {
     return {
       id,
       name,
+      description,
       x,
       y,
       width: 0,
@@ -179,6 +180,7 @@
         connIds.add(cid);
         out.blocks.push(junctionBlock(id, num(b.x, 0), num(b.y, 0), {
           name: String(b.name ?? ''),
+          description: String(b.description ?? ''),
           attributes: normalizeAttributes(b.attributes),
           connectorId: cid,
           color: String(c.color ?? ''),
@@ -201,6 +203,7 @@
       out.blocks.push({
         id,
         name: String(b.name ?? ''),
+        description: String(b.description ?? ''),
         icon: String(b.icon ?? ''),
         background: String(b.background || '#ffffff'),
         border: String(b.border || '#334155'),
@@ -234,6 +237,7 @@
         color: String(l.color ?? ''),
         style: lineStyle(l.style),
         name: String(l.name ?? ''),
+        description: String(l.description ?? ''),
         attributes: normalizeAttributes(l.attributes),
       });
       if (out.blocks.some((b) => b.kind === 'group' && b.id === l.via)) out.links[out.links.length - 1].via = l.via;
@@ -358,7 +362,7 @@
   // Blocks sharing a cloneGroup are identical except for ID and position. Their connectors are
   // matched by `ref`, since each clone needs its own connector ids for links.
 
-  const CLONE_SHARED = ['name', 'icon', 'background', 'border', 'borderWidth', 'borderStyle', 'width', 'height'];
+  const CLONE_SHARED = ['name', 'description', 'icon', 'background', 'border', 'borderWidth', 'borderStyle', 'width', 'height'];
 
   const cloneMembers = (block, s = schema) =>
     (block.cloneGroup ? s.blocks.filter((b) => b.cloneGroup === block.cloneGroup) : [block]);
@@ -522,6 +526,7 @@
     const block = {
       id: freshBlockId(new Set(schema.blocks.map((b) => b.id))),
       name: 'Block',
+      description: '',
       icon: '',
       background: '#ffffff',
       border: '#334155',
@@ -618,6 +623,7 @@
     const block = {
       id: freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'group'),
       name: 'Group',
+      description: '',
       icon: '',
       background: '#f1f5f9',
       border: '#64748b',
@@ -1067,6 +1073,7 @@
             color: '',
             style: 'solid',
             name: '',
+            description: '',
             attributes: [],
           });
           commit();
@@ -1194,6 +1201,14 @@
     });
     input.addEventListener('change', commit);
     return input;
+  }
+
+  // Multi-line Description field shared by blocks, links and link connectors.
+  function descriptionField(owner) {
+    const area = h('textarea', { rows: 2, value: owner.description || '', spellcheck: false, placeholder: 'Description' });
+    area.addEventListener('input', () => { owner.description = area.value; });
+    area.addEventListener('change', commit);
+    return field('Description', area);
   }
 
   function slider(value, min, max, apply) {
@@ -1493,6 +1508,7 @@
       h('h3', {}, 'Link connector'),
       field('Name', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
       field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
+      descriptionField(block),
       ...colorField('Colour', 'block:junction', conn.color || '', (c) => { conn.color = c; }, ''),
       h('div', { class: 'field' }, h('span', {}, 'Links go'), h('div', { class: 'segmented' },
         ...[['horizontal', 'swap_horiz', 'Left/right'], ['vertical', 'swap_vert', 'Up/down']].map(([axis, glyph, label]) => h('button', {
@@ -1535,6 +1551,7 @@
       h('h3', {}, isGroup ? 'Link group' : 'Block'),
       field('Name', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
       field('ID', idInput),
+      descriptionField(block),
       field('Icon', h('div', { class: 'row', style: 'margin:0' },
         preview,
         iconInput,
@@ -1674,6 +1691,7 @@
       out.push(
         field('Name', boundInput(link.name, (v) => { link.name = v; })),
         field('ID', idField(link, schema.links, 'link', (id) => { selection = { type: 'link', ids: [id] }; })),
+        descriptionField(link),
         h('p', { class: 'note' }, describeLink(link)),
       );
     } else out.push(h('ul', {}, ...links.map((l) => h('li', {}, describeLink(l)))));
