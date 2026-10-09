@@ -474,3 +474,22 @@ dialog h2 { margin: 0; font-size: 15px; }
 #inspector textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .field:has(textarea) { align-items: start; }
 .field:has(textarea) > span { padding-top: 6px; }
+
+/* ---------- titles ---------- */
+
+.title-body {
+  position: absolute;
+  inset: 0;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.block.title.selected .title-body { outline: 1px dashed var(--accent); outline-offset: 3px; }
+
+/* Secondary toolbar buttons drop their text before the toolbar has to wrap. */
+@media (max-width: 1700px) {
+  .toolbar .collapsible .label { display: none; }
+  .toolbar .collapsible { padding: 5px; }
+}

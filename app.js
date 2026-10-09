@@ -146,6 +146,25 @@
     };
   }
 
+  // A title: free text on the canvas, with no border, background or connectors.
+  function titleBlock(id, x, y, o = {}) {
+    return {
+      id,
+      name: String(o.name ?? 'Title'),
+      description: String(o.description ?? ''),
+      x,
+      y,
+      width: Math.max(MIN_SIZE, num(o.width, 240)),
+      height: Math.max(MIN_SIZE, num(o.height, 40)),
+      fontSize: clamp(num(o.fontSize, 24), 8, 96),
+      color: String(o.color ?? ''),
+      align: ['left', 'center', 'right'].includes(o.align) ? o.align : 'left',
+      attributes: normalizeAttributes(o.attributes),
+      connectors: [],
+      kind: 'title',
+    };
+  }
+
   function normalizeAttributes(raw) {
     const out = [];
     for (const a of Array.isArray(raw) ? raw : []) {
@@ -173,6 +192,10 @@
       if (!id || blockIds.has(id)) id = freshBlockId(blockIds);
       blockIds.add(id);
 
+      if (b.kind === 'title') {
+        out.blocks.push(titleBlock(id, num(b.x, 0), num(b.y, 0), b));
+        continue;
+      }
       if (b.kind === 'junction') {
         const c = (Array.isArray(b.connectors) && b.connectors[0]) || {};
         let cid = String(c.id ?? '').trim();
@@ -499,6 +522,29 @@
     return '';
   }
 
+  // Top-left position that centres a new element of the given size in the view, off any existing one.
+  function freeSpot(width, height) {
+    const rect = viewport.getBoundingClientRect();
+    let x = snap((rect.width / 2 - view.x) / view.zoom - width / 2);
+    let y = snap((rect.height / 2 - view.y) / view.zoom - height / 2);
+    while (schema.blocks.some((b) => b.x === x && b.y === y)) {
+      x += GRID * 2;
+      y += GRID * 2;
+    }
+    return { x, y };
+  }
+
+  function addElement(block) {
+    schema.blocks.push(block);
+    select({ type: 'block', id: block.id });
+    commit();
+  }
+
+  function addTitle() {
+    const { x, y } = freeSpot(240, 40);
+    addElement(titleBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'title'), x, y));
+  }
+
   function addJunction() {
     const rect = viewport.getBoundingClientRect();
     let x = snap((rect.width / 2 - view.x) / view.zoom);
@@ -544,7 +590,7 @@
   function duplicateBlock(block) {
     syncClones(block);
     const copy = JSON.parse(JSON.stringify(block));
-    copy.id = freshBlockId(new Set(schema.blocks.map((b) => b.id)));
+    copy.id = freshBlockId(new Set(schema.blocks.map((b) => b.id)), block.kind || 'block');
     copy.x += GRID * 2;
     copy.y += GRID * 2;
     delete copy.cloneGroup;
@@ -710,7 +756,8 @@
 
       // Rebuild the inside only when something visible changed, so elements survive clicks and drags.
       const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.borderWidth, block.borderStyle, schema.radius,
-        block.width, block.height, block.connectors, Boolean(block.cloneGroup)]);
+        block.width, block.height, block.connectors, Boolean(block.cloneGroup),
+        block.kind, block.fontSize, block.color, block.align]);
       if (el._sig !== sig) {
         el._sig = sig;
         buildBlock(el, block);
@@ -743,10 +790,30 @@
     el.replaceChildren(...parts);
   }
 
+  function resizeHandles() {
+    return ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw'].map((dir) => {
+      const handle = h('div', { class: 'handle ' + dir });
+      handle.dataset.dir = dir;
+      return handle;
+    });
+  }
+
+  function buildTitle(el, block) {
+    const body = h('div', { class: 'title-body' }, block.name);
+    body.style.fontSize = block.fontSize + 'px';
+    body.style.textAlign = block.align;
+    if (block.color) body.style.color = block.color;
+    el.replaceChildren(body, ...resizeHandles());
+  }
+
   function buildBlock(el, block) {
-    el.classList.toggle('junction', block.kind === 'junction');
+    for (const kind of ['junction', 'title']) el.classList.toggle(kind, block.kind === kind);
     if (block.kind === 'junction') {
       buildJunction(el, block);
+      return;
+    }
+    if (block.kind === 'title') {
+      buildTitle(el, block);
       return;
     }
     // Too small for a title: show just the icon, centred.
@@ -766,12 +833,7 @@
     if (!small) body.append(h('div', { class: 'block-title' }, block.name));
     if (block.cloneGroup && !small) body.append(h('span', { class: 'mi clone-badge', title: 'Clone' }, 'copy_all'));
 
-    const parts = [body];
-    for (const dir of ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw']) {
-      const handle = h('div', { class: 'handle ' + dir });
-      handle.dataset.dir = dir;
-      parts.push(handle);
-    }
+    const parts = [body, ...resizeHandles()];
     for (const conn of block.connectors) {
       const [x, y] = connectorLocal(block, conn);
       const dot = h('div', { class: 'connector', title: conn.name || 'Connector' });
@@ -1174,7 +1236,7 @@
     } else if (mod && key === 'd') {
       e.preventDefault();
       const block = selectedBlock();
-      if (block && !block.kind) duplicateBlock(block);
+      if (block && (!block.kind || block.kind === 'title')) duplicateBlock(block);
     } else if (mod && key === 'g') {
       e.preventDefault();
       groupLinks(selectedLinks());
@@ -1496,7 +1558,53 @@
         h('li', {}, 'Shift+click links to select several, then group them into a block they all run through.'),
         h('li', {}, 'Clone a block to get linked copies that always change together.'),
         h('li', {}, 'Add a link connector for a free-standing dot where several links meet, or hold Shift when dropping a new link on empty canvas to create one there.'),
+        h('li', {}, 'Title adds free text to the schema.'),
         h('li', {}, 'Hold Alt while moving or resizing to ignore the grid.'),
+      ),
+    ];
+  }
+
+  // Buttons that set block[key] to one of `options` ([value, icon, tooltip]).
+  function choiceField(label, block, key, options) {
+    return h('div', { class: 'field' }, h('span', {}, label), h('div', { class: 'segmented' },
+      ...options.map(([value, glyph, title]) => h('button', {
+        class: 'icon-only' + (block[key] === value ? ' active' : ''),
+        title,
+        onclick: () => {
+          block[key] = value;
+          commit();
+          render();
+          renderInspector();
+        },
+      }, icon(glyph))),
+    ));
+  }
+
+  function titleInspector(block) {
+    const text = h('textarea', { rows: 2, value: block.name, spellcheck: false, 'data-role': 'block-name' });
+    text.addEventListener('input', () => {
+      block.name = text.value;
+      render();
+    });
+    text.addEventListener('change', commit);
+    return [
+      h('h3', {}, 'Title'),
+      field('Text', text),
+      field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
+      descriptionField(block),
+      h('h3', {}, 'Appearance'),
+      field('Text size', slider(block.fontSize, 8, 96, (v) => { block.fontSize = v; })),
+      ...colorField('Colour', 'block:title', block.color || '', (c) => { block.color = c; }, ''),
+      choiceField('Align', block, 'align', [
+        ['left', 'format_align_left', 'Align left'],
+        ['center', 'format_align_center', 'Centre'],
+        ['right', 'format_align_right', 'Align right'],
+      ]),
+      ...attributesSection(block),
+      h('h3', {}, 'Actions'),
+      h('div', { class: 'row wrap' },
+        h('button', { onclick: () => duplicateBlock(block) }, icon('content_copy'), 'Duplicate'),
+        h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete title'),
       ),
     ];
   }
@@ -1532,6 +1640,7 @@
 
   function blockInspector(block) {
     if (block.kind === 'junction') return junctionInspector(block);
+    if (block.kind === 'title') return titleInspector(block);
     const out = [];
     const isGroup = block.kind === 'group';
 
@@ -1969,6 +2078,7 @@
     'import': () => importFile.click(),
     'add-block': () => addBlock(),
     'add-junction': addJunction,
+    'add-title': addTitle,
     'undo': undo,
     'redo': redo,
     'zoom-in': () => zoomCentered(1.2),

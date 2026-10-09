@@ -57,6 +57,12 @@ Everything else works offline.
   at the other end has a colour of its own.
 - Drag from the dot to start a link; drag its arrows handle, or Alt+drag the dot, to move it.
 
+### Titles
+
+- Free text placed anywhere on the schema, with no border or background.
+- Text (one or several lines), size, colour and alignment are set in the panel; the box is moved and
+  resized like a block.
+
 ### Clones
 
 - Clone a block to get linked copies that always change together: name, icon, colours, size,
