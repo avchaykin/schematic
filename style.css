@@ -445,7 +445,7 @@ dialog h2 { margin: 0; font-size: 15px; }
 }
 .block.junction.selected .junction-move,
 .block.junction.multi .junction-move { display: block; }
-.junction-label { transform: translate(-50%, 10px); }
+.junction-label { transform: translate(-50%, 7px); line-height: 1; }
 
 /* The toolbar wraps onto a second row instead of scrolling when the window is narrow. */
 .toolbar { flex-wrap: wrap; overflow-x: visible; row-gap: 6px; }
