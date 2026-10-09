@@ -127,6 +127,22 @@
     return `${prefix}-${n}`;
   }
 
+  // A link connector ("junction"): a free-standing dot that any number of links can meet at.
+  // Stored as a zero-size block with a single connector, so links attach to it like to any other.
+  function junctionBlock(id, x, y, { name = '', attributes = [], connectorId = uid('c'), color = '' } = {}) {
+    return {
+      id,
+      name,
+      x,
+      y,
+      width: 0,
+      height: 0,
+      attributes,
+      connectors: [{ id: connectorId, name: '', side: 'center', color }],
+      kind: 'junction',
+    };
+  }
+
   function normalizeAttributes(raw) {
     const out = [];
     for (const a of Array.isArray(raw) ? raw : []) {
@@ -153,6 +169,20 @@
       let id = String(b.id ?? '').trim();
       if (!id || blockIds.has(id)) id = freshBlockId(blockIds);
       blockIds.add(id);
+
+      if (b.kind === 'junction') {
+        const c = (Array.isArray(b.connectors) && b.connectors[0]) || {};
+        let cid = String(c.id ?? '').trim();
+        if (!cid || connIds.has(cid)) cid = uid('c');
+        connIds.add(cid);
+        out.blocks.push(junctionBlock(id, num(b.x, 0), num(b.y, 0), {
+          name: String(b.name ?? ''),
+          attributes: normalizeAttributes(b.attributes),
+          connectorId: cid,
+          color: String(c.color ?? ''),
+        }));
+        continue;
+      }
 
       const connectors = [];
       for (const c of Array.isArray(b.connectors) && b.kind !== 'group' ? b.connectors : []) {
@@ -408,7 +438,7 @@
     const found = findConnector(id);
     if (!found) return null;
     const [lx, ly] = connectorLocal(found.block, found.conn);
-    const [nx, ny] = NORMALS[found.conn.side];
+    const [nx, ny] = NORMALS[found.conn.side] || [0, 0]; // a junction has no side: links arrive from any direction
     return { x: found.block.x + lx, y: found.block.y + ly, nx, ny };
   }
 
@@ -437,6 +467,20 @@
     const b = findConnector(link.to)?.conn.color || '';
     if (a && b && a.toLowerCase() !== b.toLowerCase()) return '#000000';
     return a || b;
+  }
+
+  function addJunction() {
+    const rect = viewport.getBoundingClientRect();
+    let x = snap((rect.width / 2 - view.x) / view.zoom);
+    let y = snap((rect.height / 2 - view.y) / view.zoom);
+    while (schema.blocks.some((b) => b.x === x && b.y === y)) {
+      x += GRID * 2;
+      y += GRID * 2;
+    }
+    const block = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), x, y);
+    schema.blocks.push(block);
+    select({ type: 'block', id: block.id });
+    commit();
   }
 
   function addBlock(at) {
@@ -656,7 +700,25 @@
     if (tempLink?.target) world.querySelector(`[data-conn="${CSS.escape(tempLink.target)}"]`)?.classList.add('target');
   }
 
+  function buildJunction(el, block) {
+    const conn = block.connectors[0];
+    const dot = h('div', { class: 'connector', title: block.name || 'Link connector' });
+    dot.dataset.conn = conn.id;
+    if (conn.color) {
+      dot.style.background = conn.color;
+      dot.style.borderColor = `color-mix(in srgb, ${conn.color} 65%, black)`;
+    }
+    const parts = [dot, h('div', { class: 'mi junction-move', title: 'Drag to move' }, 'open_with')];
+    if (block.name) parts.push(h('div', { class: 'conn-label junction-label' }, block.name));
+    el.replaceChildren(...parts);
+  }
+
   function buildBlock(el, block) {
+    el.classList.toggle('junction', block.kind === 'junction');
+    if (block.kind === 'junction') {
+      buildJunction(el, block);
+      return;
+    }
     // Too small for a title: show just the icon, centred.
     const small = Boolean(block.icon) && (block.width < SMALL_W || block.height < SMALL_H);
     const body = h('div', { class: 'block-body' + (small ? ' small' : '') });
@@ -933,7 +995,8 @@
       if (connEl) {
         const conn = block.connectors.find((c) => c.id === connEl.dataset.conn);
         if (!conn) return;
-        if (e.shiftKey) startConnectorMove(block, conn);
+        if (e.shiftKey && block.kind === 'junction') startMove(e, block);
+        else if (e.shiftKey) startConnectorMove(block, conn);
         else startLink(e, conn.id);
       } else if (handleEl) {
         startResize(e, block, handleEl.dataset.dir);
@@ -998,7 +1061,7 @@
     } else if (mod && key === 'd') {
       e.preventDefault();
       const block = selectedBlock();
-      if (block && block.kind !== 'group') duplicateBlock(block);
+      if (block && !block.kind) duplicateBlock(block);
     } else if (mod && key === 'g') {
       e.preventDefault();
       groupLinks(selectedLinks());
@@ -1310,12 +1373,30 @@
         h('li', {}, 'Click a link to select it; Delete removes the selection.'),
         h('li', {}, 'Shift+click links to select several, then group them into a block they all run through.'),
         h('li', {}, 'Clone a block to get linked copies that always change together.'),
+        h('li', {}, 'Add a link connector for a free-standing dot where several links meet.'),
         h('li', {}, 'Hold Alt while moving or resizing to ignore the grid.'),
       ),
     ];
   }
 
+  function junctionInspector(block) {
+    const conn = block.connectors[0];
+    const linked = schema.links.filter((l) => l.from === conn.id || l.to === conn.id).length;
+    return [
+      h('h3', {}, 'Link connector'),
+      field('Name', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
+      field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
+      ...colorField('Colour', 'block:junction', conn.color || '', (c) => { conn.color = c; }, ''),
+      h('p', { class: 'note' }, `${linked} link(s) meet here. Drag from the dot to start a link, or drop a link on it. `
+        + 'To move it, drag the arrows handle or Shift+drag the dot.'),
+      ...attributesSection(block),
+      h('h3', {}, 'Actions'),
+      h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete link connector')),
+    ];
+  }
+
   function blockInspector(block) {
+    if (block.kind === 'junction') return junctionInspector(block);
     const out = [];
     const isGroup = block.kind === 'group';
 
@@ -1423,6 +1504,7 @@
     const end = (id) => {
       const found = findConnector(id);
       if (!found) return '?';
+      if (found.block.kind === 'junction') return found.block.name || found.block.id;
       return `${found.block.name || found.block.id} · ${found.conn.name || found.conn.side}`;
     };
     return `${end(link.from)}  →  ${end(link.to)}`;
@@ -1749,6 +1831,7 @@
     'json-close': () => jsonDialog.close(),
     'import': () => importFile.click(),
     'add-block': () => addBlock(),
+    'add-junction': addJunction,
     'undo': undo,
     'redo': redo,
     'zoom-in': () => zoomCentered(1.2),

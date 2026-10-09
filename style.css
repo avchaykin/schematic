@@ -425,3 +425,26 @@ dialog h2 { margin: 0; font-size: 15px; }
 .segmented button.active { border-color: var(--accent); background: var(--accent-soft); }
 .style-icon { width: 30px; height: 10px; display: block; }
 .style-icon path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+/* ---------- link connectors (junctions) ---------- */
+
+.block.junction { cursor: default; }
+.block.junction.selected .connector { box-shadow: 0 0 0 3px rgb(37 99 235 / .35); }
+.junction-move {
+  position: absolute;
+  left: 8px;
+  top: -26px;
+  display: none;
+  padding: 1px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--accent);
+  font-size: 14px;
+  cursor: move;
+}
+.block.junction.selected .junction-move { display: block; }
+.junction-label { transform: translate(-50%, 10px); }
+
+/* The toolbar wraps onto a second row instead of scrolling when the window is narrow. */
+.toolbar { flex-wrap: wrap; overflow-x: visible; row-gap: 6px; }

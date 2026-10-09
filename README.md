@@ -14,7 +14,8 @@ Everything else works offline.
 
 ### Blocks
 
-- Rounded rectangles with a name, ID, icon, background colour, border colour and border width.
+- Rounded rectangles with a name, ID, icon, background colour, border colour, border width and
+  border style (solid, dashed or dotted).
 - Any number of custom name/value attributes.
 - Move by dragging; resize by dragging an edge or corner of the selected block.
 - The icon sits above the name. When a block is too small for both, only the icon is shown, centred.
@@ -32,10 +33,18 @@ Everything else works offline.
 
 - Drag from one connector to another to link them.
 - Links are curves that meet each connector at a right angle to its side.
-- Each link has a name (drawn on the link), an ID, a colour and custom attributes.
+- Each link has a name (drawn on the link), an ID, a colour, a line style (solid, dashed or dotted)
+  and custom attributes.
 - Colour priority: the link's own colour, then its group's links colour, then its connectors' colour.
   If the two connectors have different colours, the link is black.
 - White and very pale links get a thin grey edge so they stay visible.
+
+### Link connectors
+
+- A free-standing dot, like a block's connector but placed anywhere on the canvas.
+- Any number of links can start or end at it, all meeting in one point.
+- It has a name, ID, colour and custom attributes; its colour is passed on to its links like any connector's.
+- Drag from the dot to start a link; drag its arrows handle, or Shift+drag the dot, to move it.
 
 ### Clones
 
@@ -79,6 +88,7 @@ Everything else works offline.
 | Rename a block | Double-click it |
 | Link two connectors | Drag from one to the other |
 | Move or reorder a connector | Shift+drag it |
+| Move a link connector | Drag its arrows handle, or Shift+drag the dot |
 | Select several links | Shift+click (or Ctrl/⌘+click) |
 | Group selected links | Ctrl/⌘+G |
 | Duplicate the selected block | Ctrl/⌘+D |
