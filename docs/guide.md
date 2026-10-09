@@ -59,7 +59,8 @@ point below.
   canvas. A preview dot shows where it will appear.
 - Drag from the dot to start another link, or drop a link onto it.
 - Move it by its arrows handle (shown when selected) or by Alt+dragging the dot.
-- **Links go** sets whether links leave it left/right or up/down.
+- **Links go** sets whether links leave it left/right or up/down. The **Links** list below it
+  lets you pick a side for an individual link.
 
 ## 5. Group links
 

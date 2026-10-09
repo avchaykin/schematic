@@ -533,3 +533,8 @@ dialog h2 { margin: 0; font-size: 15px; }
 .block.multi { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 .block.junction.multi { outline: none; }
 .block.junction.multi .connector { box-shadow: 0 0 0 3px rgb(37 99 235 / .45); }
+
+.segmented.tight { flex: none; gap: 2px; }
+.segmented.tight button { flex: none; padding: 3px; }
+.segmented.tight .mi { font-size: 16px; }
+.segmented button { gap: 2px; font-size: 12px; }

@@ -55,6 +55,7 @@ Everything else works offline.
 - Created from the toolbar, or by holding Shift while dropping a new link on empty canvas: a preview
   dot shows where the link connector will appear, with the link attached.
 - Links leave it at a right angle: left or right by default, or up or down if set so.
+  Each link meeting there can also be given its own side (left, right, up or down).
 - It has a name, ID, description, colour and custom attributes; its colour is passed on to its links unless a block connector
   at the other end has a colour of its own.
 - Drag from the dot to start a link; drag its arrows handle, or Alt+drag the dot, to move it.

@@ -10,6 +10,7 @@
   const MAX_BORDER = 12;
   const LINE_STYLES = ['solid', 'dashed', 'dotted'];
   const LINK_DASH = { dashed: '7 6', dotted: '0.01 5.5' }; // round caps turn the tiny dashes into dots
+  const LINK_DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
   const lineStyle = (v) => (LINE_STYLES.includes(v) ? v : 'solid');
   const SMALL_W = 90;
   const SMALL_H = 70;
@@ -343,6 +344,10 @@
       });
       if (out.blocks.some((b) => b.kind === 'group' && b.id === l.via)) out.links[out.links.length - 1].via = l.via;
       if (custom) out.links[out.links.length - 1].customId = true;
+      for (const key of ['fromDir', 'toDir']) {
+        const end = out.blocks.find((b) => b.kind === 'junction' && b.connectors[0].id === l[key === 'fromDir' ? 'from' : 'to']);
+        if (end && LINK_DIRS[l[key]]) out.links[out.links.length - 1][key] = l[key];
+      }
     }
     // Make clone groups consistent, whatever the file said.
     pruneCloneGroups(out);
@@ -579,6 +584,7 @@
   // Gives a junction end its direction for one link: along its axis, towards `other`.
   function aim(p, other) {
     if (!p.axis) return p;
+    if (LINK_DIRS[p.dir]) return { ...p, nx: LINK_DIRS[p.dir][0], ny: LINK_DIRS[p.dir][1] }; // set for this link
     return p.axis === 'vertical'
       ? { ...p, nx: 0, ny: other.y < p.y ? -1 : 1 }
       : { ...p, nx: other.x < p.x ? -1 : 1, ny: 0 };
@@ -589,7 +595,9 @@
     if (reattach && link[key] === reattach.from && reattach.links.includes(link.id)) {
       return (reattach.target && connectorWorld(reattach.target)) || { x: reattach.x, y: reattach.y, nx: 0, ny: 0 };
     }
-    return connectorWorld(link[key]);
+    const point = connectorWorld(link[key]);
+    // fromDir / toDir: the side this link leaves a link connector on, overriding the connector's default.
+    return point?.axis && link[key + 'Dir'] ? { ...point, dir: link[key + 'Dir'] } : point;
   }
 
   // Cubic curve whose control points lie on each connector's normal, so both ends meet their side at 90°.
@@ -1264,7 +1272,10 @@
         const clash = other === to
           || schema.links.some((l) => l !== link && ((l.from === to && l.to === other) || (l.from === other && l.to === to)));
         if (clash) skipped++;
-        else link[key] = to;
+        else {
+          link[key] = to;
+          delete link[key + 'Dir']; // the chosen side belonged to the old connector
+        }
       }
       if (skipped) toast(`${skipped} link(s) left in place: the same link already exists there.`, true);
       commit();
@@ -1861,9 +1872,38 @@
     ];
   }
 
+  // The links meeting at a link connector, each with the side it leaves on.
+  function junctionLinksSection(block) {
+    const conn = block.connectors[0];
+    const links = schema.links.filter((l) => l.from === conn.id || l.to === conn.id);
+    const out = [h('h3', {}, `Links (${links.length})`)];
+    const choices = [['', 'autorenew', 'Automatic: follows "Links go"'], ['left', 'arrow_back', 'Leaves to the left'],
+      ['up', 'arrow_upward', 'Leaves upwards'], ['down', 'arrow_downward', 'Leaves downwards'], ['right', 'arrow_forward', 'Leaves to the right']];
+    for (const link of links) {
+      const key = link.from === conn.id ? 'fromDir' : 'toDir';
+      const other = findConnector(link.from === conn.id ? link.to : link.from);
+      const label = link.name || (other ? other.block.name || other.block.id : link.id);
+      out.push(h('div', { class: 'row' },
+        h('span', { class: 'grow', title: describeLink(link) }, label),
+        h('div', { class: 'segmented tight' }, ...choices.map(([dir, glyph, title]) => h('button', {
+          class: 'icon-only' + ((link[key] || '') === dir ? ' active' : ''),
+          title,
+          onclick: () => {
+            if (dir) link[key] = dir;
+            else delete link[key];
+            commit();
+            render();
+            renderInspector();
+          },
+        }, icon(glyph)))),
+      ));
+    }
+    if (links.length) out.push(h('p', { class: 'note' }, 'Pick a side for a single link, or leave it automatic to follow "Links go".'));
+    return out;
+  }
+
   function junctionInspector(block) {
     const conn = block.connectors[0];
-    const linked = schema.links.filter((l) => l.from === conn.id || l.to === conn.id).length;
     return [
       h('h3', {}, 'Link connector'),
       field('Name', boundInput(block.name, (v) => { block.name = v; nameEdited(block); }, { 'data-role': 'block-name' })),
@@ -1882,8 +1922,9 @@
           },
         }, icon(glyph), label)),
       )),
-      h('p', { class: 'note' }, `${linked} link(s) meet here. Drag from the dot to start a link, or drop a link on it. `
+      h('p', { class: 'note' }, 'Drag from the dot to start a link, or drop a link on it. '
         + 'To move it, drag the arrows handle or Alt+drag the dot. Shift+drag the dot to reattach its links elsewhere.'),
+      ...junctionLinksSection(block),
       ...attributesSection(block),
       h('h3', {}, 'Actions'),
       h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete link connector')),
