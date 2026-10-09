@@ -130,7 +130,7 @@
 
   // A link connector ("junction"): a free-standing dot that any number of links can meet at.
   // Stored as a zero-size block with a single connector, so links attach to it like to any other.
-  function junctionBlock(id, x, y, { name = '', attributes = [], connectorId = uid('c'), color = '' } = {}) {
+  function junctionBlock(id, x, y, { name = '', attributes = [], connectorId = uid('c'), color = '', axis = 'horizontal' } = {}) {
     return {
       id,
       name,
@@ -140,6 +140,7 @@
       height: 0,
       attributes,
       connectors: [{ id: connectorId, name: '', side: 'center', color }],
+      axis, // links leave it left/right ('horizontal') or up/down ('vertical')
       kind: 'junction',
     };
   }
@@ -181,6 +182,7 @@
           attributes: normalizeAttributes(b.attributes),
           connectorId: cid,
           color: String(c.color ?? ''),
+          axis: b.axis === 'vertical' ? 'vertical' : 'horizontal',
         }));
         continue;
       }
@@ -439,8 +441,19 @@
     const found = findConnector(id);
     if (!found) return null;
     const [lx, ly] = connectorLocal(found.block, found.conn);
-    const [nx, ny] = NORMALS[found.conn.side] || [0, 0]; // a junction has no side: links arrive from any direction
-    return { x: found.block.x + lx, y: found.block.y + ly, nx, ny };
+    const point = { x: found.block.x + lx, y: found.block.y + ly };
+    // A junction has no side; aim() picks its direction per link, along its axis.
+    if (found.block.kind === 'junction') return { ...point, nx: 0, ny: 0, axis: found.block.axis };
+    const [nx, ny] = NORMALS[found.conn.side];
+    return { ...point, nx, ny };
+  }
+
+  // Gives a junction end its direction for one link: along its axis, towards `other`.
+  function aim(p, other) {
+    if (!p.axis) return p;
+    return p.axis === 'vertical'
+      ? { ...p, nx: 0, ny: other.y < p.y ? -1 : 1 }
+      : { ...p, nx: other.x < p.x ? -1 : 1, ny: 0 };
   }
 
   // Where one end ('from' or 'to') of a link is drawn; follows the pointer while that end is being reattached.
@@ -583,12 +596,9 @@
       items.sort((p, q) => p.a.y - q.a.y);
       items.forEach(({ link, a, b }, i) => {
         const y = g.y + (g.height * (i + 1)) / (items.length + 1);
-        routes.set(link.id, {
-          a,
-          b,
-          entry: { x: g.x, y, nx: -1, ny: 0 },
-          exit: { x: g.x + g.width, y, nx: 1, ny: 0 },
-        });
+        const entry = { x: g.x, y, nx: -1, ny: 0 };
+        const exit = { x: g.x + g.width, y, nx: 1, ny: 0 };
+        routes.set(link.id, { a: aim(a, entry), b: aim(b, exit), entry, exit });
       });
     }
     return routes;
@@ -785,9 +795,11 @@
     const labels = []; // drawn last, above every line
     const routes = groupRoutes();
     for (const link of schema.links) {
-      const a = linkEnd(link, 'from');
-      const b = linkEnd(link, 'to');
-      if (!a || !b) continue;
+      const rawA = linkEnd(link, 'from');
+      const rawB = linkEnd(link, 'to');
+      if (!rawA || !rawB) continue;
+      const a = aim(rawA, rawB);
+      const b = aim(rawB, rawA);
       const route = routes.get(link.id);
       const d = route ? `${linkPath(route.a, route.entry)} ${linkPath(route.exit, route.b)}` : linkPath(a, b);
       if (selection?.type === 'link' && selection.ids.includes(link.id)) nodes.push(svgPath('link-halo', d));
@@ -819,7 +831,7 @@
     if (tempLink) {
       const a = connectorWorld(tempLink.from);
       const b = (tempLink.target && connectorWorld(tempLink.target)) || { x: tempLink.x, y: tempLink.y, nx: 0, ny: 0 };
-      if (a) nodes.push(svgPath('link-temp', linkPath(a, b)));
+      if (a) nodes.push(svgPath('link-temp', linkPath(aim(a, b), aim(b, a))));
     }
     linksG.replaceChildren(...nodes, ...labels);
   }
@@ -1015,6 +1027,7 @@
             attributes: [],
           });
           commit();
+          renderInspector(); // link counts shown in the panel
         }
       }
       render();
@@ -1438,6 +1451,18 @@
       field('Name', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
       field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
       ...colorField('Colour', 'block:junction', conn.color || '', (c) => { conn.color = c; }, ''),
+      h('div', { class: 'field' }, h('span', {}, 'Links go'), h('div', { class: 'segmented' },
+        ...[['horizontal', 'swap_horiz', 'Left/right'], ['vertical', 'swap_vert', 'Up/down']].map(([axis, glyph, label]) => h('button', {
+          class: block.axis === axis ? 'active' : '',
+          title: `Links leave this connector ${label.toLowerCase().replace('/', ' or ')}`,
+          onclick: () => {
+            block.axis = axis;
+            commit();
+            render();
+            renderInspector();
+          },
+        }, icon(glyph), label)),
+      )),
       h('p', { class: 'note' }, `${linked} link(s) meet here. Drag from the dot to start a link, or drop a link on it. `
         + 'To move it, drag the arrows handle or Alt+drag the dot. Shift+drag the dot to reattach its links elsewhere.'),
       ...attributesSection(block),

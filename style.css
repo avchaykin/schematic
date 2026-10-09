@@ -448,3 +448,11 @@ dialog h2 { margin: 0; font-size: 15px; }
 
 /* The toolbar wraps onto a second row instead of scrolling when the window is narrow. */
 .toolbar { flex-wrap: wrap; overflow-x: visible; row-gap: 6px; }
+
+.segmented button { min-width: 0; padding-inline: 4px; }
+
+/* Save toolbar width on smaller windows before it has to wrap. */
+@media (max-width: 1500px) {
+  .brand-text { display: none; }
+  #schema-name { width: 150px; }
+}

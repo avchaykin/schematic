@@ -45,6 +45,7 @@ Everything else works offline.
 
 - A free-standing dot, like a block's connector but placed anywhere on the canvas.
 - Any number of links can start or end at it, all meeting in one point.
+- Links leave it at a right angle: left or right by default, or up or down if set so.
 - It has a name, ID, colour and custom attributes; its colour is passed on to its links like any connector's.
 - Drag from the dot to start a link; drag its arrows handle, or Alt+drag the dot, to move it.
 
