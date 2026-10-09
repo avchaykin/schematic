@@ -8,6 +8,9 @@
   const MIN_SIZE = 24;
   const MAX_RADIUS = 40;
   const MAX_BORDER = 12;
+  const LINE_STYLES = ['solid', 'dashed', 'dotted'];
+  const LINK_DASH = { dashed: '7 6', dotted: '0.01 5.5' }; // round caps turn the tiny dashes into dots
+  const lineStyle = (v) => (LINE_STYLES.includes(v) ? v : 'solid');
   const SMALL_W = 90;
   const SMALL_H = 70;
   const SIDES = ['top', 'right', 'bottom', 'left'];
@@ -169,6 +172,7 @@
         background: String(b.background || '#ffffff'),
         border: String(b.border || '#334155'),
         borderWidth: clamp(num(b.borderWidth, 2), 0, MAX_BORDER),
+        borderStyle: lineStyle(b.borderStyle),
         x: num(b.x, 0),
         y: num(b.y, 0),
         width: Math.max(MIN_SIZE, num(b.width, 140)),
@@ -195,6 +199,7 @@
         from: l.from,
         to: l.to,
         color: String(l.color ?? ''),
+        style: lineStyle(l.style),
         name: String(l.name ?? ''),
         attributes: normalizeAttributes(l.attributes),
       });
@@ -320,7 +325,7 @@
   // Blocks sharing a cloneGroup are identical except for ID and position. Their connectors are
   // matched by `ref`, since each clone needs its own connector ids for links.
 
-  const CLONE_SHARED = ['name', 'icon', 'background', 'border', 'borderWidth', 'width', 'height'];
+  const CLONE_SHARED = ['name', 'icon', 'background', 'border', 'borderWidth', 'borderStyle', 'width', 'height'];
 
   const cloneMembers = (block, s = schema) =>
     (block.cloneGroup ? s.blocks.filter((b) => b.cloneGroup === block.cloneGroup) : [block]);
@@ -451,6 +456,7 @@
       background: '#ffffff',
       border: '#334155',
       borderWidth: 2,
+      borderStyle: 'solid',
       x, y, width, height,
       attributes: [],
       connectors: [],
@@ -549,6 +555,7 @@
       background: '#f1f5f9',
       border: '#64748b',
       borderWidth: 2,
+      borderStyle: 'solid',
       x: snap(cx - width / 2),
       y: snap(cy - height / 2),
       width,
@@ -629,7 +636,7 @@
       el.classList.toggle('clone-sibling', !isSelected && Boolean(activeGroup) && block.cloneGroup === activeGroup);
 
       // Rebuild the inside only when something visible changed, so elements survive clicks and drags.
-      const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.borderWidth, schema.radius,
+      const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.borderWidth, block.borderStyle, schema.radius,
         block.width, block.height, block.connectors, Boolean(block.cloneGroup)]);
       if (el._sig !== sig) {
         el._sig = sig;
@@ -656,6 +663,7 @@
     body.style.background = block.background;
     body.style.borderColor = block.border;
     body.style.borderWidth = block.borderWidth + 'px';
+    body.style.borderStyle = block.borderStyle;
     body.style.borderRadius = schema.radius + 'px';
     body.style.color = contrastColor(block.background);
     if (block.icon) {
@@ -715,7 +723,13 @@
       const color = linkColor(link);
       if (color) line.style.stroke = color;
       // White and near-white lines get a thin grey edge so they stay visible on the canvas.
-      if (isPale(color)) nodes.push(svgPath('link-outline', d));
+      const dash = LINK_DASH[link.style];
+      if (dash) line.setAttribute('stroke-dasharray', dash);
+      if (isPale(color)) {
+        const outline = svgPath('link-outline', d);
+        if (dash) outline.setAttribute('stroke-dasharray', dash);
+        nodes.push(outline);
+      }
       const hit = svgPath('link-hit', d);
       hit.dataset.link = link.id;
       nodes.push(line, hit);
@@ -886,6 +900,7 @@
             from: fromId,
             to,
             color: '',
+            style: 'solid',
             name: '',
             attributes: [],
           });
@@ -1022,6 +1037,31 @@
     });
     input.addEventListener('change', commit);
     return h('div', { class: 'slider' }, input, label);
+  }
+
+  // Solid / dashed / dotted chooser. `current` is null when a multi-selection disagrees.
+  function styleField(label, current, apply) {
+    const buttons = LINE_STYLES.map((style) => {
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 30 10');
+      svg.setAttribute('class', 'style-icon');
+      const line = svgPath('', 'M3,5 H27');
+      if (LINK_DASH[style]) line.setAttribute('stroke-dasharray', LINK_DASH[style]);
+      svg.append(line);
+      return h('button', {
+        class: 'icon-only' + (style === current ? ' active' : ''),
+        title: style[0].toUpperCase() + style.slice(1),
+        onclick: (e) => {
+          e.preventDefault();
+          apply(style);
+          commit();
+          render();
+          renderInspector();
+        },
+      }, svg);
+    });
+    // Not a <label>: clicking the caption must not press the first button.
+    return h('div', { class: 'field' }, h('span', {}, label), h('div', { class: 'segmented' }, ...buttons));
   }
 
   // One-line colour setting: a button showing the current colour; the palette opens below on click.
@@ -1318,6 +1358,7 @@
       ...colorField('Background', 'block:background', block.background, (c) => { block.background = c; }),
       ...colorField('Border', 'block:border', block.border, (c) => { block.border = c; }),
       field('Border width', slider(block.borderWidth, 0, MAX_BORDER, (v) => { block.borderWidth = v; })),
+      styleField('Border style', block.borderStyle, (v) => { block.borderStyle = v; }),
     );
 
     if (isGroup) {
@@ -1460,10 +1501,12 @@
         : 'Shift+click a link to add it to or remove it from the selection.'),
     );
 
-    // --- colour
+    // --- appearance
     const color = links.every((l) => l.color === links[0].color) ? links[0].color || '' : null;
+    const style = links.every((l) => l.style === links[0].style) ? links[0].style : null;
     out.push(
-      h('h3', {}, 'Colour'),
+      h('h3', {}, 'Appearance'),
+      styleField('Line style', style, (v) => { for (const l of links) l.style = v; }),
       swatches(color, (c) => { for (const l of links) l.color = c; }, ''),
       h('p', { class: 'note' }, 'With no colour set (crossed swatch) a link takes its group\'s links colour if it is in one, otherwise its connectors\' colour (black if the two differ).'),
     );

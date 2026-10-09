@@ -419,3 +419,9 @@ dialog h2 { margin: 0; font-size: 15px; }
 }
 #json-error { margin-top: 8px; color: var(--danger); font-size: 12px; }
 #json-dialog .row .note { margin: 0; }
+
+.segmented { display: flex; gap: 4px; }
+.segmented button { flex: 1; justify-content: center; }
+.segmented button.active { border-color: var(--accent); background: var(--accent-soft); }
+.style-icon { width: 30px; height: 10px; display: block; }
+.style-icon path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
