@@ -11,7 +11,7 @@ The screen has three parts: the **toolbar** at the top, the **canvas** in the mi
 
 - Press **Add block**, or double-click empty canvas.
 - Drag a block to move it. Select it and drag an edge or corner to resize it.
-- In the panel set its **Name**, **ID** and **Icon** (pick from the grid or type a Material Symbols name).
+- In the panel set its **Name**, **ID**, **Description** and **Icon** (pick from the grid or type a Material Symbols name).
 - Under **Appearance** click **Background** or **Border** to open the palette, and set the border
   width and style (solid, dashed, dotted).
 - **Attributes** holds any extra name/value pairs you want to keep with the block.
@@ -82,7 +82,16 @@ Use **Clone** when the same thing appears several times and must stay identical.
 - A connector cannot be removed while any clone has a link on it.
 - **Detach from clones** turns one into an independent block. **Duplicate** makes an independent copy.
 
-## 7. Schema-wide settings
+## 7. Add titles and frames
+
+![A frame named Backend around two blocks, with a title above it](images/frame.png)
+
+- **Title** adds free text with no border. Set the text, size, colour and alignment in the panel.
+- **Frame** adds a titled rectangle that sits behind everything else. Drag it by its title or border
+  and whatever lies entirely inside moves with it; resize it by its edges and corners once selected.
+- A frame has no background and a grey border by default; both are set as for a block.
+
+## 8. Schema-wide settings
 
 The **Schema** button opens the parameters that apply to the whole schema: the corner radius of
 all blocks and the colour palette offered wherever a colour is chosen.
@@ -91,7 +100,7 @@ all blocks and the colour palette offered wherever a colour is chosen.
 
 Click a palette colour to remove it, or pick a new one and press **Add colour**.
 
-## 8. Save, share and edit as text
+## 9. Save, share and edit as text
 
 - **Save** stores the schema in the browser under its name; **Load** lists saved schemas to open or delete.
 - **Export** downloads a JSON file and **Import** reads one back, for moving schemas between browsers.

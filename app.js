@@ -93,6 +93,7 @@
 
   const viewport = $('#viewport');
   const world = $('#world');
+  const framesLayer = $('#frames'); // beneath the links, so frames sit under everything
   const linksG = $('#links-g');
   const inspector = $('#inspector');
   const nameInput = $('#schema-name');
@@ -165,6 +166,26 @@
     };
   }
 
+  // A frame: a titled rectangle drawn beneath everything else. Whatever lies inside it moves with it.
+  function frameBlock(id, x, y, o = {}) {
+    return {
+      id,
+      name: String(o.name ?? 'Frame'),
+      description: String(o.description ?? ''),
+      background: String(o.background || 'transparent'),
+      border: String(o.border || '#94a3b8'),
+      borderWidth: clamp(num(o.borderWidth, 2), 0, MAX_BORDER),
+      borderStyle: lineStyle(o.borderStyle),
+      x,
+      y,
+      width: Math.max(MIN_SIZE, num(o.width, 360)),
+      height: Math.max(MIN_SIZE, num(o.height, 240)),
+      attributes: normalizeAttributes(o.attributes),
+      connectors: [],
+      kind: 'frame',
+    };
+  }
+
   function normalizeAttributes(raw) {
     const out = [];
     for (const a of Array.isArray(raw) ? raw : []) {
@@ -192,6 +213,10 @@
       if (!id || blockIds.has(id)) id = freshBlockId(blockIds);
       blockIds.add(id);
 
+      if (b.kind === 'frame') {
+        out.blocks.push(frameBlock(id, num(b.x, 0), num(b.y, 0), b));
+        continue;
+      }
       if (b.kind === 'title') {
         out.blocks.push(titleBlock(id, num(b.x, 0), num(b.y, 0), b));
         continue;
@@ -545,6 +570,18 @@
     addElement(titleBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'title'), x, y));
   }
 
+  function addFrame() {
+    const { x, y } = freeSpot(360, 240);
+    addElement(frameBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'frame'), x, y));
+  }
+
+  // Everything lying entirely inside a frame; these move with it.
+  function frameContents(frame) {
+    return schema.blocks.filter((b) => b !== frame
+      && b.x >= frame.x && b.y >= frame.y
+      && b.x + b.width <= frame.x + frame.width && b.y + b.height <= frame.y + frame.height);
+  }
+
   function addJunction() {
     const rect = viewport.getBoundingClientRect();
     let x = snap((rect.width / 2 - view.x) / view.zoom);
@@ -727,6 +764,7 @@
     drawBlocks();
     drawLinks();
     world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
+    framesLayer.style.transform = world.style.transform;
     linksG.setAttribute('transform', `translate(${view.x} ${view.y}) scale(${view.zoom})`);
     const cell = GRID * 2 * view.zoom;
     viewport.style.backgroundSize = `${cell}px ${cell}px`;
@@ -744,7 +782,7 @@
         el = h('div', { class: 'block' });
         el.dataset.id = block.id;
         blockEls.set(block.id, el);
-        world.append(el);
+        (block.kind === 'frame' ? framesLayer : world).append(el);
       }
       el.style.left = block.x + 'px';
       el.style.top = block.y + 'px';
@@ -769,8 +807,12 @@
         blockEls.delete(id);
       }
     }
-    const ordered = schema.blocks.every((b, i) => world.children[i] === blockEls.get(b.id));
-    if (!ordered) world.append(...schema.blocks.map((b) => blockEls.get(b.id)));
+    // Keep each layer's elements in schema order (and in the right layer).
+    for (const layer of [framesLayer, world]) {
+      const list = schema.blocks.filter((b) => (b.kind === 'frame') === (layer === framesLayer));
+      const ordered = list.length === layer.children.length && list.every((b, i) => layer.children[i] === blockEls.get(b.id));
+      if (!ordered) layer.append(...list.map((b) => blockEls.get(b.id)));
+    }
 
     for (const el of world.querySelectorAll('.connector.target')) el.classList.remove('target');
     const target = tempLink?.target || reattach?.target;
@@ -806,8 +848,26 @@
     el.replaceChildren(body, ...resizeHandles());
   }
 
+  function buildFrame(el, block) {
+    const body = h('div', { class: 'frame-body' });
+    body.style.background = block.background;
+    body.style.borderColor = block.border;
+    body.style.borderWidth = block.borderWidth + 'px';
+    body.style.borderStyle = block.borderStyle;
+    body.style.borderRadius = schema.radius + 'px';
+    const parts = [body];
+    // Only the title and the border take the pointer; the inside stays free for panning and for its contents.
+    for (const side of ['top', 'right', 'bottom', 'left']) parts.push(h('div', { class: 'frame-edge ' + side }));
+    if (block.name) parts.push(h('div', { class: 'frame-title' }, block.name));
+    el.replaceChildren(...parts, ...resizeHandles());
+  }
+
   function buildBlock(el, block) {
-    for (const kind of ['junction', 'title']) el.classList.toggle(kind, block.kind === kind);
+    for (const kind of ['junction', 'title', 'frame']) el.classList.toggle(kind, block.kind === kind);
+    if (block.kind === 'frame') {
+      buildFrame(el, block);
+      return;
+    }
     if (block.kind === 'junction') {
       buildJunction(el, block);
       return;
@@ -992,12 +1052,17 @@
   function startMove(e, block) {
     const start = toWorld(e);
     const origin = { x: block.x, y: block.y };
+    const carried = (block.kind === 'frame' ? frameContents(block) : []).map((b) => ({ b, x: b.x, y: b.y }));
     drag((ev) => {
       const p = toWorld(ev);
       const x = origin.x + p.x - start.x;
       const y = origin.y + p.y - start.y;
       block.x = ev.altKey ? Math.round(x) : snap(x);
       block.y = ev.altKey ? Math.round(y) : snap(y);
+      for (const item of carried) {
+        item.b.x = item.x + block.x - origin.x;
+        item.b.y = item.y + block.y - origin.y;
+      }
       render();
     }, commit);
   }
@@ -1559,6 +1624,7 @@
         h('li', {}, 'Clone a block to get linked copies that always change together.'),
         h('li', {}, 'Add a link connector for a free-standing dot where several links meet, or hold Shift when dropping a new link on empty canvas to create one there.'),
         h('li', {}, 'Title adds free text to the schema.'),
+        h('li', {}, 'Frame adds a titled area behind the schema; what lies inside it moves with it.'),
         h('li', {}, 'Hold Alt while moving or resizing to ignore the grid.'),
       ),
     ];
@@ -1609,6 +1675,26 @@
     ];
   }
 
+  function frameInspector(block) {
+    const inside = frameContents(block).length;
+    return [
+      h('h3', {}, 'Frame'),
+      field('Title', boundInput(block.name, (v) => { block.name = v; }, { 'data-role': 'block-name' })),
+      field('ID', idField(block, schema.blocks, 'block', (id) => { selection = { type: 'block', id }; })),
+      descriptionField(block),
+      h('h3', {}, 'Appearance'),
+      ...colorField('Background', 'block:background', block.background, (c) => { block.background = c; }),
+      ...colorField('Border', 'block:border', block.border, (c) => { block.border = c; }),
+      field('Border width', slider(block.borderWidth, 0, MAX_BORDER, (v) => { block.borderWidth = v; })),
+      styleField('Border style', block.borderStyle, (v) => { block.borderStyle = v; }),
+      h('p', { class: 'note' }, `${inside} element(s) inside. Drag the frame by its title or border and everything lying entirely inside moves with it.`),
+      ...attributesSection(block),
+      h('h3', {}, 'Actions'),
+      h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete frame')),
+      h('p', { class: 'note' }, 'Deleting a frame leaves its contents in place.'),
+    ];
+  }
+
   function junctionInspector(block) {
     const conn = block.connectors[0];
     const linked = schema.links.filter((l) => l.from === conn.id || l.to === conn.id).length;
@@ -1641,6 +1727,7 @@
   function blockInspector(block) {
     if (block.kind === 'junction') return junctionInspector(block);
     if (block.kind === 'title') return titleInspector(block);
+    if (block.kind === 'frame') return frameInspector(block);
     const out = [];
     const isGroup = block.kind === 'group';
 
@@ -2079,6 +2166,7 @@
     'add-block': () => addBlock(),
     'add-junction': addJunction,
     'add-title': addTitle,
+    'add-frame': addFrame,
     'undo': undo,
     'redo': redo,
     'zoom-in': () => zoomCentered(1.2),

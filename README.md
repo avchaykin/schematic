@@ -63,6 +63,13 @@ Everything else works offline.
 - Text (one or several lines), size, colour and alignment are set in the panel; the box is moved and
   resized like a block.
 
+### Frames
+
+- A titled rectangle drawn beneath all other elements, with its title in the top-left corner.
+- Whatever lies entirely inside a frame moves with it; the frame can be resized without moving its contents.
+- Background and border are set as for blocks. By default there is no background and the border is solid grey.
+- A frame is selected and dragged by its title or border; the inside stays free for the elements in it.
+
 ### Clones
 
 - Clone a block to get linked copies that always change together: name, icon, colours, size,

@@ -493,3 +493,31 @@ dialog h2 { margin: 0; font-size: 15px; }
   .toolbar .collapsible .label { display: none; }
   .toolbar .collapsible { padding: 5px; }
 }
+
+/* ---------- frames ---------- */
+
+#frames { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.block.frame { pointer-events: none; cursor: default; }
+.frame-body { position: absolute; inset: 0; border: 2px solid; }
+.block.frame.selected .frame-body { box-shadow: 0 0 0 3px rgb(37 99 235 / .3); }
+.frame-title {
+  position: absolute;
+  left: 10px;
+  top: 6px;
+  max-width: calc(100% - 20px);
+  color: var(--ink-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+  cursor: move;
+}
+.frame-edge { position: absolute; pointer-events: auto; cursor: move; }
+.frame-edge.top, .frame-edge.bottom { left: 0; right: 0; height: 8px; }
+.frame-edge.left, .frame-edge.right { top: 0; bottom: 0; width: 8px; }
+.frame-edge.top { top: -4px; }
+.frame-edge.bottom { bottom: -4px; }
+.frame-edge.left { left: -4px; }
+.frame-edge.right { right: -4px; }
+.block.frame .handle { pointer-events: auto; }
