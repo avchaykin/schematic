@@ -86,6 +86,7 @@ Several links can be routed through one block, for example to show a bus or a ca
 - Press **Group into new block** in the panel (or Ctrl/⌘+G).
 - The links now enter the group block on the left and leave on the right. The block can be named,
   coloured and resized like any other, and **Links colour** colours all its links.
+- **Links run** switches the group between horizontal (left to right) and vertical (top to bottom).
 - **Ungroup links** removes the block and leaves the links in place.
 
 ## 6. Clone blocks

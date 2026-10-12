@@ -91,6 +91,7 @@ Everything else works offline.
 
 - Select several links (Shift+click) and group them into a group block.
 - Grouped links run into the left side of the group block and out of its right side, without connectors.
+  A group can be set to vertical instead, so links come in at the top and leave at the bottom.
 - The group block has the usual block settings (name, icon, colours, attributes) and can set a colour
   for all its links or for each one.
 - Links can be moved into or out of a group; ungrouping removes the block and keeps the links.

@@ -334,6 +334,7 @@
       if (b.kind === 'group') {
         out.blocks[out.blocks.length - 1].kind = 'group';
         out.blocks[out.blocks.length - 1].linkColor = String(b.linkColor ?? '');
+        out.blocks[out.blocks.length - 1].axis = b.axis === 'vertical' ? 'vertical' : 'horizontal';
       }
       else if (b.cloneGroup) out.blocks[out.blocks.length - 1].cloneGroup = String(b.cloneGroup);
     }
@@ -917,7 +918,8 @@
 
   // ---------- link groups ----------
   // A group block (kind: 'group') has no connectors. Links with `via` set to its id are drawn
-  // into its left side and out of its right side.
+  // into its left side and out of its right side, or, if its axis is 'vertical', in at the top and
+  // out at the bottom.
 
   const groupBlocks = () => schema.blocks.filter((b) => b.kind === 'group');
 
@@ -926,24 +928,26 @@
     const routes = new Map();
     const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
     for (const g of groupBlocks()) {
-      const left = { x: g.x, y: g.y + g.height / 2 };
-      const right = { x: g.x + g.width, y: left.y };
+      const vertical = g.axis === 'vertical';
+      // The middles of the side links come in on and the side they leave on.
+      const left = vertical ? { x: g.x + g.width / 2, y: g.y } : { x: g.x, y: g.y + g.height / 2 };
+      const right = vertical ? { x: left.x, y: g.y + g.height } : { x: g.x + g.width, y: left.y };
       const items = [];
       for (const link of schema.links) {
         if (link.via !== g.id) continue;
         let a = linkEnd(link, 'from');
         let b = linkEnd(link, 'to');
         if (!a || !b) continue;
-        // Links have no direction: the nearer end comes in on the left.
+        // Links have no direction: the nearer end comes in on the left (or top).
         if (dist(b, left) + dist(a, right) < dist(a, left) + dist(b, right)) [a, b] = [b, a];
         items.push({ link, a, b });
       }
       // Same order on both sides, so a link can be followed through the block.
-      items.sort((p, q) => p.a.y - q.a.y);
+      items.sort((p, q) => (vertical ? p.a.x - q.a.x : p.a.y - q.a.y));
       items.forEach(({ link, a, b }, i) => {
-        const y = g.y + (g.height * (i + 1)) / (items.length + 1);
-        const entry = { x: g.x, y, nx: -1, ny: 0 };
-        const exit = { x: g.x + g.width, y, nx: 1, ny: 0 };
+        const t = (i + 1) / (items.length + 1);
+        const entry = vertical ? { x: g.x + g.width * t, y: g.y, nx: 0, ny: -1 } : { x: g.x, y: g.y + g.height * t, nx: -1, ny: 0 };
+        const exit = vertical ? { x: entry.x, y: g.y + g.height, nx: 0, ny: 1 } : { x: g.x + g.width, y: entry.y, nx: 1, ny: 0 };
         routes.set(link.id, { a: aim(a, entry), b: aim(b, exit), entry, exit });
       });
     }
@@ -973,6 +977,7 @@
       connectors: [],
       kind: 'group',
       linkColor: '',
+      axis: 'horizontal', // links run through it left to right, or top to bottom ('vertical')
     };
     schema.blocks.push(block);
     followName(block);
@@ -2534,6 +2539,10 @@
     const links = schema.links.filter((l) => l.via === block.id);
     const out = [
       h('h3', {}, `Grouped links (${links.length})`),
+      choiceButtons('Links run', block.axis === 'vertical' ? 'vertical' : 'horizontal', [
+        ['horizontal', 'swap_horiz', 'Horizontally: in on the left, out on the right'],
+        ['vertical', 'swap_vert', 'Vertically: in at the top, out at the bottom'],
+      ], (v) => { block.axis = v; }),
       ...colorField('Links colour', 'block:linkColor', block.linkColor || '', (c) => { block.linkColor = c; }, ''),
     ];
     for (const link of links) {
