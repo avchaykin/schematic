@@ -54,6 +54,7 @@ Everything else works offline.
 - White and very pale links get a thin grey edge so they stay visible.
 - A small eyedropper button beside a connector's colour (and a link connector's) gives it the colour
   of a link attached to it; if the attached links differ in colour, each click picks the next one.
+  With several elements selected it does this for all their connectors at once.
 
 ### Link connectors
 

@@ -2250,22 +2250,27 @@
   }
 
   // Helper button: gives a connector the colour of a link attached to it. If its links have
-  // different colours, each click moves on to the next one.
-  function matchLinkButton(conn) {
+  // different colours, each click moves on to the next one. Given several connectors (and their
+  // blocks, for the sake of clones), each of them does so with its own links.
+  function matchLinkButton(conns, blocks = [], label = null) {
+    const list = [].concat(conns);
     return h('button', {
-      class: 'icon-only',
+      class: label ? '' : 'icon-only',
       title: 'Colour as the attached link (click again for the next link colour)',
-      disabled: !attachedLinkColors(conn).length,
+      disabled: !list.some((conn) => attachedLinkColors(conn).length),
       onclick: () => {
-        const colors = attachedLinkColors(conn);
-        if (!colors.length) return;
-        // Set directly: the links keep their colours, so the next click can reach the next one.
-        conn.color = colors[(colors.indexOf((conn.color || '').toLowerCase()) + 1) % colors.length];
+        for (const conn of list) {
+          const colors = attachedLinkColors(conn);
+          if (!colors.length) continue;
+          // Set directly: the links keep their colours, so the next click can reach the next one.
+          conn.color = colors[(colors.indexOf((conn.color || '').toLowerCase()) + 1) % colors.length];
+        }
+        for (const b of blocks) syncClones(b);
         commit();
         render();
         renderInspector();
       },
-    }, icon('colorize'));
+    }, icon('colorize'), label);
   }
 
   // Colour chooser over the schema's palette. `none` is the value the crossed swatch stands for.
@@ -2676,6 +2681,9 @@
         field('Border width', sliderFor(boxes, 'borderWidth', 0, MAX_BORDER)),
         styleField('Border style', prop(boxes, 'borderStyle'), setAll(boxes, 'borderStyle')),
       );
+      if (boxes.some((b) => b.connectors.length)) {
+        out.push(h('div', { class: 'row' }, matchLinkButton(boxes.flatMap((b) => b.connectors), boxes, 'Colour connectors as links')));
+      }
     }
 
     const junctions = blocks.filter((b) => b.kind === 'junction');
@@ -2683,7 +2691,7 @@
       out.push(
         h('h3', {}, `Link connectors (${junctions.length})`),
         ...colorField('Colour', 'multi:junction', shared(junctions, (b) => b.connectors[0].color || ''),
-          (c) => { for (const b of junctions) setConnectorColor(b.connectors[0], c); }, ''),
+          (c) => { for (const b of junctions) setConnectorColor(b.connectors[0], c); }, '', matchLinkButton(junctions.map((b) => b.connectors[0]))),
         ...colorField('Border', 'multi:junction-border', prop(junctions, 'borderColor'), setAll(junctions, 'borderColor'), ''),
         choiceButtons('Links go', prop(junctions, 'axis'), [
           ['horizontal', 'swap_horiz', 'Links leave left or right'],
