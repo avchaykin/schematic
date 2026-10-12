@@ -66,7 +66,8 @@ point below.
 ![A link connector joining three dashed links](images/junction.png)
 
 - Press **Link connector** in the toolbar, or drag a new link, hold Shift and release over empty
-  canvas. A preview dot shows where it will appear.
+  canvas. A preview dot shows where it will appear; it takes the name and colour of the connector
+  the link started from.
 - Drag from the dot to start another link, or drop a link onto it.
 - Move it by its arrows handle (shown when selected) or by Alt+dragging the dot.
 - **Links go** sets whether links leave it left/right or up/down. The **Links** list below it

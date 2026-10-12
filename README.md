@@ -48,7 +48,8 @@ Everything else works offline.
   link connectors) with different colours give a black link.
 - A new link starts with the colour of the connector it is drawn from. From an uncoloured link
   connector it takes the colour its existing links share. Such links keep following that connector's
-  colour when it changes. A link connector created by a Shift-drop takes the same colour.
+  colour when it changes. A link connector created by a Shift-drop takes the same colour, and the
+  name of the connector the link was drawn from.
 - White and very pale links get a thin grey edge so they stay visible.
 
 ### Link connectors
