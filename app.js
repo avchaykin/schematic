@@ -2457,7 +2457,7 @@
       h('p', {}, `${schema.blocks.length} block(s), ${schema.links.length} link(s)`),
       h('h3', {}, 'How to'),
       h('ul', {},
-        h('li', {}, 'Add block or double-click the canvas to create a block.'),
+        h('li', {}, 'Press Block in the toolbar or double-click the canvas to create a block.'),
         h('li', {}, 'Select a block to edit it here and to resize it by its edges and corners.'),
         h('li', {}, 'Add connectors in this panel, then drag from one connector to another to link them.'),
         h('li', {}, 'Shift+drag a connector to pick up its links and reattach them to another connector.'),

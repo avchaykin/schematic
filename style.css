@@ -94,7 +94,22 @@ input.invalid { border-color: var(--danger); outline-color: var(--danger); }
 #dirty { color: #f59e0b; font-size: 11px; }
 .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; flex: none; }
 .spacer { flex: 1; }
-#zoom-label { min-width: 54px; justify-content: center; font-variant-numeric: tabular-nums; }
+#zoom-label { min-width: 50px; justify-content: center; font-variant-numeric: tabular-nums; }
+
+/* Related buttons share one outline, with a hairline between them. */
+.tool-group {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.tool-group button { border: 0; border-radius: 0; padding: 6px 9px; }
+.tool-group button.icon-only { padding: 6px 7px; }
+.tool-group button + button { border-left: 1px solid var(--line); }
+.tool-group button:focus-visible { outline-offset: -2px; }
+.toolbar { gap: 8px; }
 
 /* ---------- layout ---------- */
 
@@ -558,9 +573,9 @@ dialog h2 { margin: 0; font-size: 15px; }
 }
 
 /* Secondary toolbar buttons drop their text before the toolbar has to wrap. */
-@media (max-width: 1700px) {
+@media (max-width: 1250px) {
   .toolbar .collapsible .label { display: none; }
-  .toolbar .collapsible { padding: 5px; }
+  .toolbar .collapsible { padding: 6px 7px; }
 }
 
 /* ---------- frames ---------- */

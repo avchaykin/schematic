@@ -7,9 +7,13 @@ A short tour of the tool. For the full feature list and shortcuts see the [READM
 The screen has three parts: the **toolbar** at the top, the **canvas** in the middle, and the
 **panel** on the right, which shows the settings of whatever is selected.
 
+The toolbar is arranged in groups: the schema file (new, save, load), import and export, the
+elements to add, schema tools, undo/redo and zoom. The familiar functions are icons only; hover
+one to see what it does.
+
 ## 1. Add blocks
 
-- Press **Add block**, or double-click empty canvas.
+- Press **Block** in the toolbar, or double-click empty canvas.
 - Drag a block to move it. Select it and drag an edge or corner to resize it.
 - In the panel set its **Name**, **ID**, **Description** and **Icon** (pick from the grid or type a Material Symbols name).
 - Under **Appearance** click **Background** or **Border** to open the palette, and set the border
@@ -66,7 +70,7 @@ point below.
 
 ![A link connector joining three dashed links](images/junction.png)
 
-- Press **Link connector** in the toolbar, or drag a new link, hold Shift and release over empty
+- Press **Connector** in the toolbar, or drag a new link, hold Shift and release over empty
   canvas. A preview dot shows where it will appear; it takes the name and colour of the connector
   the link started from.
 - Drag from the dot to start another link, or drop a link onto it.
@@ -129,7 +133,7 @@ Click a palette colour to remove it, or pick a new one and press **Add colour**.
 
 ## 9. Save, share and edit as text
 
-- **Save** stores the schema in the browser under its name; **Load** lists saved schemas to open or delete.
+- **Save** (the disk icon) stores the schema in the browser under its name; **Load** lists saved schemas to open or delete.
 - **Export** downloads a JSON file and **Import** reads one back, for moving schemas between browsers.
 - **PNG** and **PDF** download a picture of the whole schema, for documents and slides. The PDF is
   one page the size of the schema.

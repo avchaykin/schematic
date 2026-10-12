@@ -15,34 +15,46 @@
     <input id="schema-name" type="text" placeholder="Schema name" spellcheck="false" aria-label="Schema name">
     <span id="dirty" title="Unsaved changes" hidden>●</span>
 
-    <span class="sep"></span>
-    <button data-action="new" title="New schema"><span class="mi">note_add</span>New</button>
-    <button data-action="save" title="Save to browser storage (Ctrl/⌘+S)"><span class="mi">save</span>Save</button>
-    <button data-action="library" title="Load or delete saved schemas"><span class="mi">folder_open</span>Load</button>
-    <span class="sep"></span>
-    <button data-action="export" class="collapsible" title="Export as JSON file"><span class="mi">download</span><span class="label">Export</span></button>
-    <button data-action="export-png" class="collapsible" title="Export the schema as a PNG picture"><span class="mi">image</span><span class="label">PNG</span></button>
-    <button data-action="export-pdf" class="collapsible" title="Export the schema as a PDF page"><span class="mi">picture_as_pdf</span><span class="label">PDF</span></button>
-    <button data-action="import" class="collapsible" title="Import JSON file"><span class="mi">upload</span><span class="label">Import</span></button>
-    <button data-action="json" class="collapsible" title="Show and edit the schema as JSON"><span class="mi">data_object</span><span class="label">JSON</span></button>
-    <span class="sep"></span>
-    <button data-action="add-block" class="primary" title="Add block (or double-click the canvas)"><span class="mi">add_box</span>Add block</button>
-    <button data-action="add-junction" title="Add a link connector: a free-standing dot where links meet"><span class="mi">adjust</span>Link connector</button>
-    <button data-action="add-title" title="Add a title: free text without a border"><span class="mi">title</span>Title</button>
-    <button data-action="add-frame" title="Add a frame: a titled area behind other elements, which move with it"><span class="mi">crop_free</span>Frame</button>
-    <button data-action="add-comment" title="Add a comment: a sticky note with free text"><span class="mi">sticky_note_2</span>Comment</button>
-    <button data-action="settings" title="Schema parameters: corner radius, colour palette"><span class="mi">tune</span>Schema</button>
+    <div class="tool-group" role="group" aria-label="Schema file">
+      <button data-action="new" class="icon-only" title="New schema" aria-label="New schema"><span class="mi">note_add</span></button>
+      <button data-action="save" class="icon-only" title="Save to browser storage (Ctrl/⌘+S)" aria-label="Save"><span class="mi">save</span></button>
+      <button data-action="library" class="icon-only" title="Load or delete saved schemas" aria-label="Load"><span class="mi">folder_open</span></button>
+    </div>
+
+    <div class="tool-group" role="group" aria-label="Import and export">
+      <button data-action="import" class="icon-only" title="Import a JSON file" aria-label="Import"><span class="mi">upload</span></button>
+      <button data-action="export" class="icon-only" title="Export as a JSON file" aria-label="Export"><span class="mi">download</span></button>
+      <button data-action="json" class="icon-only" title="Show and edit the schema as JSON" aria-label="JSON"><span class="mi">data_object</span></button>
+      <button data-action="export-png" class="icon-only" title="Export the schema as a PNG picture" aria-label="Export PNG"><span class="mi">image</span></button>
+      <button data-action="export-pdf" class="icon-only" title="Export the schema as a PDF page" aria-label="Export PDF"><span class="mi">picture_as_pdf</span></button>
+    </div>
+
+    <div class="tool-group" role="group" aria-label="Add elements">
+      <button data-action="add-block" class="primary collapsible" title="Add a block (or double-click the canvas)"><span class="mi">add_box</span><span class="label">Block</span></button>
+      <button data-action="add-junction" class="collapsible" title="Add a link connector: a free-standing dot where links meet"><span class="mi">adjust</span><span class="label">Connector</span></button>
+      <button data-action="add-title" class="collapsible" title="Add a title: free text without a border"><span class="mi">title</span><span class="label">Title</span></button>
+      <button data-action="add-frame" class="collapsible" title="Add a frame: a titled area behind other elements, which move with it"><span class="mi">crop_free</span><span class="label">Frame</span></button>
+      <button data-action="add-comment" class="collapsible" title="Add a comment: a sticky note with free text"><span class="mi">sticky_note_2</span><span class="label">Comment</span></button>
+    </div>
+
+    <div class="tool-group" role="group" aria-label="Schema tools">
+      <button data-action="settings" class="collapsible" title="Schema parameters: corner radius, links, trace, colour palette"><span class="mi">tune</span><span class="label">Schema</span></button>
+      <button data-action="trace" class="collapsible" aria-pressed="false" title="Trace (T): hover a connector or link to mark the whole path sharing its name"><span class="mi">route</span><span class="label">Trace</span></button>
+    </div>
 
     <span class="spacer"></span>
-    <button data-action="trace" class="collapsible" aria-pressed="false" title="Trace (T): hover a connector or link to mark the whole path sharing its name"><span class="mi">route</span><span class="label">Trace</span></button>
-    <span class="sep"></span>
-    <button data-action="undo" class="icon-only" title="Undo (Ctrl/⌘+Z)"><span class="mi">undo</span></button>
-    <button data-action="redo" class="icon-only" title="Redo (Ctrl/⌘+Shift+Z)"><span class="mi">redo</span></button>
-    <span class="sep"></span>
-    <button data-action="zoom-out" class="icon-only" title="Zoom out"><span class="mi">remove</span></button>
-    <button data-action="zoom-reset" id="zoom-label" title="Reset zoom to 100%">100%</button>
-    <button data-action="zoom-in" class="icon-only" title="Zoom in"><span class="mi">add</span></button>
-    <button data-action="fit" class="icon-only" title="Fit schema to view"><span class="mi">fit_screen</span></button>
+
+    <div class="tool-group" role="group" aria-label="History">
+      <button data-action="undo" class="icon-only" title="Undo (Ctrl/⌘+Z)" aria-label="Undo"><span class="mi">undo</span></button>
+      <button data-action="redo" class="icon-only" title="Redo (Ctrl/⌘+Shift+Z)" aria-label="Redo"><span class="mi">redo</span></button>
+    </div>
+
+    <div class="tool-group" role="group" aria-label="Zoom">
+      <button data-action="zoom-out" class="icon-only" title="Zoom out" aria-label="Zoom out"><span class="mi">remove</span></button>
+      <button data-action="zoom-reset" id="zoom-label" title="Reset zoom to 100%">100%</button>
+      <button data-action="zoom-in" class="icon-only" title="Zoom in" aria-label="Zoom in"><span class="mi">add</span></button>
+      <button data-action="fit" class="icon-only" title="Fit schema to view" aria-label="Fit to view"><span class="mi">fit_screen</span></button>
+    </div>
   </header>
 
   <main>
