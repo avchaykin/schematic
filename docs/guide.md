@@ -116,7 +116,8 @@ Use **Clone** when the same thing appears several times and must stay identical.
 ## 8. Schema-wide settings
 
 The **Schema** button opens the parameters that apply to the whole schema: the corner radius of
-all blocks and the colour palette offered wherever a colour is chosen.
+all blocks, how links are drawn (curved, straight or polyline, their bend and width) and the
+colour palette offered wherever a colour is chosen.
 
 ![Schema parameters dialog with corner radius and colour palette](images/params.png)
 

@@ -142,7 +142,7 @@ main { flex: 1; display: flex; min-height: 0; }
 
 /* ---------- links ---------- */
 
-.link { fill: none; stroke: var(--link); stroke-width: var(--link-width, 2px); stroke-linecap: round; }
+.link { fill: none; stroke: var(--link); stroke-width: var(--link-width, 2px); stroke-linecap: round; stroke-linejoin: round; }
 .link-label {
   font: 500 10px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   fill: var(--ink);

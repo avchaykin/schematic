@@ -16,6 +16,8 @@
   const LINK_DASH = { dashed: '7 6', dotted: '0.01 5.5' }; // round caps turn the tiny dashes into dots
   const LINK_DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
   const lineStyle = (v) => (LINE_STYLES.includes(v) ? v : 'solid');
+  const LINK_SHAPES = ['curved', 'straight', 'polyline']; // how all links of a schema are drawn
+  const LINK_STUB = 20; // how far a polyline link runs straight out of a connector before turning
   const SMALL_W = 90;
   const SMALL_H = 70;
   const SIDES = ['top', 'right', 'bottom', 'left'];
@@ -131,7 +133,7 @@
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -267,6 +269,8 @@
     out.traceWidth = clamp(num(raw.traceWidth, 2), 1, 16);
     out.traceIgnoreNames = raw.traceIgnoreNames === true;
     out.groupFrames = raw.groupFrames !== false;
+    out.linkShape = LINK_SHAPES.includes(raw.linkShape) ? raw.linkShape : 'curved';
+    out.linkBend = clamp(num(raw.linkBend, 50), 0, 150);
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
@@ -621,20 +625,69 @@
     return point?.axis && link[key + 'Dir'] ? { ...point, dir: link[key + 'Dir'] } : point;
   }
 
-  // Cubic curve whose control points lie on each connector's normal, so both ends meet their side at 90°.
-  function linkPath(a, b) {
-    const d = clamp(Math.hypot(b.x - a.x, b.y - a.y) * 0.5, 30, 220);
-    return `M${a.x},${a.y} C${a.x + a.nx * d},${a.y + a.ny * d} ${b.x + b.nx * d},${b.y + b.ny * d} ${b.x},${b.y}`;
+  // The corners of a straight or right-angled (polyline) link from a to b. A polyline leaves each
+  // connector along its normal and turns at right angles only.
+  function linkCorners(a, b) {
+    if (schema.linkShape !== 'polyline') return [a, b];
+    const p = { x: a.x + a.nx * LINK_STUB, y: a.y + a.ny * LINK_STUB };
+    const q = { x: b.x + b.nx * LINK_STUB, y: b.y + b.ny * LINK_STUB };
+    // Whether each end leaves sideways. An end with no direction (the pointer) follows the other.
+    const sideways = (end, other) => (end.nx || end.ny ? end.nx !== 0 : other.nx || other.ny ? other.nx !== 0 : true);
+    const ha = sideways(a, b);
+    const hb = sideways(b, a);
+    // Two ends facing the same way turn beyond the farther one; otherwise halfway between them.
+    const turnAt = (u, v, same, forward) => (same ? (forward ? Math.max(u, v) : Math.min(u, v)) : (u + v) / 2);
+    let turns;
+    if (ha && hb) {
+      const x = turnAt(p.x, q.x, a.nx === b.nx, a.nx > 0);
+      turns = [{ x, y: p.y }, { x, y: q.y }];
+    } else if (!ha && !hb) {
+      const y = turnAt(p.y, q.y, a.ny === b.ny, a.ny > 0);
+      turns = [{ x: p.x, y }, { x: q.x, y }];
+    } else {
+      turns = [ha ? { x: q.x, y: p.y } : { x: p.x, y: q.y }];
+    }
+    return [a, p, ...turns, q, b];
   }
 
-  // Point halfway along the curve linkPath(a, b) draws.
-  function linkMidpoint(a, b) {
-    const d = clamp(Math.hypot(b.x - a.x, b.y - a.y) * 0.5, 30, 220);
-    return {
-      x: (a.x + 3 * (a.x + a.nx * d) + 3 * (b.x + b.nx * d) + b.x) / 8,
-      y: (a.y + 3 * (a.y + a.ny * d) + 3 * (b.y + b.ny * d) + b.y) / 8,
-    };
+  // One stretch of a link from a to b, drawn in the schema's link style: its path data, points
+  // that bound it, and the point halfway along (where a name goes).
+  function linkStretch(a, b) {
+    if (schema.linkShape === 'curved') {
+      // A cubic curve whose control points lie on each connector's normal, so both ends meet their
+      // side at 90°. They stand off by half the distance between the ends at the default bend of 50%.
+      const k = clamp(Math.hypot(b.x - a.x, b.y - a.y) * 0.5, 30, 220) * (schema.linkBend / 50);
+      const c1 = { x: a.x + a.nx * k, y: a.y + a.ny * k };
+      const c2 = { x: b.x + b.nx * k, y: b.y + b.ny * k };
+      const at = (t) => {
+        const u = 1 - t;
+        return {
+          x: u * u * u * a.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * b.x,
+          y: u * u * u * a.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * b.y,
+        };
+      };
+      return {
+        d: `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`,
+        points: Array.from({ length: 17 }, (_, i) => at(i / 16)),
+        mid: at(0.5),
+      };
+    }
+    const points = linkCorners(a, b);
+    const lengths = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y));
+    let rest = lengths.reduce((sum, len) => sum + len, 0) / 2;
+    let mid = points[0];
+    for (let i = 0; i < lengths.length; i++) {
+      if (rest <= lengths[i] && lengths[i] > 0) {
+        const t = rest / lengths[i];
+        mid = { x: points[i].x + (points[i + 1].x - points[i].x) * t, y: points[i].y + (points[i + 1].y - points[i].y) * t };
+        break;
+      }
+      rest -= lengths[i];
+    }
+    return { d: 'M' + points.map((p) => `${p.x},${p.y}`).join(' L'), points, mid };
   }
+
+  const linkPath = (a, b) => linkStretch(a, b).d;
 
   // In order: the link's own colour, its group's links colour, the colour of a block connector it
   // ends at, then the colour of a link connector it ends at. Two ends of the same kind with
@@ -1259,8 +1312,8 @@
     return dot;
   }
 
-  // What to draw for each link: its curve (as path data and as the end pairs it runs between),
-  // colour, dash pattern and the point its name is written at.
+  // What to draw for each link: its line (as path data, with points that bound it), colour, dash
+  // pattern and the point its name is written at.
   function linkShapes(routes) {
     const shapes = [];
     for (const link of schema.links) {
@@ -1270,16 +1323,16 @@
       const a = aim(rawA, rawB);
       const b = aim(rawB, rawA);
       const route = routes.get(link.id);
-      const curves = route ? [[route.a, route.entry], [route.exit, route.b]] : [[a, b]];
+      const parts = (route ? [[route.a, route.entry], [route.exit, route.b]] : [[a, b]]).map(([p, q]) => linkStretch(p, q));
       // Dash lengths grow with the line width so dashes and dots keep their look.
       const w = schema.linkWidth;
       shapes.push({
         link,
-        curves,
-        d: curves.map(([p, q]) => linkPath(p, q)).join(' '),
+        d: parts.map((part) => part.d).join(' '),
+        points: parts.flatMap((part) => part.points),
         color: linkColor(link),
         dash: { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style],
-        mid: linkMidpoint(...curves[0]), // a grouped link is labelled on its way into the group
+        mid: parts[0].mid, // a grouped link is labelled on its way into the group
       });
     }
     return shapes;
@@ -1885,12 +1938,12 @@
   }
 
   // `mixed`: the selected elements differ, so no value is shown until the slider is moved.
-  function slider(value, min, max, apply, mixed = false) {
+  function slider(value, min, max, apply, mixed = false, unit = ' px') {
     const input = h('input', { type: 'range', min, max, step: 1, value });
-    const label = h('span', { class: 'slider-value' }, mixed ? 'mixed' : value + ' px');
+    const label = h('span', { class: 'slider-value' }, mixed ? 'mixed' : value + unit);
     input.addEventListener('input', () => {
       apply(Number(input.value));
-      label.textContent = input.value + ' px';
+      label.textContent = input.value + unit;
       render();
     });
     input.addEventListener('change', commit);
@@ -2784,7 +2837,39 @@
     $('#schema-params').replaceChildren(
       field('Corner radius', slider(schema.radius, 0, MAX_RADIUS, (v) => { schema.radius = v; })),
     );
+    renderLinkParams();
+    renderTraceParams();
+    renderPalette();
+    paletteDialog.showModal();
+  }
+
+  function renderLinkParams() {
+    // Each link style is shown as a small drawing of a link in that style.
+    const shapes = [
+      ['curved', 'M3,8 C14,8 16,2 27,2', 'Curved'],
+      ['straight', 'M3,8 L27,2', 'Straight'],
+      ['polyline', 'M3,8 H15 V2 H27', 'Polyline: straight runs with right-angled turns'],
+    ].map(([shape, d, title]) => {
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 30 10');
+      svg.setAttribute('class', 'style-icon');
+      svg.append(svgPath('', d));
+      return h('button', {
+        class: 'icon-only' + (schema.linkShape === shape ? ' active' : ''),
+        title,
+        onclick: () => {
+          schema.linkShape = shape;
+          commit();
+          render();
+          renderLinkParams();
+        },
+      }, svg);
+    });
+    const bend = slider(schema.linkBend, 0, 150, (v) => { schema.linkBend = v; }, false, ' %');
+    bend.firstChild.disabled = schema.linkShape !== 'curved';
     $('#schema-link-params').replaceChildren(
+      h('div', { class: 'field' }, h('span', {}, 'Link style'), h('div', { class: 'segmented' }, ...shapes)),
+      field('Curve bend', bend),
       field('Line width', slider(schema.linkWidth, 1, 10, (v) => { schema.linkWidth = v; })),
       field('Link connector size', slider(schema.junctionSize, 6, 32, (v) => { schema.junctionSize = v; })),
       field('Frame grouped ends', h('input', {
@@ -2798,9 +2883,6 @@
         },
       })),
     );
-    renderTraceParams();
-    renderPalette();
-    paletteDialog.showModal();
   }
 
   function renderTraceParams() {
@@ -3071,19 +3153,10 @@
     const shapes = linkShapes(routes);
     ctx.save();
     ctx.lineCap = 'round';
-    for (const { curves, d, color, dash } of shapes) {
+    ctx.lineJoin = 'round';
+    for (const { points, d, color, dash } of shapes) {
       const w = schema.linkWidth;
-      for (const [p, q] of curves) {
-        // The area the curve covers, from points along it.
-        const k = clamp(Math.hypot(q.x - p.x, q.y - p.y) * 0.5, 30, 220);
-        for (let i = 0; i <= 16; i++) {
-          const t = i / 16;
-          const u = 1 - t;
-          const x = u * u * u * p.x + 3 * u * u * t * (p.x + p.nx * k) + 3 * u * t * t * (q.x + q.nx * k) + t * t * t * q.x;
-          const y = u * u * u * p.y + 3 * u * u * t * (p.y + p.ny * k) + 3 * u * t * t * (q.y + q.ny * k) + t * t * t * q.y;
-          mark(x - w, y - w, x + w, y + w);
-        }
-      }
+      for (const p of points) mark(p.x - w, p.y - w, p.x + w, p.y + w);
       const path = new Path2D(d);
       ctx.setLineDash(dash ? dash.split(' ').map(Number) : []);
       if (isPale(color)) {

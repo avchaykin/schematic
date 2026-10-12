@@ -38,7 +38,8 @@ Everything else works offline.
 ### Links
 
 - Drag from one connector to another to link them.
-- Links are curves that meet each connector at a right angle to its side.
+- Links are curves that meet each connector at a right angle to its side. The schema parameters
+  can switch all links to straight lines or to right-angled polylines instead.
 - Shift+drag from a connector to pick up the link ends attached to it and drop them on another connector.
   If some of those links are selected, only they move; otherwise all of them do.
 - Each link has a name (drawn on the link), an ID, a description, a colour, a line style (solid, dashed or dotted)
@@ -113,6 +114,8 @@ Everything else works offline.
 ### Schema parameters
 
 - Corner radius for all blocks.
+- Link style for all links: curved, straight, or polyline (straight runs with right-angled turns),
+  and how strongly curved links bend.
 - Line width of all links, and the size of all link connectors.
 - Whether lined-up connectors of grouped links get a frame.
 - Colour and width of the trace mark. With no colour there is no mark and the other links just
