@@ -115,7 +115,8 @@ Everything else works offline.
 
 - Corner radius for all blocks.
 - Link style for all links: curved, straight, or polyline (straight runs with right-angled turns),
-  and how strongly curved links bend.
+  and how strongly curved links bend. Polyline links that would run along the same line, such as
+  those of a group, are spaced apart.
 - Line width of all links, and the size of all link connectors.
 - Whether lined-up connectors of grouped links get a frame.
 - Colour and width of the trace mark. With no colour there is no mark and the other links just

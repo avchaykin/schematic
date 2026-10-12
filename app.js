@@ -672,7 +672,11 @@
         mid: at(0.5),
       };
     }
-    const points = linkCorners(a, b);
+    return cornerLine(linkCorners(a, b));
+  }
+
+  // The same for a line through the given corners.
+  function cornerLine(points) {
     const lengths = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y));
     let rest = lengths.reduce((sum, len) => sum + len, 0) / 2;
     let mid = points[0];
@@ -688,6 +692,74 @@
   }
 
   const linkPath = (a, b) => linkStretch(a, b).d;
+
+  // Polyline links whose middle runs would lie on top of each other are moved apart. A link that
+  // turns twice has one run free to slide sideways; runs on the same line that overlap are spaced
+  // out around it, in an order that keeps the links from crossing where it can. Runs that start
+  // from the same point stay together, as one line that forks.
+  function spreadPolylines(parts) {
+    const gap = Math.max(8, schema.linkWidth * 3);
+    for (const [u, v] of [['x', 'y'], ['y', 'x']]) { // u: where a run sits; v: the direction it runs in
+      const units = [];
+      const byEnd = new Map();
+      for (const part of parts) {
+        if (part.points.length !== 6) continue;
+        const [, p, s, e, q] = part.points;
+        if (Math.abs(s[u] - e[u]) > 0.01 || Math.abs(s[v] - e[v]) < 0.01) continue;
+        const keys = [s, e].map((point) => `${point.x},${point.y}`);
+        let unit = byEnd.get(keys[0]) || byEnd.get(keys[1]);
+        if (!unit) {
+          // Which side each neighbouring run comes in from decides the order that avoids crossings.
+          const s1 = Math.sign(p[u] - s[u]);
+          const s2 = Math.sign(q[u] - e[u]);
+          const z = s1 !== 0 && s2 !== 0 && s1 !== s2;
+          const from = s1 < 0 ? s[v] : e[v];
+          const to = s1 < 0 ? e[v] : s[v];
+          unit = {
+            at: s[u],
+            lo: Infinity,
+            hi: -Infinity,
+            room: Infinity,
+            runs: [],
+            kind: z ? (to > from ? 0 : 1) : 2,
+            order: z ? (to > from ? -from : from) : -(s1 || s2 || -1) * Math.abs(e[v] - s[v]),
+          };
+          units.push(unit);
+        }
+        for (const key of keys) byEnd.set(key, unit);
+        unit.runs.push(s, e);
+        unit.lo = Math.min(unit.lo, s[v], e[v]);
+        unit.hi = Math.max(unit.hi, s[v], e[v]);
+        for (const d of [Math.abs(p[u] - s[u]), Math.abs(q[u] - e[u])]) if (d > 0.01) unit.room = Math.min(unit.room, d);
+      }
+      units.sort((m, n) => Math.round(m.at * 2) - Math.round(n.at * 2) || m.lo - n.lo);
+      let cluster = [];
+      let hi = 0;
+      const spread = () => {
+        if (cluster.length < 2) return;
+        cluster.sort((m, n) => m.kind - n.kind || m.order - n.order);
+        // Closer together when there is little room before the runs would pass their own ends.
+        const room = Math.min(...cluster.map((unit) => unit.room));
+        const step = Math.max(2, Math.min(gap, (2 * (room - 2)) / (cluster.length - 1)));
+        cluster.forEach((unit, i) => {
+          const shift = (i - (cluster.length - 1) / 2) * step;
+          for (const point of new Set(unit.runs)) point[u] += shift;
+        });
+      };
+      for (const unit of units) {
+        if (cluster.length && Math.abs(unit.at - cluster[0].at) < 0.5 && unit.lo < hi - 0.01) {
+          cluster.push(unit);
+          hi = Math.max(hi, unit.hi);
+        } else {
+          spread();
+          cluster = [unit];
+          hi = unit.hi;
+        }
+      }
+      spread();
+    }
+    for (const part of parts) if (part.points.length === 6) Object.assign(part, cornerLine(part.points));
+  }
 
   // In order: the link's own colour, its group's links colour, the colour of a block connector it
   // ends at, then the colour of a link connector it ends at. Two ends of the same kind with
@@ -1316,6 +1388,7 @@
   // pattern and the point its name is written at.
   function linkShapes(routes) {
     const shapes = [];
+    const drawn = []; // each link with the stretches it is made of
     for (const link of schema.links) {
       const rawA = linkEnd(link, 'from');
       const rawB = linkEnd(link, 'to');
@@ -1324,6 +1397,10 @@
       const b = aim(rawB, rawA);
       const route = routes.get(link.id);
       const parts = (route ? [[route.a, route.entry], [route.exit, route.b]] : [[a, b]]).map(([p, q]) => linkStretch(p, q));
+      drawn.push({ link, parts });
+    }
+    if (schema.linkShape === 'polyline') spreadPolylines(drawn.flatMap((item) => item.parts));
+    for (const { link, parts } of drawn) {
       // Dash lengths grow with the line width so dashes and dots keep their look.
       const w = schema.linkWidth;
       shapes.push({
