@@ -1289,9 +1289,12 @@
       const items = [];
       for (const link of schema.links) {
         if (link.via !== g.id) continue;
-        let a = linkEnd(link, 'from');
-        let b = linkEnd(link, 'to');
-        if (!a || !b) continue;
+        const from = linkEnd(link, 'from');
+        const to = linkEnd(link, 'to');
+        if (!from || !to) continue;
+        // Each end remembers its connector, so a frame knows what it holds.
+        let a = { ...from, conn: link.from };
+        let b = { ...to, conn: link.to };
         // Links have no direction: the nearer end comes in on the left (or top).
         if (dist(b, left) + dist(a, right) < dist(a, left) + dist(b, right)) [a, b] = [b, a];
         items.push({ link, a, b });
@@ -1336,6 +1339,7 @@
         frames.push({
           group,
           points: unique,
+          conns: unique.map((p) => p.conn),
           lineWidth: groupFrameWidth(group),
           x: x1 - r,
           y: y1 - r,
@@ -1465,6 +1469,7 @@
   // ---------- canvas rendering ----------
 
   const blockEls = new Map();
+  let endFrames = []; // the frames around grouped links' ends as last drawn, for dragging them
   let frame = 0;
 
   function render() {
@@ -1729,14 +1734,20 @@
       return text;
     };
     const frames = groupFrames(routes);
-    for (const f of frames) {
+    endFrames = frames;
+    frames.forEach((f, i) => {
       const rect = document.createElementNS(SVG_NS, 'rect');
       rect.setAttribute('class', 'group-frame');
       for (const [key, value] of Object.entries({ x: f.x, y: f.y, width: f.width, height: f.height, rx: f.r })) rect.setAttribute(key, value);
       rect.style.stroke = f.color;
       rect.style.strokeWidth = f.lineWidth + 'px';
-      nodes.push(rect);
-    }
+      // An unseen copy takes the pointer: dragging a frame moves the link connectors in it.
+      const grip = rect.cloneNode();
+      grip.setAttribute('class', 'frame-grip');
+      grip.removeAttribute('style');
+      grip.dataset.frame = i;
+      nodes.push(rect, grip);
+    });
     // Minimal groups: one line each, which selects the group when clicked.
     for (const bus of groupBuses(routes, frames)) {
       if (selection?.type === 'block' && selection.id === bus.group.id) nodes.push(svgPath('link-halo', bus.d));
@@ -2178,6 +2189,7 @@
     const handleEl = target.closest('.handle');
     const linkEl = target.closest('[data-link]');
     const busEl = target.closest('[data-group]');
+    const frameEl = target.closest('[data-frame]');
 
     if (block && e.shiftKey && !connEl && !handleEl) {
       // Shift+click adds an element to the selection or takes it out.
@@ -2214,6 +2226,15 @@
       } else {
         startMove(e, block);
       }
+    } else if (frameEl) {
+      // A frame around grouped links' ends: its link connectors move together. Connectors on
+      // blocks stay with their blocks.
+      const held = (endFrames[frameEl.dataset.frame]?.conns || []).map((id) => findConnector(id)?.block);
+      const dots = [...new Set(held.filter((b) => b?.kind === 'junction'))];
+      if (dots.length) {
+        select(blockSelection(dots.map((b) => b.id)));
+        startMove(e, dots[0], dots.slice(1));
+      }
     } else if (busEl) {
       // The single line of a minimal group stands for its (hidden) block.
       select({ type: 'block', id: busEl.dataset.group });
@@ -2244,7 +2265,7 @@
   viewport.addEventListener('pointerleave', () => setHover(null));
 
   viewport.addEventListener('dblclick', (e) => {
-    if (e.target.closest('.connector, [data-link], [data-group]')) return;
+    if (e.target.closest('.connector, [data-link], [data-group], [data-frame]')) return;
     if (e.target.closest('.block')) {
       const input = inspector.querySelector('[data-role="block-name"]');
       input?.focus();

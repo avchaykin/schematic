@@ -196,6 +196,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .link-trace { fill: none; stroke: var(--trace); stroke-width: calc(var(--link-width, 2px) + 2 * var(--trace-width, 2px)); stroke-opacity: .45; stroke-linecap: round; }
 .link.dimmed, .link-outline.dimmed { opacity: .4; }
 .group-frame { fill: none; stroke: #64748b; stroke-width: 2px; }
+.frame-grip { fill: transparent; stroke: transparent; stroke-width: 8px; pointer-events: all; cursor: move; }
 .group-bus { fill: none; stroke: #64748b; stroke-width: 2px; stroke-linecap: round; stroke-linejoin: round; }
 .group-bus.dimmed { opacity: .4; }
 /* A minimal group is only its name tag; the rest of its (unseen) block lets the pointer through. */

@@ -105,6 +105,7 @@ Everything else works offline.
 - When the connectors that a group's links end at, on one side of the group, lie in one horizontal
   or vertical line, a frame is drawn around them: a rectangle with round ends, in the group's border
   colour. This can be switched off in the schema parameters.
+- Dragging such a frame moves the link connectors in it together (connectors on blocks stay put).
 - A group can be shown in a minimal form instead: no block, just a single link between the frames
   around the two sets of connectors. The group's name sits on that link in a small tag; the link
   runs through the tag, so dragging the tag reroutes the link. Clicking the tag or the link selects the group.
