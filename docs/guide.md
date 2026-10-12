@@ -22,6 +22,9 @@ To move several elements at once, Shift+drag on empty canvas to draw a selection
 (or Shift+click them one by one), then drag any one of them. With several elements selected the panel also
 offers **Align** and **Spread** buttons to line them up or space them evenly.
 
+The same panel shows the settings the selected elements have in common, such as background and
+border for blocks. Where they differ the setting reads "mixed"; pick a value to give it to all of them.
+
 ## 2. Add connectors
 
 Connectors are the dots on a block's sides that links attach to.

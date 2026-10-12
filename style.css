@@ -372,6 +372,7 @@ dialog h2 { margin: 0; font-size: 15px; }
 .swatch.add .mi { font-size: 14px; }
 
 .color-dot { width: 16px; height: 16px; margin: 1px; border-radius: 50%; border: 1px solid rgb(15 23 42 / .25); }
+.color-dot.mixed { background: conic-gradient(#ef4444, #eab308, #22c55e, #3b82f6, #a855f7, #ef4444); }
 .color-dot.none {
   background:
     linear-gradient(to top right, transparent calc(50% - 1px), var(--danger) calc(50% - 1px), var(--danger) calc(50% + 1px), transparent calc(50% + 1px)),

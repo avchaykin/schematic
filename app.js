@@ -1720,9 +1720,10 @@
     return field('Description', area);
   }
 
-  function slider(value, min, max, apply) {
+  // `mixed`: the selected elements differ, so no value is shown until the slider is moved.
+  function slider(value, min, max, apply, mixed = false) {
     const input = h('input', { type: 'range', min, max, step: 1, value });
-    const label = h('span', { class: 'slider-value' }, value + ' px');
+    const label = h('span', { class: 'slider-value' }, mixed ? 'mixed' : value + ' px');
     input.addEventListener('input', () => {
       apply(Number(input.value));
       label.textContent = input.value + ' px';
@@ -1758,10 +1759,12 @@
   }
 
   // One-line colour setting: a button showing the current colour; the palette opens below on click.
+  // `value` is null when a multi-selection disagrees.
   function colorField(label, key, value, apply, noneValue = 'transparent') {
+    const mixed = value === null;
     const none = value === noneValue;
-    const dot = h('span', { class: 'color-dot' + (none ? ' none' : '') });
-    if (!none) dot.style.background = value;
+    const dot = h('span', { class: 'color-dot' + (mixed ? ' mixed' : none ? ' none' : '') });
+    if (!none && !mixed) dot.style.background = value;
     const button = h('button', {
       class: 'color-button',
       title: 'Click to choose a colour',
@@ -1770,7 +1773,7 @@
         colorPickerConn = colorPickerConn === key ? null : key;
         renderInspector();
       },
-    }, dot, none ? 'none' : value);
+    }, dot, mixed ? 'mixed' : none ? 'none' : value);
     const out = [field(label, button)];
     if (colorPickerConn === key) out.push(h('div', { class: 'conn-colors' }, swatches(value, apply, noneValue)));
     return out;
@@ -2034,14 +2037,15 @@
     ];
   }
 
-  // Buttons that set block[key] to one of `options` ([value, icon, tooltip]).
-  function choiceField(label, block, key, options) {
+  // Buttons that pick one of `options` ([value, icon, tooltip]). `current` is null when a
+  // multi-selection disagrees.
+  function choiceButtons(label, current, options, apply) {
     return h('div', { class: 'field' }, h('span', {}, label), h('div', { class: 'segmented' },
       ...options.map(([value, glyph, title]) => h('button', {
-        class: 'icon-only' + (block[key] === value ? ' active' : ''),
+        class: 'icon-only' + (current === value ? ' active' : ''),
         title,
         onclick: () => {
-          block[key] = value;
+          apply(value);
           commit();
           render();
           renderInspector();
@@ -2049,6 +2053,17 @@
       }, icon(glyph))),
     ));
   }
+
+  // Buttons that set block[key] to one of `options`.
+  function choiceField(label, block, key, options) {
+    return choiceButtons(label, block[key], options, (value) => { block[key] = value; });
+  }
+
+  const TITLE_ALIGN = [
+    ['left', 'format_align_left', 'Align left'],
+    ['center', 'format_align_center', 'Centre'],
+    ['right', 'format_align_right', 'Align right'],
+  ];
 
   function titleInspector(block) {
     const text = h('textarea', { rows: 2, value: block.name, spellcheck: false, 'data-role': 'block-name' });
@@ -2066,11 +2081,7 @@
       h('h3', {}, 'Appearance'),
       field('Text size', slider(block.fontSize, 8, 96, (v) => { block.fontSize = v; })),
       ...colorField('Colour', 'block:title', block.color || '', (c) => { block.color = c; }, ''),
-      choiceField('Align', block, 'align', [
-        ['left', 'format_align_left', 'Align left'],
-        ['center', 'format_align_center', 'Centre'],
-        ['right', 'format_align_right', 'Align right'],
-      ]),
+      choiceField('Align', block, 'align', TITLE_ALIGN),
       ...attributesSection(block),
       h('h3', {}, 'Actions'),
       h('div', { class: 'row wrap' },
@@ -2122,6 +2133,62 @@
     render();
   }
 
+  // Settings the selected elements have in common, one section per kind of element. A setting on
+  // which they differ shows as mixed; choosing a value gives it to all of them.
+  function multiAppearance(blocks) {
+    const out = [];
+    const shared = (items, get) => (items.every((b) => get(b) === get(items[0])) ? get(items[0]) : null);
+    const prop = (items, key) => shared(items, (b) => b[key] ?? '');
+    const setAll = (items, key) => (v) => {
+      for (const b of items) {
+        b[key] = v;
+        syncClones(b); // clones outside the selection follow too
+      }
+    };
+    const sliderFor = (items, key, min, max) => {
+      const value = prop(items, key);
+      return slider(value ?? items[0][key], min, max, setAll(items, key), value === null);
+    };
+
+    const boxes = blocks.filter((b) => !b.kind || b.kind === 'group' || b.kind === 'frame');
+    if (boxes.length) {
+      const frames = boxes.filter((b) => b.kind === 'frame').length;
+      out.push(
+        h('h3', {}, `${frames === boxes.length ? 'Frames' : frames ? 'Blocks and frames' : 'Blocks'} (${boxes.length})`),
+        ...colorField('Background', 'multi:background', prop(boxes, 'background'), setAll(boxes, 'background')),
+        ...colorField('Border', 'multi:border', prop(boxes, 'border'), setAll(boxes, 'border')),
+        field('Border width', sliderFor(boxes, 'borderWidth', 0, MAX_BORDER)),
+        styleField('Border style', prop(boxes, 'borderStyle'), setAll(boxes, 'borderStyle')),
+      );
+    }
+
+    const junctions = blocks.filter((b) => b.kind === 'junction');
+    if (junctions.length) {
+      out.push(
+        h('h3', {}, `Link connectors (${junctions.length})`),
+        ...colorField('Colour', 'multi:junction', shared(junctions, (b) => b.connectors[0].color || ''),
+          (c) => { for (const b of junctions) setConnectorColor(b.connectors[0], c); }, ''),
+        ...colorField('Border', 'multi:junction-border', prop(junctions, 'borderColor'), setAll(junctions, 'borderColor'), ''),
+        choiceButtons('Links go', prop(junctions, 'axis'), [
+          ['horizontal', 'swap_horiz', 'Links leave left or right'],
+          ['vertical', 'swap_vert', 'Links leave up or down'],
+        ], setAll(junctions, 'axis')),
+      );
+    }
+
+    const titles = blocks.filter((b) => b.kind === 'title');
+    if (titles.length) {
+      out.push(
+        h('h3', {}, `Titles (${titles.length})`),
+        field('Text size', sliderFor(titles, 'fontSize', 8, 96)),
+        ...colorField('Colour', 'multi:title', prop(titles, 'color'), setAll(titles, 'color'), ''),
+        choiceButtons('Align', prop(titles, 'align'), TITLE_ALIGN, setAll(titles, 'align')),
+      );
+    }
+    out.push(h('p', { class: 'note' }, '"Mixed" means the selected elements differ. Choosing a value applies it to all of them.'));
+    return out;
+  }
+
   function multiInspector(blocks) {
     const label = (b) => b.name || b.id;
     const tool = (mode, glyph, title, enabled = true) => h('button', {
@@ -2149,6 +2216,7 @@
         tool('vspread', 'vertical_distribute', 'Spread vertically with equal gaps', blocks.length > 2),
       ),
       blocks.length > 2 ? null : h('p', { class: 'note' }, 'Select three or more elements to spread them.'),
+      ...multiAppearance(blocks),
       h('p', { class: 'note' }, 'Drag any of them to move them all (a link connector by its arrows handle). Shift+click an element to add it or take it out; click one to select it alone.'),
       h('h3', {}, 'Actions'),
       h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete selected')),
