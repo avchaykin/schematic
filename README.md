@@ -52,6 +52,8 @@ Everything else works offline.
   colour when it changes. A link connector created by a Shift-drop takes the same colour, and the
   name of the connector the link was drawn from (and its border colour, if that is a link connector).
 - White and very pale links get a thin grey edge so they stay visible.
+- A small eyedropper button beside a connector's colour (and a link connector's) gives it the colour
+  of a link attached to it; if the attached links differ in colour, each click picks the next one.
 
 ### Link connectors
 

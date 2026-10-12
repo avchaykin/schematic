@@ -2220,7 +2220,8 @@
 
   // One-line colour setting: a button showing the current colour; the palette opens below on click.
   // `value` is null when a multi-selection disagrees.
-  function colorField(label, key, value, apply, noneValue = 'transparent') {
+  // `extra` is an optional small button shown beside it.
+  function colorField(label, key, value, apply, noneValue = 'transparent', extra = null) {
     const mixed = value === null;
     const none = value === noneValue;
     const dot = h('span', { class: 'color-dot' + (mixed ? ' mixed' : none ? ' none' : '') });
@@ -2234,9 +2235,37 @@
         renderInspector();
       },
     }, dot, mixed ? 'mixed' : none ? 'none' : value);
-    const out = [field(label, button)];
+    const out = [field(label, extra ? h('div', { class: 'row', style: 'margin:0' }, button, extra) : button)];
     if (colorPickerConn === key) out.push(h('div', { class: 'conn-colors' }, swatches(value, apply, noneValue)));
     return out;
+  }
+
+  // The colours of the links on a connector, as they would be without the connector's own colour.
+  function attachedLinkColors(conn) {
+    const own = conn.color;
+    conn.color = '';
+    const colors = [...new Set(linksAt(conn.id).map((l) => linkColor(l).toLowerCase()).filter(Boolean))];
+    conn.color = own;
+    return colors;
+  }
+
+  // Helper button: gives a connector the colour of a link attached to it. If its links have
+  // different colours, each click moves on to the next one.
+  function matchLinkButton(conn) {
+    return h('button', {
+      class: 'icon-only',
+      title: 'Colour as the attached link (click again for the next link colour)',
+      disabled: !attachedLinkColors(conn).length,
+      onclick: () => {
+        const colors = attachedLinkColors(conn);
+        if (!colors.length) return;
+        // Set directly: the links keep their colours, so the next click can reach the next one.
+        conn.color = colors[(colors.indexOf((conn.color || '').toLowerCase()) + 1) % colors.length];
+        commit();
+        render();
+        renderInspector();
+      },
+    }, icon('colorize'));
   }
 
   // Colour chooser over the schema's palette. `none` is the value the crossed swatch stands for.
@@ -2362,6 +2391,7 @@
     const row = h('div', { class: 'row' },
       boundInput(conn.name, (v) => { conn.name = v; }, { placeholder: 'Connector name' }),
       colorButton,
+      matchLinkButton(conn),
       picker,
       h('button', {
         class: 'icon-only',
@@ -2774,7 +2804,7 @@
       field('Name', boundInput(block.name, (v) => { block.name = v; nameEdited(block); }, { 'data-role': 'block-name' })),
       field('ID', idField(block)),
       descriptionField(block),
-      ...colorField('Colour', 'block:junction', conn.color || '', (c) => setConnectorColor(conn, c), ''),
+      ...colorField('Colour', 'block:junction', conn.color || '', (c) => setConnectorColor(conn, c), '', matchLinkButton(conn)),
       ...colorField('Border', 'block:junction-border', block.borderColor || '', (c) => { block.borderColor = c; }, ''),
       h('div', { class: 'field' }, h('span', {}, 'Links go'), h('div', { class: 'segmented' },
         ...[['horizontal', 'swap_horiz', 'Left/right'], ['vertical', 'swap_vert', 'Up/down']].map(([axis, glyph, label]) => h('button', {
