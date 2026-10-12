@@ -3256,7 +3256,11 @@
 
   function updateChrome() {
     if (document.activeElement !== nameInput) nameInput.value = schema.name;
-    $('#dirty').hidden = !isDirty();
+    // Unsaved changes show as a mark on the Save button, which takes no room of its own.
+    const unsaved = isDirty();
+    const saveButton = $('[data-action="save"]');
+    saveButton.classList.toggle('unsaved', unsaved);
+    saveButton.title = (unsaved ? 'Unsaved changes — save' : 'Save') + ' to ' + (folder?.ready ? `the folder "${folder.handle.name}"` : 'browser storage') + ' (Ctrl/⌘+S)';
     $('[data-action="undo"]').disabled = !undoStack.length;
     $('[data-action="redo"]').disabled = !redoStack.length;
     $('[data-action="trace"]').classList.toggle('active', traceOn);
