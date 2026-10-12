@@ -120,7 +120,7 @@ Everything else works offline.
 
 ### Canvas
 
-- Pan by dragging the background; zoom with Ctrl/⌘+scroll or the toolbar; fit the schema to the view.
+- Pan by dragging the background; zoom with the scroll wheel or the toolbar; Shift+scroll also pans; fit the schema to the view.
 - Shift+drag on empty canvas draws a selection box; Shift+click adds or removes single elements.
   Dragging one selected element moves them all, and Delete removes them all.
 - Several selected elements can be aligned (left, centre, right, top, middle, bottom) or spread with
@@ -151,7 +151,8 @@ Everything else works offline.
 | Save | Ctrl/⌘+S |
 | Trace paths by name on hover | T |
 | Ignore the grid | Hold Alt while dragging |
-| Zoom | Ctrl/⌘+scroll |
+| Zoom | Scroll (or pinch on a trackpad) |
+| Pan | Drag the background, or Shift+scroll |
 
 ## Files
 

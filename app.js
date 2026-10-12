@@ -1638,12 +1638,15 @@
 
   viewport.addEventListener('wheel', (e) => {
     e.preventDefault();
-    if (e.ctrlKey || e.metaKey) {
+    const lines = e.deltaMode === 1 ? 33 : 1; // some browsers report the wheel in lines, not pixels
+    if (!e.shiftKey) {
+      // Scrolling zooms about the pointer. A trackpad pinch arrives with Ctrl set and in small steps.
       const rect = viewport.getBoundingClientRect();
-      zoomAt(e.clientX - rect.left, e.clientY - rect.top, Math.exp(-e.deltaY * 0.01));
+      const rate = e.ctrlKey || e.metaKey ? 0.01 : 0.002;
+      zoomAt(e.clientX - rect.left, e.clientY - rect.top, Math.exp(-e.deltaY * lines * rate));
     } else {
-      view.x -= e.deltaX;
-      view.y -= e.deltaY;
+      view.x -= e.deltaX * lines;
+      view.y -= e.deltaY * lines;
       render();
       saveCurrentSoon();
     }
