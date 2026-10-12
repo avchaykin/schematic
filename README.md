@@ -104,7 +104,8 @@ Everything else works offline.
 
 - Corner radius for all blocks.
 - Line width of all links, and the size of all link connectors.
-- Colour and width of the trace mark.
+- Colour and width of the trace mark. With no colour there is no mark and the other links just
+  fade; **Same as link** marks each link in its own colour, making traced links bolder.
 - A colour palette stored with the schema and offered wherever a colour is chosen.
   Colours can be added and removed.
 

@@ -206,7 +206,11 @@ main { flex: 1; display: flex; min-height: 0; }
 .connector:hover, .connector.target { transform: scale(1.35); background: var(--accent); border-color: var(--accent); }
 
 /* Part of the path marked by the Trace tool. */
-#world .connector.traced { box-shadow: 0 0 0 var(--trace-width, 2px) color-mix(in srgb, var(--trace) 60%, transparent); }
+#viewport.trace-own .connector.traced { box-shadow: 0 0 0 var(--trace-width, 2px) var(--trace); }
+#viewport.trace-own .link-trace { stroke: var(--link); stroke-opacity: 1; }
+.swatches .text-choice { padding: 2px 8px; }
+.swatches .text-choice.active { border-color: var(--accent); background: var(--accent-soft); }
+#viewport:not(.trace-none) .connector.traced { box-shadow: 0 0 0 var(--trace-width, 2px) color-mix(in srgb, var(--trace) 60%, transparent); }
 
 .conn-label {
   position: absolute;

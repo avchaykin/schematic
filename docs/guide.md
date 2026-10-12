@@ -52,7 +52,8 @@ it is drawn black.
 To follow a signal across the schema, turn on **Trace** in the toolbar (or press T) and hover a
 connector or a link: every link and connector on the path sharing its name is marked, also where
 the path runs through a block between two connectors of the same name. Unnamed links in between
-belong to the path. The mark's colour and width are set under **Schema**.
+belong to the path. The mark's colour and width are set under **Schema**;
+it can also be switched off or follow each link's own colour.
 
 ## 4. Join links at a link connector
 

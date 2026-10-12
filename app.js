@@ -5,6 +5,7 @@
   const CUR_KEY = 'schematic:current';
   const CLIP_KEY = 'schematic:clipboard';
   const TRACE_KEY = 'schematic:trace';
+  const TRACE_COLOR = '#f59e0b';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const GRID = 10;
   const MIN_SIZE = 24;
@@ -126,7 +127,7 @@
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: '', traceWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -257,7 +258,8 @@
     out.radius = clamp(num(raw.radius, 8), 0, MAX_RADIUS);
     out.junctionSize = clamp(num(raw.junctionSize, 12), 6, 32);
     out.linkWidth = clamp(num(raw.linkWidth, 2), 1, 10);
-    out.traceColor = isHex(raw.traceColor) ? raw.traceColor.toLowerCase() : ''; // '' is the default amber
+    // A colour, 'none' (no mark, other links just fade) or 'link' (each link's own colour, drawn bolder).
+    out.traceColor = isHex(raw.traceColor) ? raw.traceColor.toLowerCase() : ['none', 'link'].includes(raw.traceColor) ? raw.traceColor : TRACE_COLOR;
     out.traceWidth = clamp(num(raw.traceWidth, 2), 1, 16);
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
@@ -1018,8 +1020,10 @@
     viewport.style.setProperty('--link-width', schema.linkWidth + 'px');
     viewport.style.setProperty('--junction-size', schema.junctionSize + 'px');
     viewport.style.setProperty('--trace-width', schema.traceWidth + 'px');
-    if (schema.traceColor) viewport.style.setProperty('--trace', schema.traceColor);
+    if (isHex(schema.traceColor)) viewport.style.setProperty('--trace', schema.traceColor);
     else viewport.style.removeProperty('--trace');
+    viewport.classList.toggle('trace-none', schema.traceColor === 'none');
+    viewport.classList.toggle('trace-own', schema.traceColor === 'link');
     linksG.setAttribute('transform', `translate(${view.x} ${view.y}) scale(${view.zoom})`);
     const cell = GRID * 2 * view.zoom;
     viewport.style.backgroundSize = `${cell}px ${cell}px`;
@@ -1073,7 +1077,13 @@
     for (const el of world.querySelectorAll('.connector.target')) el.classList.remove('target');
     const target = tempLink?.target || reattach?.target;
     if (target) world.querySelector(`[data-conn="${CSS.escape(target)}"]`)?.classList.add('target');
-    for (const el of world.querySelectorAll('.connector')) el.classList.toggle('traced', Boolean(trace?.conns.has(el.dataset.conn)));
+    for (const el of world.querySelectorAll('.connector')) {
+      const traced = Boolean(trace?.conns.has(el.dataset.conn));
+      el.classList.toggle('traced', traced);
+      // Marked in its own colour when the mark follows the links' colours.
+      if (traced && schema.traceColor === 'link') el.style.setProperty('--trace', findConnector(el.dataset.conn)?.conn.color || '#334155');
+      else el.style.removeProperty('--trace');
+    }
   }
 
   function buildJunction(el, block) {
@@ -1194,10 +1204,14 @@
       const d = route ? `${linkPath(route.a, route.entry)} ${linkPath(route.exit, route.b)}` : linkPath(a, b);
       if (selection?.type === 'link' && selection.ids.includes(link.id)) nodes.push(svgPath('link-halo', d));
       const traced = trace?.links.has(link.id);
-      if (traced) nodes.push(svgPath('link-trace', d));
+      const color = linkColor(link);
+      if (traced && schema.traceColor !== 'none') {
+        const mark = svgPath('link-trace', d);
+        if (schema.traceColor === 'link' && color) mark.style.stroke = color;
+        nodes.push(mark);
+      }
       // While a path is marked, every other link fades back.
       const line = svgPath(trace && !traced ? 'link dimmed' : 'link', d);
-      const color = linkColor(link);
       if (color) line.style.stroke = color;
       // White and near-white lines get a thin grey edge so they stay visible on the canvas.
       // Dash lengths grow with the line width so dashes and dots keep their look.
@@ -2541,8 +2555,17 @@
   }
 
   function renderTraceParams() {
-    const colors = swatches(schema.traceColor, (c) => { schema.traceColor = c; }, '');
-    colors.firstChild.title = 'Default';
+    const colors = swatches(schema.traceColor, (c) => { schema.traceColor = c; }, 'none');
+    colors.firstChild.title = 'None: no mark, other links just fade';
+    colors.append(h('button', {
+      class: 'text-choice' + (schema.traceColor === 'link' ? ' active' : ''),
+      title: 'Mark each link in its own colour, so traced links look bolder',
+      onclick: () => {
+        schema.traceColor = 'link';
+        commit();
+        render();
+      },
+    }, 'Same as link'));
     // Show the new choice once it is made; a rebuild while the custom picker is open would close it.
     const refresh = (e) => { if (e.type === 'change' || e.target.type !== 'color') renderTraceParams(); };
     colors.addEventListener('click', refresh);
