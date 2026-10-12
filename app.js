@@ -427,7 +427,156 @@
 
   // ---------- storage ----------
 
+  // Saved schemas live in the browser's storage, or, once the user has picked a folder (Chrome and
+  // Edge only), as one JSON file each in that folder. Either way they are read and written through
+  // readLibrary / writeLibrary, as { name: { savedAt, schema } }.
+
+  const canUseFolder = typeof window.showDirectoryPicker === 'function';
+  let folder = null; // { handle, ready, cache, files }: ready once access is granted and its files are read
+  let folderQueue = Promise.resolve(); // file operations run one after another
+
+  function folderJob(job) {
+    folderQueue = folderQueue.then(job).catch((err) => toast('Could not write to the folder: ' + err.message, true));
+  }
+
+  // The folder's handle is kept in IndexedDB (local storage cannot hold it), to reconnect after a reload.
+  function handleStore(mode, run) {
+    return new Promise((resolve, reject) => {
+      const open = indexedDB.open('schematic', 1);
+      open.onupgradeneeded = () => open.result.createObjectStore('kv');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const tx = open.result.transaction('kv', mode);
+        const request = run(tx.objectStore('kv'));
+        tx.oncomplete = () => {
+          open.result.close();
+          resolve(request.result);
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  }
+
+  function rememberFolder(handle) {
+    handleStore('readwrite', (store) => (handle ? store.put(handle, 'folder') : store.delete('folder'))).catch(() => {});
+  }
+
+  // Reads every schema file in the folder. A schema is known by the name inside its file.
+  async function scanFolder() {
+    const cache = {};
+    const files = {};
+    for await (const [fileName, entry] of folder.handle.entries()) {
+      if (entry.kind !== 'file' || !fileName.toLowerCase().endsWith('.json')) continue;
+      try {
+        const file = await entry.getFile();
+        const raw = JSON.parse(await file.text());
+        if (!raw || !Array.isArray(raw.blocks)) continue; // some other JSON file
+        const name = String(raw.name || '').trim() || fileName.slice(0, -5);
+        if (cache[name]) continue;
+        cache[name] = { savedAt: file.lastModified, schema: raw };
+        files[name] = fileName;
+      } catch { /* unreadable or not JSON: not a schema */ }
+    }
+    Object.assign(folder, { cache, files, ready: true });
+  }
+
+  // The file a schema is kept in: its name made safe for a file name, and not another schema's file.
+  function folderFile(name) {
+    if (folder.files[name]) return folder.files[name];
+    const taken = new Set(Object.values(folder.files).map((f) => f.toLowerCase()));
+    const base = name.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'schema';
+    let fileName = base + '.json';
+    for (let n = 2; taken.has(fileName.toLowerCase()); n++) fileName = `${base} (${n}).json`;
+    folder.files[name] = fileName;
+    return fileName;
+  }
+
+  function folderWrite(name, entry) {
+    const handle = folder.handle;
+    const fileName = folderFile(name);
+    folderJob(async () => {
+      const file = await handle.getFileHandle(fileName, { create: true });
+      const out = await file.createWritable();
+      await out.write(JSON.stringify(entry.schema, null, 2));
+      await out.close();
+    });
+  }
+
+  function folderRemove(name) {
+    const handle = folder.handle;
+    const fileName = folder.files[name];
+    delete folder.files[name];
+    if (fileName) folderJob(() => handle.removeEntry(fileName));
+  }
+
+  // After a reload the browser wants the user to confirm access to the folder again, and only
+  // lets us ask in answer to a click. So this runs at the start of Save and Load.
+  async function ensureFolder() {
+    if (!folder || folder.ready) return;
+    try {
+      if (await folder.handle.requestPermission({ mode: 'readwrite' }) === 'granted') await scanFolder();
+      else toast('No access to the folder: using browser storage for now.', true);
+    } catch (err) {
+      toast('Could not open the folder: ' + err.message, true);
+    }
+    updateChrome();
+  }
+
+  async function connectFolder() {
+    let handle;
+    try {
+      handle = await window.showDirectoryPicker({ id: 'schematic', mode: 'readwrite' });
+    } catch {
+      return; // cancelled
+    }
+    const inBrowser = folder?.ready ? {} : readLibrary();
+    await folderQueue;
+    folder = { handle, ready: false, cache: {}, files: {} };
+    try {
+      await scanFolder();
+    } catch (err) {
+      folder = null;
+      toast('Could not read the folder: ' + err.message, true);
+      return;
+    }
+    rememberFolder(handle);
+    // Bring along what was saved in the browser, so nothing is left behind there.
+    const missing = Object.keys(inBrowser).filter((name) => !folder.cache[name]);
+    if (missing.length && confirm(`Copy ${missing.length} schema(s) saved in this browser into the folder "${handle.name}"?`)) {
+      writeLibrary({ ...folder.cache, ...Object.fromEntries(missing.map((name) => [name, inBrowser[name]])) });
+    }
+    if (libName !== null && !folder.cache[libName]) libName = null;
+    saveCurrent();
+    updateChrome();
+    renderLibrary();
+    toast(`Working in the folder "${handle.name}"`);
+  }
+
+  function disconnectFolder() {
+    folder = null;
+    rememberFolder(null);
+    if (libName !== null && !readLibrary()[libName]) libName = null;
+    saveCurrent();
+    updateChrome();
+    renderLibrary();
+    toast('Back to browser storage. The files stay in the folder.');
+  }
+
+  // In a folder, a schema that has been saved once is written again after every change.
+  let autosaveTimer = 0;
+  function autosaveSoon() {
+    clearTimeout(autosaveTimer);
+    const applies = () => folder?.ready && libName !== null && schema.name === libName && Boolean(folder.cache[libName]);
+    if (!applies()) return;
+    autosaveTimer = setTimeout(() => {
+      if (!applies()) return;
+      writeLibrary({ ...readLibrary(), [libName]: { savedAt: Date.now(), schema: JSON.parse(lastSnapshot) } });
+      updateChrome();
+    }, 800);
+  }
+
   function readLibrary() {
+    if (folder?.ready) return { ...folder.cache };
     try {
       const lib = JSON.parse(localStorage.getItem(LIB_KEY) || '{}');
       return lib && typeof lib === 'object' ? lib : {};
@@ -437,6 +586,13 @@
   }
 
   function writeLibrary(lib) {
+    if (folder?.ready) {
+      // Only what changed is written; failures are reported when they happen.
+      for (const [name, entry] of Object.entries(lib)) if (folder.cache[name] !== entry) folderWrite(name, entry);
+      for (const name of Object.keys(folder.cache)) if (!(name in lib)) folderRemove(name);
+      folder.cache = { ...lib };
+      return true;
+    }
     try {
       localStorage.setItem(LIB_KEY, JSON.stringify(lib));
       return true;
@@ -476,6 +632,7 @@
     redoStack = [];
     lastSnapshot = snap;
     saveCurrent();
+    autosaveSoon();
     updateChrome();
   }
 
@@ -484,6 +641,7 @@
     lastSnapshot = snap;
     validateSelection();
     saveCurrent();
+    autosaveSoon();
     refreshAll();
   }
 
@@ -3082,6 +3240,13 @@
     $('[data-action="redo"]').disabled = !redoStack.length;
     $('[data-action="trace"]').classList.toggle('active', traceOn);
     $('[data-action="trace"]').setAttribute('aria-pressed', traceOn);
+    const folderButton = $('[data-action="folder"]');
+    folderButton.hidden = !canUseFolder;
+    folderButton.classList.toggle('active', Boolean(folder?.ready));
+    folderButton.classList.toggle('pending', Boolean(folder && !folder.ready));
+    folderButton.title = !folder ? 'Keep schemas as files in a folder on this computer'
+      : folder.ready ? `Working in the folder "${folder.handle.name}": saved schemas are files there and are kept up to date as you work`
+        : `Click to reconnect to the folder "${folder.handle.name}"`;
     $('[data-action="theme"] .mi').textContent = isDark() ? 'light_mode' : 'dark_mode';
     $('[data-action="theme"]').setAttribute('aria-label', isDark() ? 'Light mode' : 'Dark mode');
     if (!selection) renderInspector();
@@ -3096,8 +3261,9 @@
 
   const confirmDiscard = () => !isDirty() || confirm('Discard unsaved changes to the current schema?');
 
-  function saveToLibrary() {
+  async function saveToLibrary() {
     document.activeElement?.blur?.();
+    await ensureFolder();
     commit();
     const name = schema.name.trim() || 'Untitled';
     const lib = readLibrary();
@@ -3109,15 +3275,50 @@
     libName = name;
     saveCurrent();
     updateChrome();
-    toast(`Saved "${name}"`);
+    toast(folder?.ready ? `Saved "${name}" in the folder "${folder.handle.name}"` : `Saved "${name}"`);
   }
 
-  function openLibrary() {
+  async function openLibrary() {
+    await ensureFolder();
+    if (folder?.ready) {
+      // Files may have been added or changed from outside, by another program or by file sync.
+      await folderQueue;
+      await scanFolder().catch((err) => toast('Could not read the folder: ' + err.message, true));
+      updateChrome();
+    }
     renderLibrary();
-    libraryDialog.showModal();
+    if (!libraryDialog.open) libraryDialog.showModal();
+  }
+
+  // The toolbar's folder button: connect, reconnect, or show what is in the folder.
+  async function folderAction() {
+    if (!folder) await connectFolder();
+    else if (!folder.ready) await ensureFolder();
+    else await openLibrary();
+  }
+
+  // Where saved schemas are kept, with the buttons to change that.
+  function renderLibraryWhere() {
+    const where = $('#library-where');
+    if (!canUseFolder) {
+      where.replaceChildren(h('span', { class: 'note' }, 'Kept in this browser\'s storage.'));
+    } else if (folder?.ready) {
+      where.replaceChildren(
+        icon('folder_special'),
+        h('span', { class: 'grow' }, `Files in the folder "${folder.handle.name}", saved automatically as you work.`),
+        h('button', { onclick: connectFolder }, 'Change folder'),
+        h('button', { onclick: disconnectFolder, title: 'Go back to this browser\'s storage; the files stay in the folder' }, 'Stop using folder'),
+      );
+    } else {
+      where.replaceChildren(
+        h('span', { class: 'grow note' }, 'Kept in this browser\'s storage. A folder keeps them as files instead, saved automatically.'),
+        h('button', { onclick: folder ? () => openLibrary() : connectFolder }, icon('folder_special'), folder ? `Reconnect "${folder.handle.name}"` : 'Use a folder…'),
+      );
+    }
   }
 
   function renderLibrary() {
+    renderLibraryWhere();
     const lib = readLibrary();
     const names = Object.keys(lib).sort((a, b) => (lib[b].savedAt || 0) - (lib[a].savedAt || 0));
     const list = $('#library-list');
@@ -3816,7 +4017,7 @@
       const imported = normalizeSchema(raw);
       if (!confirmDiscard()) return;
       replaceDocument(imported);
-      toast(`Imported "${imported.name}" — use Save to keep it in browser storage`);
+      toast(`Imported "${imported.name}" — use Save to keep it`);
     } catch (err) {
       toast('Import failed: ' + err.message, true);
     }
@@ -3826,6 +4027,7 @@
     'new': () => { if (confirmDiscard()) replaceDocument(emptySchema()); },
     'save': saveToLibrary,
     'library': openLibrary,
+    'folder': folderAction,
     'close-library': () => libraryDialog.close(),
     'settings': openSettings,
     'close-palette': () => paletteDialog.close(),
@@ -3897,4 +4099,15 @@
   } catch { /* storage unavailable: trace starts off */ }
 
   refreshAll();
+
+  // Back to the folder used last time. If the browser still grants access its files are read
+  // straight away; otherwise the first Save or Load asks for it.
+  if (canUseFolder) {
+    handleStore('readonly', (store) => store.get('folder')).then(async (handle) => {
+      if (!handle) return;
+      folder = { handle, ready: false, cache: {}, files: {} };
+      if (await handle.queryPermission({ mode: 'readwrite' }) === 'granted') await scanFolder();
+      updateChrome();
+    }).catch(() => {});
+  }
 })();

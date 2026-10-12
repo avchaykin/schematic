@@ -143,6 +143,10 @@ Everything else works offline.
 ### Storage
 
 - Save schemas by name to browser local storage; load or delete them from a list.
+- In Chrome or Edge, schemas can live in a folder on the computer instead: one JSON file per
+  schema, in the export format. Pick the folder with the toolbar's folder button (or in the Load
+  dialog); a schema that has been saved once is then written again automatically after every change.
+  After a reload the browser may ask once to confirm access to the folder.
 - The working copy is kept automatically, so a reload does not lose unsaved edits.
 - Export to a JSON file and import it back.
 - Export the whole schema as a PNG picture or a one-page PDF, on white, at twice screen resolution,

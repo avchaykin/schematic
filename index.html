@@ -28,6 +28,7 @@
       <button data-action="new" class="icon-only" title="New schema" aria-label="New schema"><span class="mi">note_add</span></button>
       <button data-action="save" class="icon-only" title="Save to browser storage (Ctrl/⌘+S)" aria-label="Save"><span class="mi">save</span></button>
       <button data-action="library" class="icon-only" title="Load or delete saved schemas" aria-label="Load"><span class="mi">folder_open</span></button>
+      <button data-action="folder" class="icon-only" title="Keep schemas as files in a folder on this computer" aria-label="Folder storage" hidden><span class="mi">folder_special</span></button>
     </div>
 
     <div class="tool-group" role="group" aria-label="Import and export">
@@ -85,6 +86,7 @@
       <h2>Saved schemas</h2>
       <button data-action="close-library" class="icon-only" title="Close"><span class="mi">close</span></button>
     </header>
+    <div id="library-where"></div>
     <div id="library-list"></div>
     <footer>
       <span class="note">Export all writes every saved schema to one file; Import file reads such a file (or a single schema) back.</span>

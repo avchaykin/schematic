@@ -134,6 +134,8 @@ Click a palette colour to remove it, or pick a new one and press **Add colour**.
 ## 9. Save, share and edit as text
 
 - **Save** (the disk icon) stores the schema in the browser under its name; **Load** lists saved schemas to open or delete.
+- In Chrome or Edge, the folder button next to Load keeps saved schemas as files in a folder you
+  choose, and saves the open one automatically as you work. Without it they are kept in the browser.
 - **Export** downloads a JSON file and **Import** reads one back, for moving schemas between browsers.
 - **PNG** and **PDF** download a picture of the whole schema, for documents and slides. The PDF is
   one page the size of the schema.
