@@ -4,6 +4,7 @@
   const LIB_KEY = 'schematic:library';
   const CUR_KEY = 'schematic:current';
   const CLIP_KEY = 'schematic:clipboard';
+  const TRACE_KEY = 'schematic:trace';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const GRID = 10;
   const MIN_SIZE = 24;
@@ -120,6 +121,9 @@
   let reattach = null; // { from, links, x, y, target } while dragging link ends off connector `from`
   let iconPickerOpen = false;
   let colorPickerConn = null; // which colour chooser is open in the inspector: a connector id or a block field key
+  let traceOn = false; // the Trace tool: hovering a connector or link marks the path it belongs to
+  let hover = null; // { conn } or { link }: what the pointer is over while tracing
+  let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
     return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
@@ -637,6 +641,80 @@
     return '';
   }
 
+  // ---------- trace ----------
+  // A path is followed by name: from the hovered connector or link, along links and connectors of
+  // the same name, and through a block from one connector to its others of that name. Unnamed
+  // links and connectors carry whatever name reaches them.
+
+  const traceName = (text) => String(text || '').trim().toLowerCase();
+  const connectorTraceName = ({ block, conn }) => traceName(block.kind === 'junction' ? block.name : conn.name);
+  const linksAt = (connId) => schema.links.filter((l) => l.from === connId || l.to === connId);
+
+  function tracePath(start) {
+    const links = new Set();
+    const conns = new Set();
+    const names = new Set();
+    const queue = [];
+    const link = start.link ? findLink(start.link) : null;
+    const found = start.conn ? findConnector(start.conn) : null;
+    // An unnamed starting point takes the names of what it touches.
+    if (link) {
+      const ends = [findConnector(link.from), findConnector(link.to)].filter(Boolean);
+      const own = traceName(link.name);
+      for (const name of own ? [own] : ends.map(connectorTraceName)) if (name) names.add(name);
+      links.add(link.id);
+      queue.push({ link });
+    } else if (found) {
+      const own = connectorTraceName(found);
+      for (const name of own ? [own] : linksAt(found.conn.id).map((l) => traceName(l.name))) if (name) names.add(name);
+      conns.add(found.conn.id);
+      queue.push({ found });
+    } else {
+      return null;
+    }
+    const passes = (name) => !name || names.has(name);
+    const visitLink = (l) => {
+      if (links.has(l.id) || !passes(traceName(l.name))) return;
+      links.add(l.id);
+      queue.push({ link: l });
+    };
+    const visitConn = (id) => {
+      const end = conns.has(id) ? null : findConnector(id);
+      if (!end || !passes(connectorTraceName(end))) return;
+      conns.add(id);
+      queue.push({ found: end });
+    };
+    while (queue.length) {
+      const item = queue.pop();
+      if (item.link) {
+        visitConn(item.link.from);
+        visitConn(item.link.to);
+        continue;
+      }
+      const { block, conn } = item.found;
+      for (const l of linksAt(conn.id)) visitLink(l);
+      const name = traceName(conn.name);
+      if (name) for (const c of block.connectors) if (traceName(c.name) === name) visitConn(c.id);
+    }
+    return { links, conns };
+  }
+
+  function setHover(next) {
+    if ((hover?.conn ?? null) === (next?.conn ?? null) && (hover?.link ?? null) === (next?.link ?? null)) return;
+    hover = next;
+    render();
+  }
+
+  function toggleTrace() {
+    traceOn = !traceOn;
+    hover = null;
+    try {
+      localStorage.setItem(TRACE_KEY, traceOn ? '1' : '');
+    } catch { /* not remembered; the tool still works */ }
+    updateChrome();
+    render();
+  }
+
   // Top-left position that centres a new element of the given size in the view, off any existing one.
   function freeSpot(width, height) {
     const rect = viewport.getBoundingClientRect();
@@ -930,6 +1008,7 @@
 
   function draw() {
     syncClones(selectedBlock());
+    trace = traceOn && hover ? tracePath(hover) : null;
     drawBlocks();
     drawLinks();
     world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
@@ -989,6 +1068,7 @@
     for (const el of world.querySelectorAll('.connector.target')) el.classList.remove('target');
     const target = tempLink?.target || reattach?.target;
     if (target) world.querySelector(`[data-conn="${CSS.escape(target)}"]`)?.classList.add('target');
+    for (const el of world.querySelectorAll('.connector')) el.classList.toggle('traced', Boolean(trace?.conns.has(el.dataset.conn)));
   }
 
   function buildJunction(el, block) {
@@ -1108,7 +1188,10 @@
       const route = routes.get(link.id);
       const d = route ? `${linkPath(route.a, route.entry)} ${linkPath(route.exit, route.b)}` : linkPath(a, b);
       if (selection?.type === 'link' && selection.ids.includes(link.id)) nodes.push(svgPath('link-halo', d));
-      const line = svgPath('link', d);
+      const traced = trace?.links.has(link.id);
+      if (traced) nodes.push(svgPath('link-trace', d));
+      // While a path is marked, every other link fades back.
+      const line = svgPath(trace && !traced ? 'link dimmed' : 'link', d);
       const color = linkColor(link);
       if (color) line.style.stroke = color;
       // White and near-white lines get a thin grey edge so they stay visible on the canvas.
@@ -1117,7 +1200,7 @@
       const dash = { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style];
       if (dash) line.setAttribute('stroke-dasharray', dash);
       if (isPale(color)) {
-        const outline = svgPath('link-outline', d);
+        const outline = svgPath(trace && !traced ? 'link-outline dimmed' : 'link-outline', d);
         if (dash) outline.setAttribute('stroke-dasharray', dash);
         nodes.push(outline);
       }
@@ -1514,6 +1597,15 @@
     }
   });
 
+  // Trace: follow what the pointer is over. Left alone while a button is held, so a drag keeps its path.
+  viewport.addEventListener('pointermove', (e) => {
+    if (!traceOn || e.buttons) return;
+    const conn = e.target.closest?.('.connector')?.dataset.conn;
+    const link = e.target.closest?.('[data-link]')?.dataset.link;
+    setHover(conn ? { conn } : link ? { link } : null);
+  });
+  viewport.addEventListener('pointerleave', () => setHover(null));
+
   viewport.addEventListener('dblclick', (e) => {
     if (e.target.closest('.connector, [data-link]')) return;
     if (e.target.closest('.block')) {
@@ -1571,6 +1663,8 @@
     } else if (mod && key === 'g') {
       e.preventDefault();
       groupLinks(selectedLinks());
+    } else if (!mod && !e.altKey && key === 't') {
+      toggleTrace();
     } else if (key === 'delete' || key === 'backspace') {
       e.preventDefault();
       deleteSelection();
@@ -2341,6 +2435,8 @@
     $('#dirty').hidden = !isDirty();
     $('[data-action="undo"]').disabled = !undoStack.length;
     $('[data-action="redo"]').disabled = !redoStack.length;
+    $('[data-action="trace"]').classList.toggle('active', traceOn);
+    $('[data-action="trace"]').setAttribute('aria-pressed', traceOn);
     if (!selection) renderInspector();
   }
 
@@ -2602,6 +2698,7 @@
     'add-frame': addFrame,
     'undo': undo,
     'redo': redo,
+    'trace': toggleTrace,
     'zoom-in': () => zoomCentered(1.2),
     'zoom-out': () => zoomCentered(1 / 1.2),
     'zoom-reset': () => zoomCentered(1 / view.zoom),
@@ -2639,6 +2736,9 @@
       }
     }
   } catch { /* corrupt working copy: start empty */ }
+  try {
+    traceOn = localStorage.getItem(TRACE_KEY) === '1';
+  } catch { /* storage unavailable: trace starts off */ }
 
   refreshAll();
 })();

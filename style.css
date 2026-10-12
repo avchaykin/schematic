@@ -8,6 +8,7 @@
   --accent-soft: #dbeafe;
   --danger: #dc2626;
   --link: #475569;
+  --trace: #f59e0b;
 }
 
 * { box-sizing: border-box; }
@@ -59,6 +60,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 button.primary:hover { background: #1d4ed8; }
 button.danger { color: var(--danger); }
 button.icon-only { padding: 5px; }
+.toolbar button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
 input[type="text"], input[type="number"], input[type="search"], select {
   width: 100%;
@@ -153,6 +155,8 @@ main { flex: 1; display: flex; min-height: 0; }
 }
 .link-outline { fill: none; stroke: #94a3b8; stroke-width: calc(var(--link-width, 2px) + 2px); stroke-linecap: round; }
 .link-halo { fill: none; stroke: var(--accent); stroke-width: calc(var(--link-width, 2px) + 5px); stroke-opacity: .3; stroke-linecap: round; }
+.link-trace { fill: none; stroke: var(--trace); stroke-width: calc(var(--link-width, 2px) + 7px); stroke-opacity: .6; stroke-linecap: round; }
+.link.dimmed, .link-outline.dimmed { opacity: .25; }
 .link-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
 .link-temp { fill: none; stroke: var(--accent); stroke-width: var(--link-width, 2px); stroke-dasharray: 6 4; }
 
@@ -200,6 +204,9 @@ main { flex: 1; display: flex; min-height: 0; }
   transition: transform .08s;
 }
 .connector:hover, .connector.target { transform: scale(1.35); background: var(--accent); border-color: var(--accent); }
+
+/* Part of the path marked by the Trace tool. */
+#world .connector.traced { box-shadow: 0 0 0 3px var(--trace); }
 
 .conn-label {
   position: absolute;

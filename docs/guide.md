@@ -49,6 +49,11 @@ A link with no colour of its own takes one from what it is attached to, in this 
 a block connector, a link connector. If two block connectors at its ends have different colours,
 it is drawn black.
 
+To follow a signal across the schema, turn on **Trace** in the toolbar (or press T) and hover a
+connector or a link: every link and connector on the path sharing its name is marked, also where
+the path runs through a block between two connectors of the same name. Unnamed links in between
+belong to the path.
+
 ## 4. Join links at a link connector
 
 A link connector is a free-standing dot where several links meet, such as the orange "events"

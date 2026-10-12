@@ -91,6 +91,15 @@ Everything else works offline.
   for all its links or for each one.
 - Links can be moved into or out of a group; ungrouping removes the block and keeps the links.
 
+### Trace
+
+- **Trace** in the toolbar (or the T key) turns tracing on and off.
+- While it is on, hovering a connector or a link marks the whole path that shares its name: links
+  and connectors of that name, continuing through a block from one connector to its others of the
+  same name. Other links fade back.
+- Unnamed links and connectors do not break a path; a differently named one ends it. Names are
+  compared ignoring case. A link connector's name is the name of its dot.
+
 ### Schema parameters
 
 - Corner radius for all blocks.
@@ -138,6 +147,7 @@ Everything else works offline.
 | Delete the selection | Delete or Backspace |
 | Undo / redo | Ctrl/⌘+Z / Ctrl/⌘+Shift+Z |
 | Save | Ctrl/⌘+S |
+| Trace paths by name on hover | T |
 | Ignore the grid | Hold Alt while dragging |
 | Zoom | Ctrl/⌘+scroll |
 
