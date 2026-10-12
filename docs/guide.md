@@ -69,6 +69,9 @@ point below.
   canvas. A preview dot shows where it will appear; it takes the name and colour of the connector
   the link started from.
 - Drag from the dot to start another link, or drop a link onto it.
+- To continue a whole bundle, select several link connectors (Shift+click them) and Shift+drag from
+  one of them onto empty canvas: each gets a new link connector with its name and colour, and the
+  new links run through a link group.
 - Move it by its arrows handle (shown when selected) or by Alt+dragging the dot.
 - **Links go** sets whether links leave it left/right or up/down. The **Links** list below it
   lets you pick a side for an individual link.

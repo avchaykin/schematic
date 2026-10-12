@@ -58,6 +58,9 @@ Everything else works offline.
 - Any number of links can start or end at it, all meeting in one point.
 - Created from the toolbar, or by holding Shift while dropping a new link on empty canvas: a preview
   dot shows where the link connector will appear, with the link attached.
+- With several link connectors selected, Shift+drag from one of them onto empty canvas extends them
+  all: each gets a new link connector with the same name and colour, laid out the same way, linked
+  to it, and the new links are put into a link group. The new set is selected, so it can be extended again.
 - Links leave it at a right angle: left or right by default, or up or down if set so.
   Each link meeting there can also be given its own side (left, right, up or down).
 - It has a name, ID, description, colour, border colour and custom attributes; its colour is passed on to its links unless a block connector
@@ -144,6 +147,7 @@ Everything else works offline.
 | Link two connectors | Drag from one to the other |
 | New link ending in a new link connector | Drag from a connector, hold Shift, release on empty canvas |
 | Reattach links to another connector | Shift+drag from the connector they are on |
+| Extend several selected link connectors with a grouped set of links | Shift+drag from one of them onto empty canvas |
 | Move or reorder a connector | Alt+drag it |
 | Move a link connector | Drag its arrows handle, or Alt+drag the dot |
 | Select several elements | Shift+drag on empty canvas, or Shift+click them |

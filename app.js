@@ -119,6 +119,7 @@
   let redoStack = [];
   let lastSnapshot = JSON.stringify(schema);
   let tempLink = null; // { from, x, y, target } while dragging a new link
+  let multiLink = null; // [{ from, ghost }] while Shift+dragging new links off several selected link connectors
   let reattach = null; // { from, links, x, y, target } while dragging link ends off connector `from`
   let iconPickerOpen = false;
   let colorPickerConn = null; // which colour chooser is open in the inspector: a connector id or a block field key
@@ -946,8 +947,8 @@
     return routes;
   }
 
-  function groupLinks(links) {
-    if (links.length < 2) return;
+  // Creates a group block between the ends of `links` and routes them through it.
+  function addGroup(links) {
     const ends = links.flatMap((l) => [connectorWorld(l.from), connectorWorld(l.to)]).filter(Boolean);
     const width = 120;
     const height = Math.max(60, snap(links.length * 20 + 20));
@@ -974,7 +975,12 @@
     schema.blocks.push(block);
     followName(block);
     for (const l of links) l.via = block.id;
-    select({ type: 'block', id: block.id });
+    return block;
+  }
+
+  function groupLinks(links) {
+    if (links.length < 2) return;
+    select({ type: 'block', id: addGroup(links).id });
     commit();
   }
 
@@ -1190,6 +1196,16 @@
     return p;
   }
 
+  // Preview of a link connector about to be created.
+  function ghostDot(at) {
+    const dot = document.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('class', 'junction-ghost');
+    dot.setAttribute('cx', at.x);
+    dot.setAttribute('cy', at.y);
+    dot.setAttribute('r', schema.junctionSize / 2 - 1);
+    return dot;
+  }
+
   function drawLinks() {
     const nodes = [];
     const labels = []; // drawn last, above every line
@@ -1244,14 +1260,13 @@
         || (tempLink.ghost && { ...tempLink.ghost, nx: 0, ny: 0, axis: 'horizontal' })
         || { x: tempLink.x, y: tempLink.y, nx: 0, ny: 0 };
       if (a) nodes.push(svgPath('link-temp', linkPath(aim(a, b), aim(b, a))));
-      if (a && tempLink.ghost) {
-        const dot = document.createElementNS(SVG_NS, 'circle');
-        dot.setAttribute('class', 'junction-ghost');
-        dot.setAttribute('cx', tempLink.ghost.x);
-        dot.setAttribute('cy', tempLink.ghost.y);
-        dot.setAttribute('r', schema.junctionSize / 2 - 1);
-        nodes.push(dot);
-      }
+      if (a && tempLink.ghost) nodes.push(ghostDot(tempLink.ghost));
+    }
+    for (const { from, ghost } of multiLink || []) {
+      const a = connectorWorld(from);
+      if (!a) continue;
+      const b = { ...ghost, nx: 0, ny: 0, axis: a.axis };
+      nodes.push(svgPath('link-temp', linkPath(aim(a, b), aim(b, a))), ghostDot(ghost));
     }
     linksG.replaceChildren(...nodes, ...labels);
   }
@@ -1556,6 +1571,64 @@
     });
   }
 
+  // Shift+drag from one of several selected link connectors extends them all: each gets a new link
+  // connector of the same name and colour, laid out as they are, and a link to it. The new links
+  // run through a link group of their own. `onClick` runs instead if the pointer never moved.
+  function startMultiLink(e, junctions, grabbed, onClick) {
+    const place = (ev) => {
+      const over = document.elementFromPoint(ev.clientX, ev.clientY);
+      if (!over || !viewport.contains(over) || over.closest('.block')) return null; // only onto empty canvas
+      const p = toWorld(ev);
+      const dx = snap(p.x - grabbed.x);
+      const dy = snap(p.y - grabbed.y);
+      return junctions.map((j) => ({ from: j.connectors[0].id, ghost: { x: j.x + dx, y: j.y + dy } }));
+    };
+    let moved = false;
+    drag((ev) => {
+      moved = moved || Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) >= 4;
+      multiLink = moved ? place(ev) : null;
+      render();
+    }, (ev) => {
+      const items = moved ? place(ev) : null;
+      multiLink = null;
+      if (!moved) {
+        onClick();
+        return;
+      }
+      if (!items) {
+        render();
+        return;
+      }
+      const links = [];
+      const created = [];
+      items.forEach(({ from, ghost }, i) => {
+        const source = junctions[i];
+        const color = inheritedColor(from);
+        const junction = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), ghost.x, ghost.y,
+          { color, name: source.name, borderColor: source.borderColor, axis: source.axis });
+        schema.blocks.push(junction);
+        followName(junction);
+        created.push(junction.id);
+        links.push({
+          id: freshBlockId(new Set(schema.links.map((l) => l.id)), 'link'),
+          from,
+          to: junction.connectors[0].id,
+          color,
+          style: 'solid',
+          name: '',
+          description: '',
+          attributes: [],
+        });
+        schema.links.push(links[i]);
+      });
+      addGroup(links);
+      // The new set is selected, ready to be extended again.
+      select(blockSelection(created));
+      commit();
+      renderInspector();
+    });
+  }
+
   viewport.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.button !== 1) return;
     // Flush any pending inspector edit (fires its change handler) before selection moves on.
@@ -1586,6 +1659,11 @@
         // A link connector is all dot, so Shift+click (no drag) on it toggles it in the selection.
         const ids = selectedBlocks().map((b) => b.id);
         const toggled = ids.includes(block.id) ? ids.filter((id) => id !== block.id) : [...ids, block.id];
+        const set = selectedBlocks().filter((b) => b.kind === 'junction');
+        if (set.length > 1 && set.includes(block)) {
+          startMultiLink(e, set, block, () => select(blockSelection(toggled)));
+          return;
+        }
         window.addEventListener('pointerup', (ev) => {
           if (Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) select(blockSelection(toggled));
         }, { once: true });
