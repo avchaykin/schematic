@@ -92,6 +92,9 @@ Everything else works offline.
 - Select several links (Shift+click) and group them into a group block.
 - Grouped links run into the left side of the group block and out of its right side, without connectors.
   A group can be set to vertical instead, so links come in at the top and leave at the bottom.
+- When the connectors that a group's links end at, on one side of the group, lie in one horizontal
+  or vertical line, a frame is drawn around them: a rectangle with round ends, in the group's border
+  colour. This can be switched off in the schema parameters.
 - The group block has the usual block settings (name, icon, colours, attributes) and can set a colour
   for all its links or for each one.
 - Links can be moved into or out of a group; ungrouping removes the block and keeps the links.
@@ -111,6 +114,7 @@ Everything else works offline.
 
 - Corner radius for all blocks.
 - Line width of all links, and the size of all link connectors.
+- Whether lined-up connectors of grouped links get a frame.
 - Colour and width of the trace mark. With no colour there is no mark and the other links just
   fade; **Same as link** marks each link in its own colour, making traced links bolder.
 - A colour palette stored with the schema and offered wherever a colour is chosen.

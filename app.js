@@ -131,7 +131,7 @@
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -266,6 +266,7 @@
     out.traceColor = isHex(raw.traceColor) ? raw.traceColor.toLowerCase() : ['none', 'link'].includes(raw.traceColor) ? raw.traceColor : TRACE_COLOR;
     out.traceWidth = clamp(num(raw.traceWidth, 2), 1, 16);
     out.traceIgnoreNames = raw.traceIgnoreNames === true;
+    out.groupFrames = raw.groupFrames !== false;
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
@@ -951,10 +952,46 @@
         const t = (i + 1) / (items.length + 1);
         const entry = vertical ? { x: g.x + g.width * t, y: g.y, nx: 0, ny: -1 } : { x: g.x, y: g.y + g.height * t, nx: -1, ny: 0 };
         const exit = vertical ? { x: entry.x, y: g.y + g.height, nx: 0, ny: 1 } : { x: g.x + g.width, y: entry.y, nx: 1, ny: 0 };
-        routes.set(link.id, { a: aim(a, entry), b: aim(b, exit), entry, exit });
+        routes.set(link.id, { a: aim(a, entry), b: aim(b, exit), entry, exit, group: g });
       });
     }
     return routes;
+  }
+
+  // Frames around the connectors a group's links end at: one for each side of the group, when the
+  // connectors there (two or more) lie on one horizontal or vertical line. Each is a rectangle
+  // with round ends, in the colour of the group's border.
+  function groupFrames(routes) {
+    if (!schema.groupFrames) return [];
+    const byGroup = new Map();
+    for (const { group, a, b } of routes.values()) {
+      if (!byGroup.has(group)) byGroup.set(group, { a: [], b: [] });
+      byGroup.get(group).a.push(a);
+      byGroup.get(group).b.push(b);
+    }
+    const frames = [];
+    for (const [group, ends] of byGroup) {
+      for (const points of [ends.a, ends.b]) {
+        const unique = points.filter((p, i) => points.findIndex((q) => q.x === p.x && q.y === p.y) === i);
+        if (unique.length < 2) continue;
+        const x1 = Math.min(...unique.map((p) => p.x));
+        const x2 = Math.max(...unique.map((p) => p.x));
+        const y1 = Math.min(...unique.map((p) => p.y));
+        const y2 = Math.max(...unique.map((p) => p.y));
+        if (x2 - x1 > 0.5 && y2 - y1 > 0.5) continue; // not in one line
+        // Only link connectors carry an axis; block connectors have a fixed size.
+        const r = Math.max(...unique.map((p) => (p.axis ? schema.junctionSize : 12))) / 2 + 5;
+        frames.push({
+          x: x1 - r,
+          y: y1 - r,
+          width: x2 - x1 + 2 * r,
+          height: y2 - y1 + 2 * r,
+          r,
+          color: group.border && group.border !== 'transparent' ? group.border : '#64748b',
+        });
+      }
+    }
+    return frames;
   }
 
   // Creates a group block between the ends of `links` and routes them through it.
@@ -1224,8 +1261,7 @@
 
   // What to draw for each link: its curve (as path data and as the end pairs it runs between),
   // colour, dash pattern and the point its name is written at.
-  function linkShapes() {
-    const routes = groupRoutes();
+  function linkShapes(routes) {
     const shapes = [];
     for (const link of schema.links) {
       const rawA = linkEnd(link, 'from');
@@ -1252,7 +1288,15 @@
   function drawLinks() {
     const nodes = [];
     const labels = []; // drawn last, above every line
-    for (const { link, d, color, dash, mid } of linkShapes()) {
+    const routes = groupRoutes();
+    for (const f of groupFrames(routes)) {
+      const rect = document.createElementNS(SVG_NS, 'rect');
+      rect.setAttribute('class', 'group-frame');
+      for (const [key, value] of Object.entries({ x: f.x, y: f.y, width: f.width, height: f.height, rx: f.r })) rect.setAttribute(key, value);
+      rect.style.stroke = f.color;
+      nodes.push(rect);
+    }
+    for (const { link, d, color, dash, mid } of linkShapes(routes)) {
       if (selection?.type === 'link' && selection.ids.includes(link.id)) nodes.push(svgPath('link-halo', d));
       const traced = trace?.links.has(link.id);
       if (traced && schema.traceColor !== 'none') {
@@ -2743,6 +2787,16 @@
     $('#schema-link-params').replaceChildren(
       field('Line width', slider(schema.linkWidth, 1, 10, (v) => { schema.linkWidth = v; })),
       field('Link connector size', slider(schema.junctionSize, 6, 32, (v) => { schema.junctionSize = v; })),
+      field('Frame grouped ends', h('input', {
+        type: 'checkbox',
+        checked: schema.groupFrames,
+        title: 'Draw a frame around the connectors of grouped links when they lie in one line',
+        onchange: (e) => {
+          schema.groupFrames = e.target.checked;
+          commit();
+          render();
+        },
+      })),
     );
     renderTraceParams();
     renderPalette();
@@ -3005,8 +3059,16 @@
       write(title, b.x + 10, b.y + 6 + 9.1);
     }
 
-    // --- links, then their names above every line
-    const shapes = linkShapes();
+    // --- frames around grouped connectors, links, then the links' names above every line
+    const routes = groupRoutes();
+    for (const f of groupFrames(routes)) {
+      mark(f.x - 1, f.y - 1, f.x + f.width + 1, f.y + f.height + 1);
+      rounded(f.x, f.y, f.width, f.height, f.r);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = f.color;
+      ctx.stroke();
+    }
+    const shapes = linkShapes(routes);
     ctx.save();
     ctx.lineCap = 'round';
     for (const { curves, d, color, dash } of shapes) {
