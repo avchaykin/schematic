@@ -160,7 +160,27 @@ main { flex: 1; display: flex; min-height: 0; }
 .group-frame { fill: none; stroke: #64748b; stroke-width: 2px; }
 .group-bus { fill: none; stroke: #64748b; stroke-width: 2px; stroke-linecap: round; stroke-linejoin: round; }
 .group-bus.dimmed { opacity: .4; }
-.block.minimal { display: none; }
+/* A minimal group is only its name tag; the rest of its (unseen) block lets the pointer through. */
+.block.minimal { pointer-events: none; outline: none; }
+.group-tag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 14px;
+  height: 16px;
+  padding: 0 5px;
+  border: 1px solid #64748b;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 14px;
+  white-space: nowrap;
+  cursor: move;
+  pointer-events: auto;
+}
+.block.minimal.selected .group-tag, .block.minimal.multi .group-tag { box-shadow: 0 0 0 3px rgb(37 99 235 / .35); }
 .link-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
 .link-temp { fill: none; stroke: var(--accent); stroke-width: var(--link-width, 2px); stroke-dasharray: 6 4; }
 

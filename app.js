@@ -1087,8 +1087,8 @@
 
   const groupBlocks = () => schema.blocks.filter((b) => b.kind === 'group');
 
-  // A group shown in its minimal form: its block is not drawn and its links appear as one line.
-  // A group without links keeps its block, or there would be nothing of it to see.
+  // A group shown in its minimal form: its links appear as one line, and instead of its block there
+  // is a small name tag on that line, at the block's centre. A group without links keeps its block.
   const isMinimal = (b) => b.kind === 'group' && groupDisplay(b) === 'minimal' && schema.links.some((l) => l.via === b.id);
 
   // A group's own display, frame colour and frame width, or the schema's defaults where it sets none.
@@ -1168,15 +1168,15 @@
     return frames;
   }
 
-  // The single line each minimal group is drawn as, between its two frames, in the frames' colour
-  // and width and in the schema's link style. It leaves a frame the way its connectors point if
-  // they are on a block; otherwise from a long side, or towards the other frame.
+  // The single line each minimal group is drawn as: from one of its frames, through its name tag,
+  // to the other frame, in the frames' colour and width and in the schema's link style. Moving the
+  // tag therefore moves the line. It leaves a frame the way its connectors point if they are on a
+  // block; otherwise from a long side, or towards the tag.
   function groupBuses(routes, frames) {
     const buses = [];
     const centre = (f) => ({ x: f.x + f.width / 2, y: f.y + f.height / 2 });
-    const port = (f, other) => {
+    const port = (f, o) => {
       const c = centre(f);
-      const o = centre(other);
       const fixed = f.points.filter((p) => !p.axis);
       let nx;
       let ny;
@@ -1193,9 +1193,19 @@
       if (groupDisplay(group) !== 'minimal') continue;
       const [f1, f2] = frames.filter((f) => f.group === group);
       if (!f2) continue;
+      // Through the tag from left to right, or top to bottom; the frame nearer that side comes in there.
+      const tag = { x: group.x + group.width / 2, y: group.y + group.height / 2 };
+      const vertical = group.axis === 'vertical';
+      const inOrder = vertical ? centre(f1).y <= centre(f2).y : centre(f1).x <= centre(f2).x;
+      const [near, far] = inOrder ? [f1, f2] : [f2, f1];
+      const parts = [
+        linkStretch(port(near, tag), { ...tag, nx: vertical ? 0 : -1, ny: vertical ? -1 : 0 }),
+        linkStretch({ ...tag, nx: vertical ? 0 : 1, ny: vertical ? 1 : 0 }, port(far, tag)),
+      ];
       buses.push({
         group,
-        ...linkStretch(port(f1, f2), port(f2, f1)),
+        d: parts.map((part) => part.d).join(' '),
+        points: parts.flatMap((part) => part.points),
         color: f1.color,
         lineWidth: f1.lineWidth,
         links: [...routes].filter(([, route]) => route.group === group).map(([id]) => id),
@@ -1328,7 +1338,8 @@
       // Rebuild the inside only when something visible changed, so elements survive clicks and drags.
       const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.borderWidth, block.borderStyle, schema.radius,
         block.width, block.height, block.connectors, Boolean(block.cloneGroup),
-        block.kind, block.fontSize, block.color, block.align, block.borderColor]);
+        block.kind, block.fontSize, block.color, block.align, block.borderColor,
+        isMinimal(block) && groupFrameColor(block)]);
       if (el._sig !== sig) {
         el._sig = sig;
         buildBlock(el, block);
@@ -1415,6 +1426,13 @@
     for (const kind of ['junction', 'title', 'frame', 'comment']) el.classList.toggle(kind, block.kind === kind);
     if (block.kind === 'comment') {
       buildComment(el, block);
+      return;
+    }
+    if (isMinimal(block)) {
+      // Just a name tag, sitting on the group's line; dragging it moves the group, and so the line.
+      const tag = h('div', { class: 'group-tag', title: 'Drag to move the grouped link' }, block.name);
+      tag.style.borderColor = groupFrameColor(block);
+      el.replaceChildren(tag);
       return;
     }
     if (block.kind === 'frame') {
@@ -1553,7 +1571,6 @@
       const hit = svgPath('link-hit', bus.d);
       hit.dataset.group = bus.group.id;
       nodes.push(line, hit);
-      if (bus.group.name) labels.push(linkLabel(bus.group.name, bus.mid));
     }
     for (const { link, d, color, dash, mid } of linkShapes(routes)) {
       if (selection?.type === 'link' && selection.ids.includes(link.id)) nodes.push(svgPath('link-halo', d));
@@ -1716,7 +1733,6 @@
       const t = Math.min(startWorld.y, end.y);
       const b = Math.max(startWorld.y, end.y);
       const hit = schema.blocks.filter((k) => {
-        if (isMinimal(k)) return false; // its block is not on the canvas
         const inside = k.x >= l && k.y >= t && k.x + k.width <= r && k.y + k.height <= b;
         // A frame surrounds whatever is dragged over inside it, so it must be enclosed to count.
         return k.kind === 'frame' ? inside : k.x <= r && k.x + k.width >= l && k.y <= b && k.y + k.height >= t;
@@ -3459,8 +3475,7 @@
       ctx.stroke(path);
     }
     ctx.restore();
-    const names = [...shapes.map(({ link, mid }) => ({ name: link.name, mid })), ...buses.map(({ group, mid }) => ({ name: group.name, mid }))];
-    for (const { name, mid } of names) {
+    for (const { link: { name }, mid } of shapes) {
       if (!name) continue;
       font(500, 10);
       ctx.save();
@@ -3477,7 +3492,24 @@
 
     // --- everything else, in schema order
     for (const b of schema.blocks) {
-      if (b.kind === 'frame' || isMinimal(b)) continue;
+      if (b.kind === 'frame') continue;
+      if (isMinimal(b)) {
+        // The name tag on the group's line.
+        font(500, 10);
+        const w = Math.max(14, ctx.measureText(b.name).width + 12);
+        const cx = b.x + b.width / 2;
+        const cy = b.y + b.height / 2;
+        mark(cx - w / 2 - 1, cy - 9, cx + w / 2 + 1, cy + 9);
+        rounded(cx - w / 2, cy - 8, w, 16, 4);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = groupFrameColor(b);
+        ctx.stroke();
+        ctx.fillStyle = ink;
+        write(b.name, cx, cy, 'center');
+        continue;
+      }
       if (b.kind === 'junction') {
         const conn = b.connectors[0];
         const size = schema.junctionSize;

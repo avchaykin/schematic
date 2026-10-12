@@ -103,7 +103,8 @@ Everything else works offline.
   or vertical line, a frame is drawn around them: a rectangle with round ends, in the group's border
   colour. This can be switched off in the schema parameters.
 - A group can be shown in a minimal form instead: no block, just a single link between the frames
-  around the two sets of connectors, labelled with the group's name. Clicking that link selects the group.
+  around the two sets of connectors. The group's name sits on that link in a small tag; the link
+  runs through the tag, so dragging the tag reroutes the link. Clicking the tag or the link selects the group.
 - The frames, and the single link of a minimal group, have their own colour and line width, set on
   the group; without a colour they take the group's border colour.
 - The group block has the usual block settings (name, icon, colours, attributes) and can set a colour
