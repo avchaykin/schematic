@@ -126,7 +126,7 @@
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: '', traceWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -257,6 +257,8 @@
     out.radius = clamp(num(raw.radius, 8), 0, MAX_RADIUS);
     out.junctionSize = clamp(num(raw.junctionSize, 12), 6, 32);
     out.linkWidth = clamp(num(raw.linkWidth, 2), 1, 10);
+    out.traceColor = isHex(raw.traceColor) ? raw.traceColor.toLowerCase() : ''; // '' is the default amber
+    out.traceWidth = clamp(num(raw.traceWidth, 2), 1, 16);
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
@@ -1015,6 +1017,9 @@
     framesLayer.style.transform = world.style.transform;
     viewport.style.setProperty('--link-width', schema.linkWidth + 'px');
     viewport.style.setProperty('--junction-size', schema.junctionSize + 'px');
+    viewport.style.setProperty('--trace-width', schema.traceWidth + 'px');
+    if (schema.traceColor) viewport.style.setProperty('--trace', schema.traceColor);
+    else viewport.style.removeProperty('--trace');
     linksG.setAttribute('transform', `translate(${view.x} ${view.y}) scale(${view.zoom})`);
     const cell = GRID * 2 * view.zoom;
     viewport.style.backgroundSize = `${cell}px ${cell}px`;
@@ -2530,8 +2535,22 @@
       field('Line width', slider(schema.linkWidth, 1, 10, (v) => { schema.linkWidth = v; })),
       field('Link connector size', slider(schema.junctionSize, 6, 32, (v) => { schema.junctionSize = v; })),
     );
+    renderTraceParams();
     renderPalette();
     paletteDialog.showModal();
+  }
+
+  function renderTraceParams() {
+    const colors = swatches(schema.traceColor, (c) => { schema.traceColor = c; }, '');
+    colors.firstChild.title = 'Default';
+    // Show the new choice once it is made; a rebuild while the custom picker is open would close it.
+    const refresh = (e) => { if (e.type === 'change' || e.target.type !== 'color') renderTraceParams(); };
+    colors.addEventListener('click', refresh);
+    colors.addEventListener('change', refresh);
+    $('#schema-trace-params').replaceChildren(
+      field('Mark colour', colors),
+      field('Mark width', slider(schema.traceWidth, 1, 16, (v) => { schema.traceWidth = v; })),
+    );
   }
 
   function renderPalette() {
@@ -2555,6 +2574,7 @@
   function paletteChanged() {
     commit();
     renderPalette();
+    renderTraceParams();
     renderInspector();
   }
 
