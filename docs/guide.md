@@ -89,6 +89,8 @@ Several links can be routed through one block, for example to show a bus or a ca
   coloured and resized like any other, and **Links colour** colours all its links.
 - Connectors of the grouped links that sit in one line, on either side of the group, get a rounded
   frame around them. **Schema** has a switch for this.
+- **Show as → Single link** hides the block and draws the whole group as one line between the two
+  frames; **Frame colour** and **Frame width** style the frames and that line.
 - **Links run** switches the group between horizontal (left to right) and vertical (top to bottom).
 - **Ungroup links** removes the block and leaves the links in place.
 
