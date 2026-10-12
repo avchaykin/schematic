@@ -1556,10 +1556,12 @@
       tempLink = null;
       const color = inheritedColor(fromId);
       if (ghost) {
-        // The new link connector continues the one the link was drawn from: same colour, same name.
+        // The new link connector continues the one the link was drawn from: same colour and name,
+        // and the same border colour if that one is a link connector too.
         const source = findConnector(fromId);
         const name = source.block.kind === 'junction' ? source.block.name : source.conn.name;
-        const junction = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), ghost.x, ghost.y, { color, name });
+        const borderColor = source.block.borderColor || '';
+        const junction = junctionBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'junction'), ghost.x, ghost.y, { color, name, borderColor });
         schema.blocks.push(junction);
         followName(junction);
         to = junction.connectors[0].id;
