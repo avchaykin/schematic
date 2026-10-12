@@ -133,7 +133,7 @@
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -289,6 +289,10 @@
     out.groupFrames = raw.groupFrames !== false;
     out.linkShape = LINK_SHAPES.includes(raw.linkShape) ? raw.linkShape : 'curved';
     out.linkBend = clamp(num(raw.linkBend, 50), 0, 150);
+    // Defaults for link groups that do not set these themselves.
+    out.groupDisplay = raw.groupDisplay === 'minimal' ? 'minimal' : 'full';
+    out.groupFrameColor = isHex(raw.groupFrameColor) ? raw.groupFrameColor.toLowerCase() : '';
+    out.groupFrameWidth = clamp(num(raw.groupFrameWidth, 2), 1, 10);
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
@@ -363,9 +367,10 @@
         out.blocks[out.blocks.length - 1].kind = 'group';
         out.blocks[out.blocks.length - 1].linkColor = String(b.linkColor ?? '');
         out.blocks[out.blocks.length - 1].axis = b.axis === 'vertical' ? 'vertical' : 'horizontal';
-        out.blocks[out.blocks.length - 1].display = b.display === 'minimal' ? 'minimal' : 'full';
+        // '' and 0 mean "as the schema's default for groups".
+        out.blocks[out.blocks.length - 1].display = ['full', 'minimal'].includes(b.display) ? b.display : '';
         out.blocks[out.blocks.length - 1].frameColor = String(b.frameColor ?? '');
-        out.blocks[out.blocks.length - 1].frameWidth = clamp(num(b.frameWidth, 2), 1, 10);
+        out.blocks[out.blocks.length - 1].frameWidth = clamp(num(b.frameWidth, 0), 0, 10);
       }
       else if (b.cloneGroup) out.blocks[out.blocks.length - 1].cloneGroup = String(b.cloneGroup);
     }
@@ -1084,7 +1089,12 @@
 
   // A group shown in its minimal form: its block is not drawn and its links appear as one line.
   // A group without links keeps its block, or there would be nothing of it to see.
-  const isMinimal = (b) => b.kind === 'group' && b.display === 'minimal' && schema.links.some((l) => l.via === b.id);
+  const isMinimal = (b) => b.kind === 'group' && groupDisplay(b) === 'minimal' && schema.links.some((l) => l.via === b.id);
+
+  // A group's own display, frame colour and frame width, or the schema's defaults where it sets none.
+  const groupDisplay = (g) => g.display || schema.groupDisplay;
+  const groupFrameWidth = (g) => g.frameWidth || schema.groupFrameWidth;
+  const groupFrameColor = (g) => g.frameColor || schema.groupFrameColor || (g.border && g.border !== 'transparent' ? g.border : '#64748b');
 
   // Where each grouped link enters and leaves its group block.
   function groupRoutes() {
@@ -1130,7 +1140,7 @@
     }
     const frames = [];
     for (const [group, ends] of byGroup) {
-      const minimal = group.display === 'minimal';
+      const minimal = groupDisplay(group) === 'minimal';
       if (!minimal && !schema.groupFrames) continue;
       for (const points of [ends.a, ends.b]) {
         const unique = points.filter((p, i) => points.findIndex((q) => q.x === p.x && q.y === p.y) === i);
@@ -1145,13 +1155,13 @@
         frames.push({
           group,
           points: unique,
-          lineWidth: group.frameWidth || 2,
+          lineWidth: groupFrameWidth(group),
           x: x1 - r,
           y: y1 - r,
           width: x2 - x1 + 2 * r,
           height: y2 - y1 + 2 * r,
           r,
-          color: group.frameColor || (group.border && group.border !== 'transparent' ? group.border : '#64748b'),
+          color: groupFrameColor(group),
         });
       }
     }
@@ -1180,7 +1190,7 @@
       return { x: c.x + (nx * f.width) / 2, y: c.y + (ny * f.height) / 2, nx, ny };
     };
     for (const group of groupBlocks()) {
-      if (group.display !== 'minimal') continue;
+      if (groupDisplay(group) !== 'minimal') continue;
       const [f1, f2] = frames.filter((f) => f.group === group);
       if (!f2) continue;
       buses.push({
@@ -1218,9 +1228,9 @@
       kind: 'group',
       linkColor: '',
       axis: 'horizontal', // links run through it left to right, or top to bottom ('vertical')
-      display: 'full', // 'minimal': no block, just one line between the frames around the links' ends
-      frameColor: '', // colour of those frames and of that line; '' follows the border colour
-      frameWidth: 2,
+      display: '', // 'full': a block; 'minimal': just one line between the frames around the links' ends; '': the schema's default
+      frameColor: '', // colour of those frames and of that line; '' is the schema's default, or else the border colour
+      frameWidth: 0, // 0 is the schema's default
     };
     schema.blocks.push(block);
     followName(block);
@@ -1487,7 +1497,7 @@
       const a = aim(rawA, rawB);
       const b = aim(rawB, rawA);
       const route = routes.get(link.id);
-      if (route?.group.display === 'minimal') continue; // drawn as its group's single line
+      if (route && groupDisplay(route.group) === 'minimal') continue; // drawn as its group's single line
       const parts = (route ? [[route.a, route.entry], [route.exit, route.b]] : [[a, b]]).map(([p, q]) => linkStretch(p, q));
       drawn.push({ link, parts });
     }
@@ -2875,9 +2885,10 @@
       ...colorField('Links colour', 'block:linkColor', block.linkColor || '', (c) => { block.linkColor = c; }, ''),
       h('h3', {}, 'Display'),
       h('div', { class: 'field' }, h('span', {}, 'Show as'), h('div', { class: 'segmented' },
-        ...[['full', 'Block', 'A block the links run through'],
+        ...[['', 'Default', `As set for the schema: ${schema.groupDisplay === 'minimal' ? 'single link' : 'block'}`],
+          ['full', 'Block', 'A block the links run through'],
           ['minimal', 'Single link', 'Minimal: no block, one line between the frames around the links\' ends']].map(([mode, label, title]) => h('button', {
-          class: (block.display === 'minimal' ? 'minimal' : 'full') === mode ? 'active' : '',
+          class: (block.display || '') === mode ? 'active' : '',
           title,
           onclick: () => {
             block.display = mode;
@@ -2888,8 +2899,8 @@
         }, label)),
       )),
       ...colorField('Frame colour', 'block:frameColor', block.frameColor || '', (c) => { block.frameColor = c; }, ''),
-      field('Frame width', slider(block.frameWidth || 2, 1, 10, (v) => { block.frameWidth = v; })),
-      h('p', { class: 'note' }, 'Frame colour and width apply to the frames around the links\' ends and, when shown as a single link, to that link. With no colour set they take the border colour. Click the single link to select the group.'),
+      field('Frame width', slider(block.frameWidth || 0, 0, 10, (v) => { block.frameWidth = v; })),
+      h('p', { class: 'note' }, 'Frame colour and width apply to the frames around the links\' ends and, when shown as a single link, to that link. No colour and a width of 0 use the schema\'s defaults for groups (Schema button); with no default colour either, the border colour is used. Click the single link to select the group.'),
     ];
     for (const link of links) {
       const key = 'link:' + link.id;
@@ -3111,6 +3122,12 @@
         },
       }, svg);
     });
+    // Defaults for link groups; a group can set its own in its panel.
+    const groupColors = swatches(schema.groupFrameColor, (c) => { schema.groupFrameColor = c; }, '');
+    groupColors.firstChild.title = 'None: each group\'s border colour';
+    const refresh = (e) => { if (e.type === 'change' || e.target.type !== 'color') renderLinkParams(); };
+    groupColors.addEventListener('click', refresh);
+    groupColors.addEventListener('change', refresh);
     const bend = slider(schema.linkBend, 0, 150, (v) => { schema.linkBend = v; }, false, ' %');
     bend.firstChild.disabled = schema.linkShape !== 'curved';
     $('#schema-link-params').replaceChildren(
@@ -3118,6 +3135,21 @@
       field('Curve bend', bend),
       field('Line width', slider(schema.linkWidth, 1, 10, (v) => { schema.linkWidth = v; })),
       field('Link connector size', slider(schema.junctionSize, 6, 32, (v) => { schema.junctionSize = v; })),
+      h('div', { class: 'field' }, h('span', {}, 'Groups shown as'), h('div', { class: 'segmented' },
+        ...[['full', 'Block', 'A block the links run through'], ['minimal', 'Single link', 'One line between the frames around the links\' ends']].map(([mode, label, title]) => h('button', {
+          class: schema.groupDisplay === mode ? 'active' : '',
+          title,
+          onclick: () => {
+            schema.groupDisplay = mode;
+            commit();
+            render();
+            renderInspector();
+            renderLinkParams();
+          },
+        }, label)),
+      )),
+      field('Group frame colour', groupColors),
+      field('Group frame width', slider(schema.groupFrameWidth, 1, 10, (v) => { schema.groupFrameWidth = v; })),
       field('Frame grouped ends', h('input', {
         type: 'checkbox',
         checked: schema.groupFrames,

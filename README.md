@@ -129,6 +129,8 @@ Everything else works offline.
   those of a group, are spaced apart.
 - Line width of all links, and the size of all link connectors.
 - Whether lined-up connectors of grouped links get a frame.
+- Defaults for link groups: shown as a block or as a single link, frame colour and frame width.
+  They apply to every group that does not set its own.
 - Colour and width of the trace mark. With no colour there is no mark and the other links just
   fade; **Same as link** marks each link in its own colour, making traced links bolder.
 - A colour palette stored with the schema and offered wherever a colour is chosen.
