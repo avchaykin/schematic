@@ -131,7 +131,7 @@
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -265,6 +265,7 @@
     // A colour, 'none' (no mark, other links just fade) or 'link' (each link's own colour, drawn bolder).
     out.traceColor = isHex(raw.traceColor) ? raw.traceColor.toLowerCase() : ['none', 'link'].includes(raw.traceColor) ? raw.traceColor : TRACE_COLOR;
     out.traceWidth = clamp(num(raw.traceWidth, 2), 1, 16);
+    out.traceIgnoreNames = raw.traceIgnoreNames === true;
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
@@ -653,7 +654,8 @@
   // ---------- trace ----------
   // A path is followed by name: from the hovered connector or link, along links and connectors of
   // the same name, and through a block from one connector to its others of that name. Unnamed
-  // links and connectors carry whatever name reaches them.
+  // links and connectors carry whatever name reaches them. With the schema set to ignore names,
+  // the path is simply everything joined by links, and stops at blocks.
 
   const traceName = (text) => String(text || '').trim().toLowerCase();
   const connectorTraceName = ({ block, conn }) => traceName(block.kind === 'junction' ? block.name : conn.name);
@@ -681,7 +683,8 @@
     } else {
       return null;
     }
-    const passes = (name) => !name || names.has(name);
+    const anyName = schema.traceIgnoreNames;
+    const passes = (name) => anyName || !name || names.has(name);
     const visitLink = (l) => {
       if (links.has(l.id) || !passes(traceName(l.name))) return;
       links.add(l.id);
@@ -703,7 +706,7 @@
       const { block, conn } = item.found;
       for (const l of linksAt(conn.id)) visitLink(l);
       const name = traceName(conn.name);
-      if (name) for (const c of block.connectors) if (traceName(c.name) === name) visitConn(c.id);
+      if (name && !anyName) for (const c of block.connectors) if (traceName(c.name) === name) visitConn(c.id);
     }
     return { links, conns };
   }
@@ -2765,6 +2768,16 @@
     $('#schema-trace-params').replaceChildren(
       field('Mark colour', colors),
       field('Mark width', slider(schema.traceWidth, 1, 16, (v) => { schema.traceWidth = v; })),
+      field('Ignore names', h('input', {
+        type: 'checkbox',
+        checked: schema.traceIgnoreNames,
+        title: 'Trace every link joined to the hovered one, whatever the links and connectors are called',
+        onchange: (e) => {
+          schema.traceIgnoreNames = e.target.checked;
+          commit();
+          render();
+        },
+      })),
     );
   }
 

@@ -102,6 +102,8 @@ Everything else works offline.
 - While it is on, hovering a connector or a link marks the whole path that shares its name: links
   and connectors of that name, continuing through a block from one connector to its others of the
   same name. Other links fade back.
+- **Ignore names** (under Schema → Trace) marks every link joined to the hovered one through shared
+  connectors, whatever anything is called; such a path ends at blocks instead of running through them.
 - Unnamed links and connectors do not break a path; a differently named one ends it. Names are
   compared ignoring case. A link connector's name is the name of its dot.
 
