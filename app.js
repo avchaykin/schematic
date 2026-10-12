@@ -180,10 +180,28 @@
     };
   }
 
+  // A comment: a sticky note with free text, for remarks about the schema. No connectors.
+  function commentBlock(id, x, y, o = {}) {
+    return {
+      id,
+      name: String(o.name ?? 'Comment'),
+      description: String(o.description ?? ''),
+      x,
+      y,
+      width: Math.max(MIN_SIZE, num(o.width, 160)),
+      height: Math.max(MIN_SIZE, num(o.height, 110)),
+      fontSize: clamp(num(o.fontSize, 13), 8, 48),
+      background: String(o.background || '#fef08a'),
+      attributes: normalizeAttributes(o.attributes),
+      connectors: [],
+      kind: 'comment',
+    };
+  }
+
   // ---------- ids ----------
   // Until the user types an ID themselves (customId), an element's id follows its name.
 
-  const DEFAULT_ID = /^(block|group|junction|title|frame|link)-\d+$/;
+  const DEFAULT_ID = /^(block|group|junction|title|frame|comment|link)-\d+$/;
 
   const slugify = (text) => String(text).trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
 
@@ -291,6 +309,10 @@
       }
       if (b.kind === 'title') {
         out.blocks.push(titleBlock(id, num(b.x, 0), num(b.y, 0), b));
+        continue;
+      }
+      if (b.kind === 'comment') {
+        out.blocks.push(commentBlock(id, num(b.x, 0), num(b.y, 0), b));
         continue;
       }
       if (b.kind === 'junction') {
@@ -877,6 +899,11 @@
     addElement(titleBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'title'), x, y));
   }
 
+  function addComment() {
+    const { x, y } = freeSpot(160, 110);
+    addElement(commentBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'comment'), x, y));
+  }
+
   function addFrame() {
     const { x, y } = freeSpot(360, 240);
     addElement(frameBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'frame'), x, y));
@@ -1300,6 +1327,14 @@
     el.replaceChildren(body, ...resizeHandles());
   }
 
+  function buildComment(el, block) {
+    const body = h('div', { class: 'comment-body' }, block.name);
+    body.style.background = block.background;
+    body.style.color = contrastColor(block.background);
+    body.style.fontSize = block.fontSize + 'px';
+    el.replaceChildren(body, ...resizeHandles());
+  }
+
   function buildFrame(el, block) {
     const body = h('div', { class: 'frame-body' });
     body.style.background = block.background;
@@ -1315,7 +1350,11 @@
   }
 
   function buildBlock(el, block) {
-    for (const kind of ['junction', 'title', 'frame']) el.classList.toggle(kind, block.kind === kind);
+    for (const kind of ['junction', 'title', 'frame', 'comment']) el.classList.toggle(kind, block.kind === kind);
+    if (block.kind === 'comment') {
+      buildComment(el, block);
+      return;
+    }
     if (block.kind === 'frame') {
       buildFrame(el, block);
       return;
@@ -1965,7 +2004,7 @@
     } else if (mod && key === 'd') {
       e.preventDefault();
       const block = selectedBlock();
-      if (block && (!block.kind || block.kind === 'title')) duplicateBlock(block);
+      if (block && (!block.kind || block.kind === 'title' || block.kind === 'comment')) duplicateBlock(block);
     } else if (mod && key === 'c') {
       if (copySelection()) e.preventDefault();
     } else if (mod && key === 'x') {
@@ -2324,6 +2363,7 @@
         h('li', {}, 'Clone a block to get linked copies that always change together.'),
         h('li', {}, 'Add a link connector for a free-standing dot where several links meet, or hold Shift when dropping a new link on empty canvas to create one there.'),
         h('li', {}, 'Title adds free text to the schema.'),
+        h('li', {}, 'Comment adds a sticky note for remarks about the schema.'),
         h('li', {}, 'Frame adds a titled area behind the schema; what lies inside it moves with it.'),
         h('li', {}, 'Shift+drag on empty canvas, or Shift+click elements, to select several and move them together.'),
         h('li', {}, 'Hold Alt while moving or resizing to ignore the grid.'),
@@ -2381,6 +2421,31 @@
       h('div', { class: 'row wrap' },
         h('button', { onclick: () => duplicateBlock(block) }, icon('content_copy'), 'Duplicate'),
         h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete title'),
+      ),
+    ];
+  }
+
+  function commentInspector(block) {
+    const text = h('textarea', { rows: 4, value: block.name, spellcheck: false, 'data-role': 'block-name' });
+    text.addEventListener('input', () => {
+      block.name = text.value;
+      nameEdited(block);
+      render();
+    });
+    text.addEventListener('change', commit);
+    return [
+      h('h3', {}, 'Comment'),
+      field('Text', text),
+      field('ID', idField(block)),
+      descriptionField(block),
+      h('h3', {}, 'Appearance'),
+      ...colorField('Colour', 'block:background', block.background, (c) => { block.background = c; }),
+      field('Text size', slider(block.fontSize, 8, 48, (v) => { block.fontSize = v; })),
+      ...attributesSection(block),
+      h('h3', {}, 'Actions'),
+      h('div', { class: 'row wrap' },
+        h('button', { onclick: () => duplicateBlock(block) }, icon('content_copy'), 'Duplicate'),
+        h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete comment'),
       ),
     ];
   }
@@ -2477,6 +2542,14 @@
         field('Text size', sliderFor(titles, 'fontSize', 8, 96)),
         ...colorField('Colour', 'multi:title', prop(titles, 'color'), setAll(titles, 'color'), ''),
         choiceButtons('Align', prop(titles, 'align'), TITLE_ALIGN, setAll(titles, 'align')),
+      );
+    }
+    const comments = blocks.filter((b) => b.kind === 'comment');
+    if (comments.length) {
+      out.push(
+        h('h3', {}, `Comments (${comments.length})`),
+        ...colorField('Colour', 'multi:comment', prop(comments, 'background'), setAll(comments, 'background')),
+        field('Text size', sliderFor(comments, 'fontSize', 8, 48)),
       );
     }
     out.push(h('p', { class: 'note' }, '"Mixed" means the selected elements differ. Choosing a value applies it to all of them.'));
@@ -2600,6 +2673,7 @@
   function blockInspector(block) {
     if (block.kind === 'junction') return junctionInspector(block);
     if (block.kind === 'title') return titleInspector(block);
+    if (block.kind === 'comment') return commentInspector(block);
     if (block.kind === 'frame') return frameInspector(block);
     const out = [];
     const isGroup = block.kind === 'group';
@@ -3275,6 +3349,42 @@
         }
         continue;
       }
+      if (b.kind === 'comment') {
+        // A sticky note: a sheet with its bottom-right corner folded over.
+        const fold = Math.min(14, b.width / 2, b.height / 2);
+        const right = b.x + b.width;
+        const bottom = b.y + b.height;
+        mark(b.x - 4, b.y - 4, right + 4, bottom + 7);
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(right, b.y);
+        ctx.lineTo(right, bottom - fold);
+        ctx.lineTo(right - fold, bottom);
+        ctx.lineTo(b.x, bottom);
+        ctx.closePath();
+        if (visible(b.background)) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(15, 23, 42, .22)';
+          ctx.shadowBlur = 3 * scale;
+          ctx.shadowOffsetY = 2 * scale;
+          ctx.fillStyle = b.background;
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.clip();
+        ctx.fillStyle = 'rgba(0, 0, 0, .18)';
+        ctx.beginPath();
+        ctx.moveTo(right - fold, bottom - fold);
+        ctx.lineTo(right, bottom - fold);
+        ctx.lineTo(right - fold, bottom);
+        ctx.fill();
+        font(400, b.fontSize);
+        ctx.fillStyle = contrastColor(b.background);
+        wrapLines(ctx, b.name, Math.max(1, b.width - 24)).forEach((line, i) => write(line, b.x + 12, b.y + 10 + (i + 0.5) * b.fontSize * 1.35));
+        ctx.restore();
+        continue;
+      }
       if (b.kind === 'title') {
         font(600, b.fontSize);
         ctx.fillStyle = b.color || ink;
@@ -3498,6 +3608,7 @@
     'add-junction': addJunction,
     'add-title': addTitle,
     'add-frame': addFrame,
+    'add-comment': addComment,
     'undo': undo,
     'redo': redo,
     'trace': toggleTrace,

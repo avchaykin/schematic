@@ -74,6 +74,12 @@ Everything else works offline.
 - Text (one or several lines), size, colour and alignment are set in the panel; the box is moved and
   resized like a block.
 
+### Comments
+
+- A sticky note with free text, for remarks about the schema: a coloured sheet with a folded corner.
+- Text (one or several lines), colour and text size are set in the panel; the note is moved and
+  resized like a block. It has no connectors.
+
 ### Frames
 
 - A titled rectangle drawn beneath all other elements, with its title in the top-left corner.
@@ -147,7 +153,7 @@ Everything else works offline.
 - Several selected elements can be aligned (left, centre, right, top, middle, bottom) or spread with
   equal gaps, horizontally or vertically, from the panel.
 - Ctrl/⌘+C, X and V copy, cut and paste the selected elements (blocks, link connectors, titles,
-  frames) together with the links between them, also into another schema or tab.
+  comments, frames) together with the links between them, also into another schema or tab.
 - Blocks snap to a 10 px grid; hold Alt to move or resize freely.
 - Resizing a block or a link group block straight after adding it makes that the size of the next
   new ones; the size is remembered by the browser.

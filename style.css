@@ -508,6 +508,32 @@ dialog h2 { margin: 0; font-size: 15px; }
 }
 .block.title.selected .title-body { outline: 1px dashed var(--accent); outline-offset: 3px; }
 
+/* ---------- comments (sticky notes) ---------- */
+
+/* The shadow is on the element because the sheet itself is clipped to cut its corner. */
+.block.comment { filter: drop-shadow(0 2px 3px rgb(15 23 42 / .22)); }
+.block.comment.selected { outline: 2px solid rgb(37 99 235 / .5); outline-offset: 2px; }
+.comment-body {
+  position: absolute;
+  inset: 0;
+  padding: 10px 12px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+/* The folded-over corner. */
+.comment-body::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(135deg, rgb(0 0 0 / .18) 50%, transparent 50%);
+}
+
 /* Secondary toolbar buttons drop their text before the toolbar has to wrap. */
 @media (max-width: 1700px) {
   .toolbar .collapsible .label { display: none; }

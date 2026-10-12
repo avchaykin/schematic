@@ -109,6 +109,7 @@ Use **Clone** when the same thing appears several times and must stay identical.
 ![A frame named Backend around two blocks, with a title above it](images/frame.png)
 
 - **Title** adds free text with no border. Set the text, size, colour and alignment in the panel.
+- **Comment** adds a sticky note for remarks: type its text in the panel and pick its colour.
 - **Frame** adds a titled rectangle that sits behind everything else. Drag it by its title or border
   and whatever lies entirely inside moves with it; resize it by its edges and corners once selected.
 - A frame has no background and a grey border by default; both are set as for a block.
