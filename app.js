@@ -1033,6 +1033,8 @@
     linksG.setAttribute('transform', `translate(${view.x} ${view.y}) scale(${view.zoom})`);
     const cell = GRID * 2 * view.zoom;
     viewport.style.backgroundSize = `${cell}px ${cell}px`;
+    // Zoomed out, the dots crowd together, so they fade to keep the grid from turning into a grey sheet.
+    viewport.style.setProperty('--grid-alpha', clamp(view.zoom, 0.15, 1));
     viewport.style.backgroundPosition = `${view.x - cell / 2}px ${view.y - cell / 2}px`;
     $('#zoom-label').textContent = Math.round(view.zoom * 100) + '%';
   }

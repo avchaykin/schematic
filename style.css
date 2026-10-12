@@ -107,7 +107,7 @@ main { flex: 1; display: flex; min-height: 0; }
   overflow: hidden;
   cursor: grab;
   background-color: var(--bg);
-  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1.5px);
+  background-image: radial-gradient(circle, rgb(203 213 225 / var(--grid-alpha, 1)) 1px, transparent 1.5px);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
