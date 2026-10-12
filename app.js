@@ -1206,10 +1206,11 @@
     return dot;
   }
 
-  function drawLinks() {
-    const nodes = [];
-    const labels = []; // drawn last, above every line
+  // What to draw for each link: its curve (as path data and as the end pairs it runs between),
+  // colour, dash pattern and the point its name is written at.
+  function linkShapes() {
     const routes = groupRoutes();
+    const shapes = [];
     for (const link of schema.links) {
       const rawA = linkEnd(link, 'from');
       const rawB = linkEnd(link, 'to');
@@ -1217,10 +1218,27 @@
       const a = aim(rawA, rawB);
       const b = aim(rawB, rawA);
       const route = routes.get(link.id);
-      const d = route ? `${linkPath(route.a, route.entry)} ${linkPath(route.exit, route.b)}` : linkPath(a, b);
+      const curves = route ? [[route.a, route.entry], [route.exit, route.b]] : [[a, b]];
+      // Dash lengths grow with the line width so dashes and dots keep their look.
+      const w = schema.linkWidth;
+      shapes.push({
+        link,
+        curves,
+        d: curves.map(([p, q]) => linkPath(p, q)).join(' '),
+        color: linkColor(link),
+        dash: { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style],
+        mid: linkMidpoint(...curves[0]), // a grouped link is labelled on its way into the group
+      });
+    }
+    return shapes;
+  }
+
+  function drawLinks() {
+    const nodes = [];
+    const labels = []; // drawn last, above every line
+    for (const { link, d, color, dash, mid } of linkShapes()) {
       if (selection?.type === 'link' && selection.ids.includes(link.id)) nodes.push(svgPath('link-halo', d));
       const traced = trace?.links.has(link.id);
-      const color = linkColor(link);
       if (traced && schema.traceColor !== 'none') {
         const mark = svgPath('link-trace', d);
         if (schema.traceColor === 'link' && color) mark.style.stroke = color;
@@ -1230,9 +1248,6 @@
       const line = svgPath(trace && !traced ? 'link dimmed' : 'link', d);
       if (color) line.style.stroke = color;
       // White and near-white lines get a thin grey edge so they stay visible on the canvas.
-      // Dash lengths grow with the line width so dashes and dots keep their look.
-      const w = schema.linkWidth;
-      const dash = { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style];
       if (dash) line.setAttribute('stroke-dasharray', dash);
       if (isPale(color)) {
         const outline = svgPath(trace && !traced ? 'link-outline dimmed' : 'link-outline', d);
@@ -1243,8 +1258,6 @@
       hit.dataset.link = link.id;
       nodes.push(line, hit);
       if (link.name) {
-        // A grouped link is labelled on its way into the group.
-        const mid = route ? linkMidpoint(route.a, route.entry) : linkMidpoint(a, b);
         const text = document.createElementNS(SVG_NS, 'text');
         text.setAttribute('class', 'link-label');
         text.setAttribute('x', mid.x);
@@ -2807,7 +2820,10 @@
   });
 
   function downloadJson(fileName, data) {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    download(fileName, new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  }
+
+  function download(fileName, blob) {
     const url = URL.createObjectURL(blob);
     const a = h('a', { href: url, download: fileName });
     document.body.append(a);
@@ -2816,10 +2832,347 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  const exportName = () => (schema.name.trim() || 'schema').replace(/[^\w.-]+/g, '_');
+
   function exportJson() {
     document.activeElement?.blur?.();
     commit();
-    downloadJson((schema.name.trim() || 'schema').replace(/[^\w.-]+/g, '_') + '.json', schema);
+    downloadJson(exportName() + '.json', schema);
+  }
+
+  // ---------- picture export (PNG, PDF) ----------
+  // The schema is painted from the model onto a canvas rather than captured from the page, so the
+  // picture shows all of it at any zoom, on white, without the grid, selection or trace marks.
+
+  const EXPORT_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const EXPORT_PAD = 24; // white margin around the schema
+  const EXPORT_SCALE = 2; // canvas pixels per schema pixel, less for a very large schema
+
+  // Breaks text into lines no wider than maxWidth, the way the canvas wraps it: at spaces, and
+  // inside a word that is too long for a line of its own.
+  function wrapLines(ctx, text, maxWidth) {
+    const fits = (s) => ctx.measureText(s).width <= maxWidth;
+    const lines = [];
+    for (const para of String(text).split('\n')) {
+      let line = '';
+      for (const token of para.split(/(\s+)/)) {
+        if (fits(line + token)) {
+          line += token;
+          continue;
+        }
+        if (line.trim()) lines.push(line.trimEnd());
+        line = '';
+        if (!token.trim()) continue;
+        let rest = token;
+        while (rest.length > 1 && !fits(rest)) {
+          let n = 1;
+          while (n < rest.length - 1 && fits(rest.slice(0, n + 1))) n++;
+          lines.push(rest.slice(0, n));
+          rest = rest.slice(n);
+        }
+        line = rest;
+      }
+      lines.push(line.trimEnd());
+    }
+    return lines;
+  }
+
+  // Paints the whole schema in schema coordinates. `mark(x1, y1, x2, y2)` is told the area of
+  // everything painted, so a first pass can measure the picture. `scale` is the canvas scale,
+  // which shadows do not follow by themselves.
+  function paintSchema(ctx, scale, mark) {
+    const ink = '#0f172a';
+    const muted = '#64748b';
+    let fontSize = 13;
+    const font = (weight, size, family = EXPORT_FONT) => {
+      fontSize = size;
+      ctx.font = `${weight} ${size}px ${family}`;
+    };
+    // Text centred vertically on y.
+    const write = (str, x, y, align = 'left') => {
+      const w = ctx.measureText(str).width;
+      const left = align === 'left' ? x : align === 'center' ? x - w / 2 : x - w;
+      mark(left, y - fontSize * 0.7, left + w, y + fontSize * 0.7);
+      ctx.textAlign = align;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(str, x, y);
+    };
+    const rounded = (x, y, w, hgt, r) => {
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, y, w, hgt, Math.max(0, Math.min(r, w / 2, hgt / 2)));
+      else ctx.rect(x, y, w, hgt);
+    };
+    const visible = (color) => Boolean(color) && color !== 'transparent';
+    // The darker edge a coloured connector gets: its colour mixed with black.
+    const edge = (color) => {
+      if (!isHex(color)) return '#334155';
+      const n = parseInt(color.slice(1), 16);
+      return `rgb(${[n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * 0.65)).join(',')})`;
+    };
+    const box = (b, shadow) => {
+      const bw = b.borderWidth;
+      mark(b.x - 4, b.y - 4, b.x + b.width + 4, b.y + b.height + 6);
+      if (visible(b.background)) {
+        ctx.save();
+        if (shadow) {
+          ctx.shadowColor = 'rgba(15, 23, 42, .12)';
+          ctx.shadowBlur = 3 * scale;
+          ctx.shadowOffsetY = scale;
+        }
+        ctx.fillStyle = b.background;
+        rounded(b.x, b.y, b.width, b.height, schema.radius);
+        ctx.fill();
+        ctx.restore();
+      }
+      if (bw > 0 && visible(b.border)) {
+        ctx.save();
+        ctx.strokeStyle = b.border;
+        ctx.lineWidth = bw;
+        if (b.borderStyle === 'dashed') ctx.setLineDash([bw * 3, bw * 2]);
+        if (b.borderStyle === 'dotted') {
+          ctx.setLineDash([0, bw * 2]);
+          ctx.lineCap = 'round';
+        }
+        // The border lies inside the box, as on the canvas.
+        rounded(b.x + bw / 2, b.y + bw / 2, b.width - bw, b.height - bw, schema.radius - bw / 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    };
+    const dot = (x, y, size, fill, stroke) => {
+      mark(x - size / 2 - 1, y - size / 2 - 1, x + size / 2 + 1, y + size / 2 + 1);
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(0.5, size / 2 - 1), 0, Math.PI * 2);
+      ctx.fillStyle = fill || '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = stroke;
+      ctx.stroke();
+    };
+
+    // --- frames, beneath everything
+    for (const b of schema.blocks) {
+      if (b.kind !== 'frame') continue;
+      box(b, false);
+      if (!b.name) continue;
+      font(600, 13);
+      ctx.fillStyle = muted;
+      let title = b.name;
+      const room = b.width - 20;
+      if (ctx.measureText(title).width > room) {
+        while (title.length > 1 && ctx.measureText(title + '…').width > room) title = title.slice(0, -1);
+        title += '…';
+      }
+      write(title, b.x + 10, b.y + 6 + 9.1);
+    }
+
+    // --- links, then their names above every line
+    const shapes = linkShapes();
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (const { curves, d, color, dash } of shapes) {
+      const w = schema.linkWidth;
+      for (const [p, q] of curves) {
+        // The area the curve covers, from points along it.
+        const k = clamp(Math.hypot(q.x - p.x, q.y - p.y) * 0.5, 30, 220);
+        for (let i = 0; i <= 16; i++) {
+          const t = i / 16;
+          const u = 1 - t;
+          const x = u * u * u * p.x + 3 * u * u * t * (p.x + p.nx * k) + 3 * u * t * t * (q.x + q.nx * k) + t * t * t * q.x;
+          const y = u * u * u * p.y + 3 * u * u * t * (p.y + p.ny * k) + 3 * u * t * t * (q.y + q.ny * k) + t * t * t * q.y;
+          mark(x - w, y - w, x + w, y + w);
+        }
+      }
+      const path = new Path2D(d);
+      ctx.setLineDash(dash ? dash.split(' ').map(Number) : []);
+      if (isPale(color)) {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = w + 2;
+        ctx.stroke(path);
+      }
+      ctx.strokeStyle = color || '#475569';
+      ctx.lineWidth = w;
+      ctx.stroke(path);
+    }
+    ctx.restore();
+    for (const { link, mid } of shapes) {
+      if (!link.name) continue;
+      font(500, 10);
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffffff';
+      ctx.strokeText(link.name, mid.x, mid.y - 8.5);
+      ctx.restore();
+      ctx.fillStyle = ink;
+      write(link.name, mid.x, mid.y - 8.5, 'center');
+    }
+
+    // --- everything else, in schema order
+    for (const b of schema.blocks) {
+      if (b.kind === 'frame') continue;
+      if (b.kind === 'junction') {
+        const conn = b.connectors[0];
+        const size = schema.junctionSize;
+        dot(b.x, b.y, size, conn.color, b.borderColor || (conn.color ? edge(conn.color) : '#334155'));
+        if (b.name) {
+          font(400, 10);
+          ctx.fillStyle = muted;
+          write(b.name, b.x, b.y + size / 2 + 6, 'center');
+        }
+        continue;
+      }
+      if (b.kind === 'title') {
+        font(600, b.fontSize);
+        ctx.fillStyle = b.color || ink;
+        const x = b.align === 'center' ? b.x + b.width / 2 : b.align === 'right' ? b.x + b.width : b.x;
+        wrapLines(ctx, b.name, b.width).forEach((line, i) => write(line, x, b.y + (i + 0.5) * b.fontSize * 1.2, b.align));
+        continue;
+      }
+
+      box(b, true);
+      // Contents: icon above the name, centred; cut off at the edge like on the canvas.
+      const small = Boolean(b.icon) && (b.width < SMALL_W || b.height < SMALL_H);
+      const cx = b.x + b.width / 2;
+      ctx.save();
+      rounded(b.x, b.y, b.width, b.height, schema.radius);
+      ctx.clip();
+      ctx.fillStyle = contrastColor(b.background);
+      if (small) {
+        font(400, clamp(Math.min(b.width, b.height) * 0.6, 12, 40), '"Material Symbols Outlined"');
+        write(b.icon, cx, b.y + b.height / 2, 'center');
+      } else {
+        font(500, 13);
+        const lines = b.name ? wrapLines(ctx, b.name, Math.max(1, b.width - 2 * (8 + b.borderWidth))) : [];
+        const iconH = b.icon ? 32 + (lines.length ? 4 : 0) : 0;
+        let y = b.y + b.height / 2 - (iconH + lines.length * 18.2) / 2;
+        if (b.icon) {
+          font(400, 32, '"Material Symbols Outlined"');
+          write(b.icon, cx, y + 16, 'center');
+          y += iconH;
+          font(500, 13);
+        }
+        lines.forEach((line, i) => write(line, cx, y + (i + 0.5) * 18.2, 'center'));
+      }
+      ctx.restore();
+
+      for (const conn of b.connectors) {
+        const [lx, ly] = connectorLocal(b, conn);
+        const x = b.x + lx;
+        const y = b.y + ly;
+        dot(x, y, 12, conn.color, conn.color ? edge(conn.color) : '#334155');
+        if (!conn.name) continue;
+        font(400, 10);
+        ctx.fillStyle = muted;
+        if (conn.side === 'left') write(conn.name, x - 9, y - 9, 'right');
+        else if (conn.side === 'right') write(conn.name, x + 9, y - 9);
+        else if (conn.side === 'top') write(conn.name, x + 9, y - 13);
+        else write(conn.name, x + 9, y + 13);
+      }
+    }
+  }
+
+  // The schema painted on a canvas; null if there is nothing to paint.
+  async function schemaCanvas() {
+    // Icons are text in the icon font, which must be there before the canvas can draw them.
+    await document.fonts.load('32px "Material Symbols Outlined"', 'home').catch(() => {});
+    let area = null;
+    paintSchema(document.createElement('canvas').getContext('2d'), 1, (x1, y1, x2, y2) => {
+      area = area
+        ? { x1: Math.min(area.x1, x1), y1: Math.min(area.y1, y1), x2: Math.max(area.x2, x2), y2: Math.max(area.y2, y2) }
+        : { x1, y1, x2, y2 };
+    });
+    if (!area) return null;
+    const width = Math.ceil(area.x2 - area.x1) + EXPORT_PAD * 2;
+    const height = Math.ceil(area.y2 - area.y1) + EXPORT_PAD * 2;
+    // Browsers refuse canvases beyond a certain size, so a very large schema gets fewer pixels.
+    const scale = Math.min(EXPORT_SCALE, Math.sqrt(16e6 / (width * height)), 8000 / Math.max(width, height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(scale, scale);
+    ctx.translate(EXPORT_PAD - area.x1, EXPORT_PAD - area.y1);
+    paintSchema(ctx, scale, () => {});
+    return { canvas, width, height };
+  }
+
+  // A one-page PDF the size of the picture, holding it as an image.
+  async function pdfBlob({ canvas, width, height }) {
+    let image;
+    let filter;
+    if (typeof CompressionStream === 'function') {
+      // Lossless, which keeps lines and text crisp.
+      const rgba = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      const rgb = new Uint8Array(canvas.width * canvas.height * 3);
+      for (let i = 0, j = 0; i < rgba.length; i += 4) {
+        rgb[j++] = rgba[i];
+        rgb[j++] = rgba[i + 1];
+        rgb[j++] = rgba[i + 2];
+      }
+      const packed = new Blob([rgb]).stream().pipeThrough(new CompressionStream('deflate'));
+      image = new Uint8Array(await new Response(packed).arrayBuffer());
+      filter = 'FlateDecode';
+    } else {
+      const jpeg = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+      image = new Uint8Array(await jpeg.arrayBuffer());
+      filter = 'DCTDecode';
+    }
+    // Page size in points: 0.75 pt per schema pixel, so the page prints at the size seen at 100%.
+    const w = (width * 0.75).toFixed(2);
+    const hgt = (height * 0.75).toFixed(2);
+    const content = `q ${w} 0 0 ${hgt} 0 0 cm /Im0 Do Q`;
+    const objects = [
+      ['<< /Type /Catalog /Pages 2 0 R >>'],
+      ['<< /Type /Pages /Kids [3 0 R] /Count 1 >>'],
+      [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${w} ${hgt}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`],
+      [`<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB`
+        + ` /BitsPerComponent 8 /Filter /${filter} /Length ${image.length} >>\nstream\n`, image, '\nendstream'],
+      [`<< /Length ${content.length} >>\nstream\n${content}\nendstream`],
+    ];
+    const encoder = new TextEncoder();
+    const parts = [];
+    const offsets = [];
+    let size = 0;
+    const put = (chunk) => {
+      const bytes = typeof chunk === 'string' ? encoder.encode(chunk) : chunk;
+      parts.push(bytes);
+      size += bytes.length;
+    };
+    put('%PDF-1.4\n');
+    objects.forEach((body, i) => {
+      offsets.push(size);
+      put(`${i + 1} 0 obj\n`);
+      body.forEach(put);
+      put('\nendobj\n');
+    });
+    const xref = size;
+    put(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n` + offsets.map((o) => String(o).padStart(10, '0') + ' 00000 n \n').join(''));
+    put(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    return new Blob(parts, { type: 'application/pdf' });
+  }
+
+  async function exportPicture(kind) {
+    document.activeElement?.blur?.();
+    commit();
+    try {
+      const picture = await schemaCanvas();
+      if (!picture) {
+        toast('The schema is empty: there is nothing to export.', true);
+        return;
+      }
+      const blob = kind === 'pdf'
+        ? await pdfBlob(picture)
+        : await new Promise((resolve) => picture.canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('the picture is too large for this browser');
+      download(`${exportName()}.${kind}`, blob);
+    } catch (err) {
+      toast('Export failed: ' + err.message, true);
+    }
   }
 
   // Every saved schema in one file, which Import reads back into the library.
@@ -2884,6 +3237,8 @@
     'palette-reset': () => { schema.palette = [...DEFAULT_PALETTE]; paletteChanged(); },
     'export': exportJson,
     'export-all': exportLibrary,
+    'export-png': () => exportPicture('png'),
+    'export-pdf': () => exportPicture('pdf'),
     'json': openJson,
     'json-apply': applyJson,
     'json-close': () => jsonDialog.close(),

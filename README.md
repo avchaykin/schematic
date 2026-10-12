@@ -118,6 +118,8 @@ Everything else works offline.
 - Save schemas by name to browser local storage; load or delete them from a list.
 - The working copy is kept automatically, so a reload does not lose unsaved edits.
 - Export to a JSON file and import it back.
+- Export the whole schema as a PNG picture or a one-page PDF, on white, at twice screen resolution,
+  without the grid or selection marks.
 - **Export all** (in the Load dialog) writes every saved schema to one file; importing that file
   adds them all back to the saved schemas.
 - A JSON dialog shows the schema as text and applies edits made there.
