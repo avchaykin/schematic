@@ -6,6 +6,7 @@
   const CLIP_KEY = 'schematic:clipboard';
   const TRACE_KEY = 'schematic:trace';
   const SIZE_KEY = 'schematic:sizes';
+  const THEME_KEY = 'schematic:theme';
   const TRACE_COLOR = '#f59e0b';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const GRID = 10;
@@ -86,6 +87,19 @@
     if (!m) return false;
     const n = parseInt(m[1], 16);
     return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 > 0.9;
+  }
+
+  // The theme is set on the page's root element (by a script in the page head, then by the toolbar).
+  const isDark = () => document.documentElement.dataset.theme === 'dark';
+
+  // Whether a line of this colour would be hard to see on the canvas: near white on the light
+  // canvas, near black on the dark one.
+  function isFaint(color) {
+    if (!isDark()) return isPale(color);
+    const m = /^#([0-9a-f]{6})$/i.exec(color || '');
+    if (!m) return false;
+    const n = parseInt(m[1], 16);
+    return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 < 0.25;
   }
 
   function contrastColor(bg) {
@@ -873,6 +887,15 @@
     render();
   }
 
+  function toggleTheme() {
+    document.documentElement.dataset.theme = isDark() ? 'light' : 'dark';
+    try {
+      localStorage.setItem(THEME_KEY, document.documentElement.dataset.theme);
+    } catch { /* not remembered; the theme still switches */ }
+    updateChrome();
+    render();
+  }
+
   function toggleTrace() {
     traceOn = !traceOn;
     hover = null;
@@ -1403,7 +1426,7 @@
   function buildComment(el, block) {
     const body = h('div', { class: 'comment-body' }, block.name);
     body.style.background = block.background;
-    body.style.color = contrastColor(block.background);
+    body.style.color = isHex(block.background) ? contrastColor(block.background) : ''; // on no background, the canvas ink
     body.style.fontSize = block.fontSize + 'px';
     el.replaceChildren(body, ...resizeHandles());
   }
@@ -1455,7 +1478,7 @@
     body.style.borderWidth = block.borderWidth + 'px';
     body.style.borderStyle = block.borderStyle;
     body.style.borderRadius = schema.radius + 'px';
-    body.style.color = contrastColor(block.background);
+    body.style.color = isHex(block.background) ? contrastColor(block.background) : ''; // on no background, the canvas ink
     if (block.icon) {
       const ic = h('span', { class: 'mi block-icon' }, block.icon);
       ic.style.fontSize = (small ? clamp(Math.min(block.width, block.height) * 0.6, 12, 40) : 32) + 'px';
@@ -1583,9 +1606,9 @@
       // While a path is marked, every other link fades back.
       const line = svgPath(trace && !traced ? 'link dimmed' : 'link', d);
       if (color) line.style.stroke = color;
-      // White and near-white lines get a thin grey edge so they stay visible on the canvas.
+      // Lines close to the canvas colour get a thin grey edge so they stay visible.
       if (dash) line.setAttribute('stroke-dasharray', dash);
-      if (isPale(color)) {
+      if (isFaint(color)) {
         const outline = svgPath(trace && !traced ? 'link-outline dimmed' : 'link-outline', d);
         if (dash) outline.setAttribute('stroke-dasharray', dash);
         nodes.push(outline);
@@ -3021,6 +3044,8 @@
     $('[data-action="redo"]').disabled = !redoStack.length;
     $('[data-action="trace"]').classList.toggle('active', traceOn);
     $('[data-action="trace"]').setAttribute('aria-pressed', traceOn);
+    $('[data-action="theme"] .mi').textContent = isDark() ? 'light_mode' : 'dark_mode';
+    $('[data-action="theme"]').setAttribute('aria-label', isDark() ? 'Light mode' : 'Dark mode');
     if (!selection) renderInspector();
   }
 
@@ -3784,6 +3809,7 @@
     'undo': undo,
     'redo': redo,
     'trace': toggleTrace,
+    'theme': toggleTheme,
     'zoom-in': () => zoomCentered(1.2),
     'zoom-out': () => zoomCentered(1 / 1.2),
     'zoom-reset': () => zoomCentered(1 / view.zoom),

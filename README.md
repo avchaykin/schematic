@@ -165,6 +165,8 @@ Everything else works offline.
 - Resizing a block or a link group block straight after adding it makes that the size of the next
   new ones; the size is remembered by the browser.
 - Undo and redo.
+- Light and dark mode, switched from the toolbar; it starts in the system's mode and remembers the
+  choice. Colours given to elements stay as set, and exported pictures are always on white.
 
 ## Keyboard and mouse
 

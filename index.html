@@ -8,6 +8,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block">
   <link rel="stylesheet" href="style.css">
+  <script>
+    // Before the page is drawn: the theme chosen earlier, or else the system's.
+    try {
+      const saved = localStorage.getItem('schematic:theme');
+      document.documentElement.dataset.theme = saved === 'dark' || saved === 'light'
+        ? saved
+        : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch { /* light */ }
+  </script>
 </head>
 <body>
   <header class="toolbar">
@@ -39,6 +48,7 @@
 
     <div class="tool-group" role="group" aria-label="Schema tools">
       <button data-action="settings" class="collapsible" title="Schema parameters: corner radius, links, trace, colour palette"><span class="mi">tune</span><span class="label">Schema</span></button>
+      <button data-action="theme" class="icon-only" title="Switch between light and dark mode" aria-label="Dark mode"><span class="mi">dark_mode</span></button>
       <button data-action="trace" class="collapsible" aria-pressed="false" title="Trace (T): hover a connector or link to mark the whole path sharing its name"><span class="mi">route</span><span class="label">Trace</span></button>
     </div>
 
