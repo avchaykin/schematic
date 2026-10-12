@@ -138,6 +138,8 @@ Everything else works offline.
 - Ctrl/⌘+C, X and V copy, cut and paste the selected elements (blocks, link connectors, titles,
   frames) together with the links between them, also into another schema or tab.
 - Blocks snap to a 10 px grid; hold Alt to move or resize freely.
+- Resizing a block or a link group block straight after adding it makes that the size of the next
+  new ones; the size is remembered by the browser.
 - Undo and redo.
 
 ## Keyboard and mouse

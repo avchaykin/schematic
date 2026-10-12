@@ -5,6 +5,7 @@
   const CUR_KEY = 'schematic:current';
   const CLIP_KEY = 'schematic:clipboard';
   const TRACE_KEY = 'schematic:trace';
+  const SIZE_KEY = 'schematic:sizes';
   const TRACE_COLOR = '#f59e0b';
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const GRID = 10;
@@ -123,6 +124,8 @@
   let reattach = null; // { from, links, x, y, target } while dragging link ends off connector `from`
   let iconPickerOpen = false;
   let colorPickerConn = null; // which colour chooser is open in the inspector: a connector id or a block field key
+  let defaultSizes = {}; // { block, group }: { width, height } for new ones, once the user has set it
+  let justCreated = null; // the block or group block just added; resizing it sets the size of the next ones
   let traceOn = false; // the Trace tool: hovering a connector or link marks the path it belongs to
   let hover = null; // { conn } or { link }: what the pointer is over while tracing
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
@@ -772,8 +775,7 @@
 
   function addBlock(at) {
     const rect = viewport.getBoundingClientRect();
-    const width = 140;
-    const height = 90;
+    const { width, height } = defaultSizes.block || { width: 140, height: 90 };
     let x = snap((at ? at.x : (rect.width / 2 - view.x) / view.zoom) - width / 2);
     let y = snap((at ? at.y : (rect.height / 2 - view.y) / view.zoom) - height / 2);
     while (schema.blocks.some((b) => b.x === x && b.y === y)) {
@@ -796,6 +798,7 @@
     schema.blocks.push(block);
     followName(block);
     select({ type: 'block', id: block.id });
+    justCreated = block;
     commit();
   }
 
@@ -950,8 +953,7 @@
   // Creates a group block between the ends of `links` and routes them through it.
   function addGroup(links) {
     const ends = links.flatMap((l) => [connectorWorld(l.from), connectorWorld(l.to)]).filter(Boolean);
-    const width = 120;
-    const height = Math.max(60, snap(links.length * 20 + 20));
+    const { width, height } = defaultSizes.group || { width: 120, height: Math.max(60, snap(links.length * 20 + 20)) };
     const cx = ends.reduce((sum, p) => sum + p.x, 0) / ends.length;
     const cy = ends.reduce((sum, p) => sum + p.y, 0) / ends.length;
     const block = {
@@ -980,7 +982,9 @@
 
   function groupLinks(links) {
     if (links.length < 2) return;
-    select({ type: 'block', id: addGroup(links).id });
+    const block = addGroup(links);
+    select({ type: 'block', id: block.id });
+    justCreated = block;
     commit();
   }
 
@@ -998,6 +1002,8 @@
     syncClones(selectedBlock());
     const key = (sel) => (sel ? sel.type + ':' + (sel.ids ? sel.ids.join(',') : sel.id) : '');
     const same = key(selection) === key(next);
+    // Moving on to something else ends the moment in which a resize sets the default size.
+    if (justCreated && !(next?.type === 'block' && next.id === justCreated.id)) justCreated = null;
     selection = next;
     if (!same) {
       iconPickerOpen = false;
@@ -1428,6 +1434,13 @@
       Object.assign(block, { x: l, y: t, width: r - l, height: b - t });
       render();
     }, () => {
+      if (block === justCreated) {
+        // Resized straight after being added: the next new ones start at this size.
+        defaultSizes[block.kind || 'block'] = { width: block.width, height: block.height };
+        try {
+          localStorage.setItem(SIZE_KEY, JSON.stringify(defaultSizes));
+        } catch { /* not remembered beyond this session */ }
+      }
       commit();
       renderInspector();
     });
@@ -3291,6 +3304,13 @@
       }
     }
   } catch { /* corrupt working copy: start empty */ }
+  try {
+    const sizes = JSON.parse(localStorage.getItem(SIZE_KEY) || '{}');
+    for (const kind of ['block', 'group']) {
+      const { width, height } = sizes?.[kind] || {};
+      if (width >= MIN_SIZE && height >= MIN_SIZE) defaultSizes[kind] = { width, height };
+    }
+  } catch { /* no remembered sizes: the built-in ones apply */ }
   try {
     traceOn = localStorage.getItem(TRACE_KEY) === '1';
   } catch { /* storage unavailable: trace starts off */ }
