@@ -217,7 +217,7 @@
   // ---------- ids ----------
   // Until the user types an ID themselves (customId), an element's id follows its name.
 
-  const DEFAULT_ID = /^(block|group|junction|title|frame|comment|link)-\d+$/;
+  const DEFAULT_ID = /^(block|group|junction|title|frame|comment|ref|link)-\d+$/;
 
   const slugify = (text) => String(text).trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
 
@@ -361,6 +361,7 @@
         connIds.add(cid);
         const conn = { id: cid, name: String(c.name ?? ''), side: SIDES.includes(c.side) ? c.side : 'right', color: String(c.color ?? '') };
         if (c.ref) conn.ref = String(c.ref);
+        if (c.src) conn.src = String(c.src); // on a reference: the connector it mirrors
         connectors.push(conn);
       }
 
@@ -389,6 +390,11 @@
         out.blocks[out.blocks.length - 1].frameColor = String(b.frameColor ?? '');
         out.blocks[out.blocks.length - 1].frameWidth = clamp(num(b.frameWidth, 0), 0, 10);
       }
+      else if (b.kind === 'ref') {
+        Object.assign(out.blocks[out.blocks.length - 1], { kind: 'ref', refSchema: String(b.refSchema ?? ''), refBlock: String(b.refBlock ?? '') });
+        if (b.auto) out.blocks[out.blocks.length - 1].auto = true;
+        if (b.missing) out.blocks[out.blocks.length - 1].missing = true;
+      }
       else if (b.cloneGroup) out.blocks[out.blocks.length - 1].cloneGroup = String(b.cloneGroup);
     }
 
@@ -415,6 +421,8 @@
       });
       if (out.blocks.some((b) => b.kind === 'group' && b.id === l.via)) out.links[out.links.length - 1].via = l.via;
       if (custom) out.links[out.links.length - 1].customId = true;
+      // A link put here on behalf of another schema, which holds the original.
+      if (l.auto) Object.assign(out.links[out.links.length - 1], { auto: String(l.auto), srcLink: String(l.srcLink ?? '') });
       for (const key of ['fromDir', 'toDir']) {
         const end = out.blocks.find((b) => b.kind === 'junction' && b.connectors[0].id === l[key === 'fromDir' ? 'from' : 'to']);
         if (end && LINK_DIRS[l[key]]) out.links[out.links.length - 1][key] = l[key];
@@ -585,7 +593,9 @@
         return;
       }
       if (await syncOpenFile() || !applies()) return; // the version from elsewhere was loaded instead
-      writeLibrary({ ...readLibrary(), [libName]: { savedAt: Date.now(), schema: JSON.parse(lastSnapshot) } });
+      const lib = { ...readLibrary(), [libName]: { savedAt: Date.now(), schema: JSON.parse(lastSnapshot) } };
+      pushBackRefs(libName, schema, lib);
+      writeLibrary(lib);
       syncedSnapshot = lastSnapshot;
       saveCurrent();
       updateChrome();
@@ -1242,6 +1252,164 @@
     addElement(titleBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'title'), x, y));
   }
 
+  // ---------- references to blocks in other schemas ----------
+  // A reference (kind: 'ref') stands for a block of another saved schema: it looks like that block
+  // and has its connectors (each remembering, in `src`, the connector it mirrors), so links can be
+  // drawn to it here. When a schema is saved, the schemas it refers to are given the other side of
+  // those links: there, each block of ours linked to a reference appears as a reference itself
+  // (`auto`), linked to the original block by a link marked `auto` with our schema's name.
+
+  const REF_SHARED = ['name', 'description', 'icon', 'background', 'border', 'borderWidth', 'borderStyle'];
+
+  function refBlock(id, x, y, o = {}) {
+    const block = {
+      id,
+      name: 'Reference',
+      description: '',
+      icon: '',
+      background: '#ffffff',
+      border: '#334155',
+      borderWidth: 2,
+      borderStyle: 'solid',
+      x,
+      y,
+      width: Math.max(MIN_SIZE, num(o.width, 140)),
+      height: Math.max(MIN_SIZE, num(o.height, 90)),
+      attributes: [],
+      connectors: [],
+      kind: 'ref',
+      refSchema: String(o.refSchema ?? ''),
+      refBlock: String(o.refBlock ?? ''),
+    };
+    if (o.auto) block.auto = true;
+    return block;
+  }
+
+  // The block a reference stands for, in the given library; only ordinary blocks can be referred to.
+  const refTarget = (ref, lib) => lib[ref.refSchema]?.schema?.blocks?.find((b) => b.id === ref.refBlock && !b.kind);
+
+  // Makes a reference in schema `s` look like `target`, connectors included. Links on connectors
+  // the target no longer has go with them. Without a target it is marked as missing.
+  function mirrorBlock(ref, target, s) {
+    if (!target) {
+      ref.missing = true;
+      return;
+    }
+    delete ref.missing;
+    for (const key of REF_SHARED) if (target[key] !== undefined) ref[key] = target[key];
+    const mine = new Map(ref.connectors.map((c) => [c.src, c]));
+    ref.connectors = (target.connectors || []).map((c) => {
+      const own = mine.get(c.id);
+      mine.delete(c.id);
+      return { id: own?.id ?? uid('c'), name: String(c.name ?? ''), side: SIDES.includes(c.side) ? c.side : 'right', color: String(c.color ?? ''), src: c.id };
+    });
+    const gone = new Set([...mine.values()].map((c) => c.id));
+    if (gone.size) s.links = s.links.filter((l) => !gone.has(l.from) && !gone.has(l.to));
+    followName(ref, s);
+  }
+
+  // Brings every reference in a schema up to date with the saved schemas.
+  function refreshRefs(s, lib) {
+    for (const b of s.blocks) if (b.kind === 'ref' && b.refSchema && b.refBlock) mirrorBlock(b, refTarget(b, lib), s);
+  }
+
+  // Gives the other saved schemas their side of the links between `s` (saved as `name`) and its
+  // references, changing `lib` in place. Links we put there earlier and no longer have are taken
+  // out again, and so are the references that were only there for them.
+  function pushBackRefs(name, s, lib) {
+    const owners = new Map();
+    for (const b of s.blocks) for (const c of b.connectors) owners.set(c.id, { block: b, conn: c });
+    const wanted = new Map(); // other schema -> [{ x, xc, p, pc, link }]: its block x linked to our block p
+    for (const link of s.links) {
+      if (link.auto) continue; // the other schema's own link, shown here
+      const a = owners.get(link.from);
+      const b = owners.get(link.to);
+      if (!a || !b) continue;
+      for (const [r, p] of [[a, b], [b, a]]) {
+        const other = r.block.refSchema;
+        if (r.block.kind !== 'ref' || !other || other === name || r.block.missing || !r.conn.src || p.block.kind) continue;
+        if (!wanted.has(other)) wanted.set(other, []);
+        wanted.get(other).push({ x: r.block.refBlock, xc: r.conn.src, p: p.block, pc: p.conn, link });
+      }
+    }
+    for (const [other, entry] of Object.entries(lib)) {
+      if (other === name || !Array.isArray(entry?.schema?.blocks)) continue;
+      const list = wanted.get(other) || [];
+      const ours = (b) => b.kind === 'ref' && b.refSchema === name;
+      if (!list.length && !entry.schema.blocks.some(ours) && !(entry.schema.links || []).some((l) => l.auto === name)) continue;
+      let t;
+      try {
+        t = normalizeSchema(entry.schema);
+      } catch {
+        continue;
+      }
+      const before = JSON.stringify(t);
+      const keep = new Set(list.map((w) => w.link.id));
+      t.links = t.links.filter((l) => l.auto !== name || keep.has(l.srcLink));
+      for (const w of list) {
+        const x = t.blocks.find((b) => b.id === w.x && !b.kind);
+        const xc = x?.connectors.find((c) => c.id === w.xc);
+        if (!xc) continue;
+        // Our block, as a reference in the other schema: beside the block it is linked to.
+        let ref = t.blocks.find((b) => ours(b) && b.refBlock === w.p.id);
+        if (!ref) {
+          const px = x.x + x.width + 120;
+          let py = x.y;
+          while (t.blocks.some((b) => b.x === px && b.y === py)) py += w.p.height + 30;
+          ref = refBlock(freshBlockId(new Set(t.blocks.map((b) => b.id)), 'ref'), px, py,
+            { refSchema: name, refBlock: w.p.id, auto: true, width: w.p.width, height: w.p.height });
+          t.blocks.push(ref);
+        }
+        mirrorBlock(ref, w.p, t);
+        const rc = ref.connectors.find((c) => c.src === w.pc.id);
+        if (!rc) continue;
+        let link = t.links.find((l) => (l.from === xc.id && l.to === rc.id) || (l.from === rc.id && l.to === xc.id));
+        if (!link) {
+          link = { id: freshBlockId(new Set(t.links.map((l) => l.id)), 'link'), from: rc.id, to: xc.id, description: '', attributes: [], auto: name, srcLink: w.link.id };
+          t.links.push(link);
+        }
+        if (link.auto === name) Object.assign(link, { color: w.link.color || '', style: lineStyle(w.link.style), name: w.link.name || '', srcLink: w.link.id });
+      }
+      // The other schema's references to our blocks follow them; those we put there go once unlinked.
+      for (const b of t.blocks) if (ours(b)) mirrorBlock(b, s.blocks.find((p) => p.id === b.refBlock && !p.kind), t);
+      const linked = (b) => b.connectors.some((c) => t.links.some((l) => l.from === c.id || l.to === c.id));
+      t.blocks = t.blocks.filter((b) => !(ours(b) && b.auto && !linked(b)));
+      if (JSON.stringify(t) !== before) lib[other] = { ...entry, schema: t };
+    }
+  }
+
+  function addRef() {
+    const { x, y } = freeSpot(140, 90);
+    addElement(refBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'ref'), x, y));
+  }
+
+  // Saves the open schema without asking, if it has been saved before: what a jump to another
+  // schema does first, so nothing is lost and the other schema knows of the links to it.
+  function saveQuietly() {
+    if (libName === null || schema.name !== libName) return;
+    const lib = readLibrary();
+    if (!lib[libName]) return;
+    document.activeElement?.blur?.();
+    commit();
+    clearTimeout(autosaveTimer);
+    lib[libName] = { savedAt: Date.now(), schema: JSON.parse(lastSnapshot) };
+    pushBackRefs(libName, schema, lib);
+    writeLibrary(lib);
+    syncedSnapshot = lastSnapshot;
+    saveCurrent();
+  }
+
+  // Goes to the schema a reference points into, and selects the block it stands for.
+  function openRef(ref) {
+    if (!ref.refSchema || !readLibrary()[ref.refSchema]) {
+      toast(ref.refSchema ? `The schema "${ref.refSchema}" is not among the saved schemas.` : 'Choose a schema for this reference first.', true);
+      return;
+    }
+    const target = ref.refBlock;
+    saveQuietly();
+    if (loadSaved(ref.refSchema) && findBlock(target)) select({ type: 'block', id: target });
+  }
+
   function addComment() {
     const { x, y } = freeSpot(160, 110);
     addElement(commentBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'comment'), x, y));
@@ -1680,7 +1848,7 @@
       const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.borderWidth, block.borderStyle, schema.radius,
         block.width, block.height, block.connectors, Boolean(block.cloneGroup),
         block.kind, block.fontSize, block.color, block.align, block.borderColor,
-        isMinimal(block) && groupFrameColor(block)]);
+        isMinimal(block) && groupFrameColor(block), block.refSchema, block.missing]);
       if (el._sig !== sig) {
         el._sig = sig;
         buildBlock(el, block);
@@ -1806,6 +1974,18 @@
     if (block.cloneGroup && !small) body.append(h('span', { class: 'mi clone-badge', title: 'Clone' }, 'copy_all'));
 
     const parts = [body, ...resizeHandles()];
+    el.classList.toggle('ref', block.kind === 'ref');
+    el.classList.toggle('missing', Boolean(block.missing));
+    if (block.kind === 'ref') {
+      // Where it leads, and the way there.
+      parts.push(
+        h('div', { class: 'ref-caption' }, block.refSchema ? `in ${block.refSchema}` : 'no schema chosen'),
+        h('button', {
+          class: 'mi ref-jump',
+          title: block.missing ? 'The block it stands for was not found' : block.refSchema ? `Open "${block.refSchema}"` : 'Choose a schema in the panel',
+        }, block.missing ? 'link_off' : 'open_in_new'),
+      );
+    }
     for (const conn of block.connectors) {
       const [x, y] = connectorLocal(block, conn);
       const dot = h('div', { class: 'connector', title: conn.name || 'Connector' });
@@ -2374,6 +2554,11 @@
       return;
     }
     const target = e.target;
+    if (target.closest('.ref-jump')) {
+      // The button on a reference: select it here; the click that follows opens its schema.
+      select({ type: 'block', id: target.closest('.block').dataset.id });
+      return;
+    }
     const blockEl = target.closest('.block');
     const block = blockEl && findBlock(blockEl.dataset.id);
     const connEl = target.closest('.connector');
@@ -2454,6 +2639,11 @@
     setHover(conn ? { conn } : link ? { link } : null);
   });
   viewport.addEventListener('pointerleave', () => setHover(null));
+
+  viewport.addEventListener('click', (e) => {
+    const ref = e.target.closest('.ref-jump') && findBlock(e.target.closest('.block').dataset.id);
+    if (ref) openRef(ref);
+  });
 
   viewport.addEventListener('dblclick', (e) => {
     if (e.target.closest('.connector, [data-link], [data-group], [data-frame]')) return;
@@ -2920,6 +3110,7 @@
         h('li', {}, 'Clone a block to get linked copies that always change together.'),
         h('li', {}, 'Add a link connector for a free-standing dot where several links meet, or hold Shift when dropping a new link on empty canvas to create one there.'),
         h('li', {}, 'Title adds free text to the schema.'),
+        h('li', {}, 'Reference stands for a block of another saved schema, to link to it from here and jump there.'),
         h('li', {}, 'Comment adds a sticky note for remarks about the schema.'),
         h('li', {}, 'Frame adds a titled area behind the schema; what lies inside it moves with it.'),
         h('li', {}, 'Shift+drag on empty canvas, or Shift+click elements, to select several and move them together.'),
@@ -2980,6 +3171,55 @@
         h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete title'),
       ),
     ];
+  }
+
+  function refInspector(block) {
+    const lib = readLibrary();
+    const names = savedNames(lib).filter((name) => name !== libName);
+    const schemaSelect = h('select', {},
+      h('option', { value: '', selected: !block.refSchema }, '(choose a schema)'),
+      block.refSchema && !names.includes(block.refSchema) ? h('option', { value: block.refSchema, selected: true }, `${block.refSchema} (not found)`) : null,
+      ...names.map((name) => h('option', { value: name, selected: name === block.refSchema }, name)),
+    );
+    schemaSelect.addEventListener('change', () => {
+      block.refSchema = schemaSelect.value;
+      block.refBlock = '';
+      commit();
+      render();
+      renderInspector();
+    });
+    const choices = (lib[block.refSchema]?.schema?.blocks || []).filter((b) => !b.kind);
+    const blockSelect = h('select', { disabled: !choices.length },
+      h('option', { value: '', selected: !block.refBlock }, choices.length ? '(choose a block)' : '(no blocks)'),
+      block.refBlock && !choices.some((b) => b.id === block.refBlock) ? h('option', { value: block.refBlock, selected: true }, `${block.refBlock} (not found)`) : null,
+      ...choices.map((b) => h('option', { value: b.id, selected: b.id === block.refBlock }, `${String(b.name || '').replace(/\s+/g, ' ') || b.id} (${b.id})`)),
+    );
+    blockSelect.addEventListener('change', () => {
+      block.refBlock = blockSelect.value;
+      const target = refTarget(block, lib);
+      if (target) Object.assign(block, { width: target.width, height: target.height });
+      mirrorBlock(block, target, schema);
+      commit();
+      render();
+      renderInspector();
+    });
+    return [
+      h('h3', {}, 'Reference'),
+      field('Schema', schemaSelect),
+      field('Block', blockSelect),
+      field('ID', idField(block)),
+      h('p', { class: 'note' }, block.missing
+        ? 'The block this stands for was not found: its schema or the block may have been renamed or deleted. Choose it again above.'
+        : 'Stands for a block of another saved schema: it looks like that block and has its connectors, so you can link to it here. '
+          + 'When this schema is saved, the blocks linked to it appear in the other schema as references too, linked the same way.'),
+      block.auto ? h('p', { class: 'note' }, `Put here by the schema "${block.refSchema}", which has links to this schema.`) : null,
+      libName === null ? h('p', { class: 'note' }, 'Save this schema first, so the other schema can refer back to it.') : null,
+      h('h3', {}, 'Actions'),
+      h('div', { class: 'row wrap' },
+        h('button', { disabled: !block.refSchema, onclick: () => openRef(block) }, icon('open_in_new'), 'Open its schema'),
+        h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Delete reference'),
+      ),
+    ].filter(Boolean);
   }
 
   function commentInspector(block) {
@@ -3234,6 +3474,7 @@
     if (block.kind === 'junction') return junctionInspector(block);
     if (block.kind === 'title') return titleInspector(block);
     if (block.kind === 'comment') return commentInspector(block);
+    if (block.kind === 'ref') return refInspector(block);
     if (block.kind === 'frame') return frameInspector(block);
     const out = [];
     const isGroup = block.kind === 'group';
@@ -3511,8 +3752,10 @@
     const lib = readLibrary();
     if (lib[name] && name !== libName && !confirm(`A saved schema named "${name}" already exists. Overwrite it?`)) return;
     schema.name = name;
+    refreshRefs(schema, lib);
     commit();
     lib[name] = { savedAt: Date.now(), schema: JSON.parse(lastSnapshot) };
+    pushBackRefs(name, schema, lib);
     if (!writeLibrary(lib)) return;
     libName = name;
     syncedSnapshot = lastSnapshot;
@@ -3539,8 +3782,10 @@
   function loadSaved(name) {
     if (!confirmDiscard()) return false;
     try {
-      const loaded = normalizeSchema(readLibrary()[name]?.schema);
+      const lib = readLibrary();
+      const loaded = normalizeSchema(lib[name]?.schema);
       loaded.name = name;
+      refreshRefs(loaded, lib);
       replaceDocument(loaded, name);
       return true;
     } catch (err) {
@@ -4352,6 +4597,7 @@
     'add-title': addTitle,
     'add-frame': addFrame,
     'add-comment': addComment,
+    'add-ref': addRef,
     'undo': undo,
     'redo': redo,
     'trace': toggleTrace,

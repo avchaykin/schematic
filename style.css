@@ -616,6 +616,38 @@ dialog h2 { margin: 0; font-size: 15px; }
 }
 .block.title.selected .title-body { outline: 1px dashed var(--accent); outline-offset: 3px; }
 
+/* ---------- references to blocks in other schemas ---------- */
+
+.block.ref .block-body { box-shadow: 0 1px 3px rgb(15 23 42 / .12), inset 0 0 0 2px rgb(255 255 255 / .6); outline: 1px dashed var(--ink-muted); outline-offset: 3px; }
+.block.ref.missing .block-body { opacity: .55; }
+.ref-caption {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 5px);
+  max-width: 100%;
+  color: var(--ink-muted);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.ref-jump {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  z-index: 3;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--accent);
+  font-size: 14px;
+  cursor: pointer;
+}
+.block.ref.missing .ref-jump { color: var(--danger); }
+
 /* ---------- comments (sticky notes) ---------- */
 
 /* The shadow is on the element because the sheet itself is clipped to cut its corner. */

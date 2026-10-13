@@ -124,6 +124,13 @@ Use **Clone** when the same thing appears several times and must stay identical.
   and whatever lies entirely inside moves with it; resize it by its edges and corners once selected.
 - A frame has no background and a grey border by default; both are set as for a block.
 
+## Link schemas together
+
+When a block of another schema matters here, add a **Reference**: pick the schema and the block in
+the panel, and the block appears with its connectors, ready to be linked to. The button in its
+corner jumps to that schema. After saving, the other schema shows your linked blocks as references
+too, so the connection can be followed from both sides.
+
 ## 8. Schema-wide settings
 
 The **Schema** button opens the parameters that apply to the whole schema: the corner radius of

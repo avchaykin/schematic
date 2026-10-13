@@ -78,6 +78,19 @@ Everything else works offline.
 - Text (one or several lines), size, colour and alignment are set in the panel; the box is moved and
   resized like a block.
 
+### References to other schemas
+
+- A reference stands for a block of another saved schema: choose the schema and the block (by its
+  name and ID) in the panel, and the reference takes on that block's look and connectors.
+- Links can be drawn between a reference's connectors and anything in this schema.
+- The button in its corner (or **Open its schema** in the panel) saves the open schema and goes to
+  the other one, with the original block selected.
+- When a schema is saved, every block linked to a reference appears in the other schema as a
+  reference too, linked to the original block the same way. These follow the schema they come
+  from: remove the link there and they disappear here on its next save.
+- References are found by schema name and block ID, so renaming either breaks them until they are
+  chosen again; a broken reference is shown faded.
+
 ### Comments
 
 - A sticky note with free text, for remarks about the schema: a coloured sheet with a folded corner.
