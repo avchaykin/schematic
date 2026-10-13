@@ -1099,6 +1099,9 @@
   //   in an order that keeps the links from crossing where it can.
   function spreadPolylines(parts) {
     const gap = Math.max(16, schema.linkWidth * 4);
+    // Runs count as lying on top of each other well before they touch: when closer than this
+    // sideways, and when they pass, or come within the gap of passing, alongside each other.
+    const zone = gap * 2;
     const twice = parts.filter((part) => part.points.length === 6);
     for (const [u, v] of [['x', 'y'], ['y', 'x']]) { // u: where a run sits; v: the direction it runs in
       // A part's middle run, if it runs in direction v and lies between its two ends' stubs.
@@ -1174,7 +1177,7 @@
         for (let j = i + 1; j < units.length; j++) {
           const m = units[i];
           const n = units[j];
-          if (Math.abs(m.at - n.at) < gap - 0.01 && m.lo < n.hi - 0.01 && n.lo < m.hi - 0.01) cluster[root(i)] = root(j);
+          if (Math.abs(m.at - n.at) < zone - 0.01 && m.lo < n.hi + gap && n.lo < m.hi + gap) cluster[root(i)] = root(j);
         }
       }
       const clusters = new Map();
