@@ -26,7 +26,7 @@
     <div class="tool-group" role="group" aria-label="Schema file">
       <button data-action="new" class="icon-only" title="New schema" aria-label="New schema"><span class="mi">note_add</span></button>
       <button data-action="save" class="icon-only" title="Save to browser storage (Ctrl/⌘+S)" aria-label="Save"><span class="mi">save</span></button>
-      <button data-action="library" class="icon-only" title="Load or delete saved schemas" aria-label="Load"><span class="mi">folder_open</span></button>
+      <button data-action="library" class="icon-only" title="Load a saved schema" aria-label="Load"><span class="mi">folder_open</span></button>
       <button data-action="folder" class="icon-only" title="Keep schemas as files in a folder on this computer" aria-label="Folder storage" hidden><span class="mi">folder_special</span></button>
     </div>
 
@@ -79,6 +79,8 @@
     </div>
     <aside id="inspector"></aside>
   </main>
+
+  <div id="load-menu" class="menu" role="menu" hidden></div>
 
   <dialog id="library-dialog">
     <header>

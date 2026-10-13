@@ -147,7 +147,9 @@ Everything else works offline.
 
 ### Storage
 
-- Save schemas by name to browser local storage; load or delete them from a list.
+- Save schemas by name to browser local storage. The Load button drops down a list of them to
+  pick from; **Manage saved schemas…** at its end opens the dialog for deleting, exporting and
+  importing them and for choosing a folder.
 - In Chrome or Edge, schemas can live in a folder on the computer instead: one JSON file per
   schema, in the export format. Pick the folder with the toolbar's folder button (or in the Load
   dialog); a schema that has been saved once is then written again automatically after every change.
@@ -156,7 +158,7 @@ Everything else works offline.
 - Export to a JSON file and import it back.
 - Export the whole schema as a PNG picture or a one-page PDF, on white, at twice screen resolution,
   without the grid or selection marks.
-- **Export all** (in the Load dialog) writes every saved schema to one file; importing that file
+- **Export all** (in the manage dialog) writes every saved schema to one file; importing that file
   adds them all back to the saved schemas.
 - A JSON dialog shows the schema as text and applies edits made there.
 

@@ -2373,6 +2373,7 @@
       e.preventDefault();
       deleteSelection();
     } else if (key === 'escape') {
+      loadMenu.hidden = true;
       select(null);
     }
   });
@@ -3365,7 +3366,8 @@
     toast(folder?.ready ? `Saved "${name}" in the folder "${folder.handle.name}"` : `Saved "${name}"`);
   }
 
-  async function openLibrary() {
+  // Makes sure the list of saved schemas is current before it is shown.
+  async function refreshLibrary() {
     await ensureFolder();
     if (folder?.ready) {
       // Files may have been added or changed from outside, by another program or by file sync.
@@ -3373,6 +3375,61 @@
       await scanFolder().catch((err) => toast('Could not read the folder: ' + err.message, true));
       updateChrome();
     }
+  }
+
+  const savedNames = (lib) => Object.keys(lib).sort((a, b) => (lib[b].savedAt || 0) - (lib[a].savedAt || 0));
+
+  // Opens a saved schema in place of the current one; false if it was not opened.
+  function loadSaved(name) {
+    if (!confirmDiscard()) return false;
+    try {
+      const loaded = normalizeSchema(readLibrary()[name]?.schema);
+      loaded.name = name;
+      replaceDocument(loaded, name);
+      return true;
+    } catch (err) {
+      toast(err.message, true);
+      return false;
+    }
+  }
+
+  // The Load button: a plain list of saved schemas to pick from, newest first. Everything else
+  // about them (deleting, exporting, the folder) is in the dialog behind "Manage".
+  const loadMenu = $('#load-menu');
+
+  async function toggleLoadMenu() {
+    if (!loadMenu.hidden) {
+      loadMenu.hidden = true;
+      return;
+    }
+    await refreshLibrary();
+    const lib = readLibrary();
+    const close = (then) => () => {
+      loadMenu.hidden = true;
+      then();
+    };
+    const items = savedNames(lib).map((name) => h('button', {
+      class: 'menu-item' + (name === libName ? ' current' : ''),
+      title: name === libName ? 'The schema that is open' : `Load "${name}"`,
+      onclick: close(() => loadSaved(name)),
+    }, h('span', { class: 'menu-name' }, name), h('span', { class: 'menu-meta' }, lib[name].savedAt ? new Date(lib[name].savedAt).toLocaleDateString() : '')));
+    loadMenu.replaceChildren(
+      ...(items.length ? items : [h('div', { class: 'menu-empty' }, 'Nothing saved yet')]),
+      h('div', { class: 'menu-sep' }),
+      h('button', { class: 'menu-item', onclick: close(openLibrary) }, icon('settings'), h('span', { class: 'menu-name' }, 'Manage saved schemas…')),
+    );
+    const anchor = $('[data-action="library"]').getBoundingClientRect();
+    loadMenu.style.left = anchor.left + 'px';
+    loadMenu.style.top = anchor.bottom + 6 + 'px';
+    loadMenu.hidden = false;
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest?.('#load-menu, [data-action="library"]')) loadMenu.hidden = true;
+  });
+
+  async function openLibrary() {
+    await refreshLibrary();
     renderLibrary();
     if (!libraryDialog.open) libraryDialog.showModal();
   }
@@ -3407,7 +3464,7 @@
   function renderLibrary() {
     renderLibraryWhere();
     const lib = readLibrary();
-    const names = Object.keys(lib).sort((a, b) => (lib[b].savedAt || 0) - (lib[a].savedAt || 0));
+    const names = savedNames(lib);
     const list = $('#library-list');
     if (!names.length) {
       list.replaceChildren(h('div', { class: 'empty' }, 'Nothing saved yet. Use Save to store the current schema.'));
@@ -3425,17 +3482,7 @@
         ),
         h('button', {
           class: 'primary',
-          onclick: () => {
-            if (!confirmDiscard()) return;
-            try {
-              const loaded = normalizeSchema(entry.schema);
-              loaded.name = name;
-              replaceDocument(loaded, name);
-              libraryDialog.close();
-            } catch (err) {
-              toast(err.message, true);
-            }
-          },
+          onclick: () => { if (loadSaved(name)) libraryDialog.close(); },
         }, 'Load'),
         h('button', {
           class: 'danger icon-only',
@@ -4114,7 +4161,7 @@
   const actions = {
     'new': () => { if (confirmDiscard()) replaceDocument(emptySchema()); },
     'save': saveToLibrary,
-    'library': openLibrary,
+    'library': toggleLoadMenu,
     'folder': folderAction,
     'close-library': () => libraryDialog.close(),
     'settings': openSettings,
