@@ -1098,7 +1098,7 @@
   // - runs of unrelated links that would lie on top of each other, or nearly so, are spaced out,
   //   in an order that keeps the links from crossing where it can.
   function spreadPolylines(parts) {
-    const gap = Math.max(8, schema.linkWidth * 3);
+    const gap = Math.max(16, schema.linkWidth * 4);
     const twice = parts.filter((part) => part.points.length === 6);
     for (const [u, v] of [['x', 'y'], ['y', 'x']]) { // u: where a run sits; v: the direction it runs in
       // A part's middle run, if it runs in direction v and lies between its two ends' stubs.
