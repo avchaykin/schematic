@@ -1013,12 +1013,12 @@
     };
     const before = lead ? way(a, lead) : [];
     const after = tail ? way(b, tail).reverse() : [];
-    const leadD = !lead ? '' : curved
-      ? `M${at(before[0])} C${at(before[1])} ${at(before[2])} ${at(before[3])} L${at(before[4])}`
-      : 'M' + before.map(at).join(' L');
-    const tailD = !tail ? '' : curved
-      ? ` L${at(after[1])} C${at(after[2])} ${at(after[3])} ${at(after[4])}`
-      : after.slice(1).map((p) => ' L' + at(p)).join('');
+    if (!curved) {
+      const points = [...before, ...core.points, ...after];
+      return { d: cornerPath(points), points, mid: core.mid };
+    }
+    const leadD = lead ? `M${at(before[0])} C${at(before[1])} ${at(before[2])} ${at(before[3])} L${at(before[4])}` : '';
+    const tailD = tail ? ` L${at(after[1])} C${at(after[2])} ${at(after[3])} ${at(after[4])}` : '';
     return {
       d: (lead ? `${leadD} ${core.d.replace(/^M[^CL]*/, '')}` : core.d) + tailD,
       points: [...before, ...core.points, ...after],
@@ -1062,24 +1062,85 @@
       }
       rest -= lengths[i];
     }
-    return { d: 'M' + points.map((p) => `${p.x},${p.y}`).join(' L'), points, mid };
+    return { d: cornerPath(points), points, mid };
+  }
+
+  // Path data for a line through the given corners. A polyline's corners are slightly rounded.
+  function cornerPath(points) {
+    const radius = schema.linkShape === 'polyline' ? 6 : 0;
+    const at = (p) => `${p.x},${p.y}`;
+    // Corners only: no point twice in a row.
+    const line = points.filter((p, i) => i === 0 || Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) > 0.01);
+    let d = 'M' + at(line[0]);
+    for (let i = 1; i < line.length; i++) {
+      const p = line[i];
+      const prev = line[i - 1];
+      const next = line[i + 1];
+      const r = next ? Math.min(radius, Math.hypot(p.x - prev.x, p.y - prev.y) / 2, Math.hypot(next.x - p.x, next.y - p.y) / 2) : 0;
+      if (r < 0.5) {
+        d += ' L' + at(p);
+        continue;
+      }
+      const towards = (q) => {
+        const len = Math.hypot(q.x - p.x, q.y - p.y);
+        return { x: p.x + ((q.x - p.x) / len) * r, y: p.y + ((q.y - p.y) / len) * r };
+      };
+      d += ` L${at(towards(prev))} Q${at(p)} ${at(towards(next))}`;
+    }
+    return d;
   }
 
   const linkPath = (a, b) => linkStretch(a, b).d;
 
-  // Polyline links whose middle runs would lie on top of each other are moved apart. A link that
-  // turns twice has one run free to slide sideways; runs on the same line that overlap are spaced
-  // out around it, in an order that keeps the links from crossing where it can. Runs that start
-  // from the same point stay together, as one line that forks.
+  // Tidies polyline links that turn twice, each of which has one middle run free to slide sideways:
+  // - links leaving the same connector (or arriving at the same one) turn on one shared line, so
+  //   they run as a single line that forks instead of as parallel lines side by side;
+  // - runs of unrelated links that would lie on top of each other, or nearly so, are spaced out,
+  //   in an order that keeps the links from crossing where it can.
   function spreadPolylines(parts) {
     const gap = Math.max(8, schema.linkWidth * 3);
+    const twice = parts.filter((part) => part.points.length === 6);
     for (const [u, v] of [['x', 'y'], ['y', 'x']]) { // u: where a run sits; v: the direction it runs in
+      // A part's middle run, if it runs in direction v and lies between its two ends' stubs.
+      const run = (part) => {
+        const [, p, s, e, q] = part.points;
+        if (Math.abs(s[u] - e[u]) > 0.01 || Math.abs(s[v] - e[v]) < 0.01) return null;
+        return { p, s, e, q, between: (p[u] - s[u]) * (q[u] - e[u]) < 0 };
+      };
+
+      // --- one turning line for links that share an end
+      const joined = new Set();
+      for (const [shared, near, far] of [[0, 1, 4], [5, 4, 1]]) {
+        const groups = new Map();
+        for (const part of twice) {
+          const r = run(part);
+          if (!r || !r.between || joined.has(part)) continue;
+          const c = part.points[shared];
+          // Together only if they head the same way from the shared connector.
+          const key = `${c.x},${c.y},${Math.sign(part.points[far][u] - part.points[near][u])}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(part);
+        }
+        for (const group of groups.values()) {
+          if (group.length < 2) continue;
+          // They turn where the nearest of them would: a short trunk, then the branches.
+          const from = group[0].points[near][u];
+          const at = group.map((part) => part.points[2][u]).reduce((best, x) => (Math.abs(x - from) < Math.abs(best - from) ? x : best));
+          for (const part of group) {
+            part.points[2][u] = at;
+            part.points[3][u] = at;
+            joined.add(part);
+          }
+        }
+      }
+
+      // --- runs that share a line move as one; unrelated ones that coincide are spaced out
       const units = [];
       const byEnd = new Map();
-      for (const part of parts) {
-        if (part.points.length !== 6) continue;
-        const [, p, s, e, q] = part.points;
-        if (Math.abs(s[u] - e[u]) > 0.01 || Math.abs(s[v] - e[v]) < 0.01) continue;
+      for (const part of twice) {
+        const r = run(part);
+        if (!r) continue;
+        const { p, s, e, q } = r;
         const keys = [s, e].map((point) => `${point.x},${point.y}`);
         let unit = byEnd.get(keys[0]) || byEnd.get(keys[1]);
         if (!unit) {
@@ -1106,33 +1167,35 @@
         unit.hi = Math.max(unit.hi, s[v], e[v]);
         for (const d of [Math.abs(p[u] - s[u]), Math.abs(q[u] - e[u])]) if (d > 0.01) unit.room = Math.min(unit.room, d);
       }
-      units.sort((m, n) => Math.round(m.at * 2) - Math.round(n.at * 2) || m.lo - n.lo);
-      let cluster = [];
-      let hi = 0;
-      const spread = () => {
-        if (cluster.length < 2) return;
-        cluster.sort((m, n) => m.kind - n.kind || m.order - n.order);
-        // Closer together when there is little room before the runs would pass their own ends.
-        const room = Math.min(...cluster.map((unit) => unit.room));
-        const step = Math.max(2, Math.min(gap, (2 * (room - 2)) / (cluster.length - 1)));
-        cluster.forEach((unit, i) => {
-          const shift = (i - (cluster.length - 1) / 2) * step;
-          for (const point of new Set(unit.runs)) point[u] += shift;
-        });
-      };
-      for (const unit of units) {
-        if (cluster.length && Math.abs(unit.at - cluster[0].at) < 0.5 && unit.lo < hi - 0.01) {
-          cluster.push(unit);
-          hi = Math.max(hi, unit.hi);
-        } else {
-          spread();
-          cluster = [unit];
-          hi = unit.hi;
+      // Clusters: units closer together than the gap whose runs pass alongside each other.
+      const cluster = units.map((_, i) => i);
+      const root = (i) => (cluster[i] === i ? i : (cluster[i] = root(cluster[i])));
+      for (let i = 0; i < units.length; i++) {
+        for (let j = i + 1; j < units.length; j++) {
+          const m = units[i];
+          const n = units[j];
+          if (Math.abs(m.at - n.at) < gap - 0.01 && m.lo < n.hi - 0.01 && n.lo < m.hi - 0.01) cluster[root(i)] = root(j);
         }
       }
-      spread();
+      const clusters = new Map();
+      units.forEach((unit, i) => {
+        if (!clusters.has(root(i))) clusters.set(root(i), []);
+        clusters.get(root(i)).push(unit);
+      });
+      for (const group of clusters.values()) {
+        if (group.length < 2) continue;
+        group.sort((m, n) => m.kind - n.kind || m.order - n.order);
+        // Closer together when there is little room before the runs would pass their own ends.
+        const room = Math.min(...group.map((unit) => unit.room));
+        const step = Math.max(2, Math.min(gap, (2 * (room - 2)) / (group.length - 1)));
+        const middle = group.reduce((sum, unit) => sum + unit.at, 0) / group.length;
+        group.forEach((unit, i) => {
+          const shift = middle + (i - (group.length - 1) / 2) * step - unit.at;
+          for (const point of new Set(unit.runs)) point[u] += shift;
+        });
+      }
     }
-    for (const part of parts) if (part.points.length === 6) Object.assign(part, cornerLine(part.points));
+    for (const part of twice) Object.assign(part, cornerLine(part.points));
   }
 
   // In order: the link's own colour, its group's links colour, the colour of a block connector it

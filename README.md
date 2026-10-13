@@ -147,8 +147,9 @@ Everything else works offline.
 
 - Corner radius for all blocks.
 - Link style for all links: curved, straight, or polyline (straight runs with right-angled turns),
-  and how strongly curved links bend. Polyline links that would run along the same line, such as
-  those of a group, are spaced apart.
+  and how strongly curved links bend. Polyline links have slightly rounded corners; unrelated ones
+  that would run along the same line, or nearly, are spaced apart, while links from the same
+  connector (or to the same one) share one line and fork from it.
 - Whether a link goes around its own block when its other end lies behind the side its connector
   is on (for example from a block's left side to something on its right), rather than under the block.
 - Line width of all links, and the size of all link connectors.
