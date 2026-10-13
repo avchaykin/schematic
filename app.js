@@ -141,6 +141,7 @@
   let iconPickerOpen = false;
   let colorPickerConn = null; // which colour chooser is open in the inspector: a connector id or a block field key
   let defaultSizes = {}; // { block, group }: { width, height } for new ones, once the user has set it
+  let marqueeRect = null; // the selection box last drawn, until the selection changes: F frames it
   let justCreated = null; // the block or group block just added; resizing it sets the size of the next ones
   let traceOn = false; // the Trace tool: hovering a connector or link marks the path it belongs to
   let hover = null; // { conn } or { link }: what the pointer is over while tracing
@@ -1455,6 +1456,7 @@
     syncClones(selectedBlock());
     const key = (sel) => (sel ? sel.type + ':' + (sel.ids ? sel.ids.join(',') : sel.id) : '');
     const same = key(selection) === key(next);
+    marqueeRect = null;
     // Moving on to something else ends the moment in which a resize sets the default size.
     if (justCreated && !(next?.type === 'block' && next.id === justCreated.id)) justCreated = null;
     selection = next;
@@ -1930,7 +1932,27 @@
         return k.kind === 'frame' ? inside : k.x <= r && k.x + k.width >= l && k.y <= b && k.y + k.height >= t;
       });
       select(blockSelection(hit.map((k) => k.id)));
+      marqueeRect = { x: l, y: t, width: r - l, height: b - t };
     });
+  }
+
+  // F: a frame where the selection box was just drawn, or, for elements selected some other way,
+  // around them with room for its title.
+  function frameSelection() {
+    let rect = marqueeRect;
+    const blocks = selectedBlocks();
+    if (!rect || rect.width < MIN_SIZE || rect.height < MIN_SIZE) {
+      if (!blocks.length) return;
+      const x1 = Math.min(...blocks.map((b) => b.x));
+      const y1 = Math.min(...blocks.map((b) => b.y));
+      const x2 = Math.max(...blocks.map((b) => b.x + b.width));
+      const y2 = Math.max(...blocks.map((b) => b.y + b.height));
+      rect = { x: x1 - 20, y: y1 - 40, width: x2 - x1 + 40, height: y2 - y1 + 60 };
+    }
+    const x = snap(rect.x);
+    const y = snap(rect.y);
+    addElement(frameBlock(freshBlockId(new Set(schema.blocks.map((b) => b.id)), 'frame'), x, y,
+      { width: snap(rect.x + rect.width) - x, height: snap(rect.y + rect.height) - y }));
   }
 
   function startResize(e, block, dir) {
@@ -2326,6 +2348,8 @@
       groupLinks(selectedLinks());
     } else if (!mod && !e.altKey && key === 't') {
       toggleTrace();
+    } else if (!mod && !e.altKey && key === 'f') {
+      frameSelection();
     } else if (key === 'delete' || key === 'backspace') {
       e.preventDefault();
       deleteSelection();

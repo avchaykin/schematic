@@ -91,6 +91,8 @@ Everything else works offline.
 - Whatever lies entirely inside a frame moves with it; the frame can be resized without moving its contents.
 - Background and border are set as for blocks. By default there is no background and the border is solid grey.
 - A frame is selected and dragged by its title or border; the inside stays free for the elements in it.
+- Pressing F right after drawing a selection box (Shift+drag) puts a frame exactly where the box
+  was. With elements selected another way, F frames them with a margin.
 
 ### Clones
 
@@ -192,6 +194,7 @@ Everything else works offline.
 | Move a link connector | Drag its arrows handle, or Alt+drag the dot |
 | Select several elements | Shift+drag on empty canvas, or Shift+click them |
 | Select several links | Shift+click (or Ctrl/⌘+click) |
+| Frame the selection box just drawn (or the selected elements) | F |
 | Group selected links | Ctrl/⌘+G |
 | Copy / cut / paste selected elements | Ctrl/⌘+C / Ctrl/⌘+X / Ctrl/⌘+V |
 | Duplicate the selected block | Ctrl/⌘+D |
