@@ -3981,18 +3981,20 @@
       if (isMinimal(b)) {
         // The name tag on the group's line.
         font(500, 10);
-        const w = Math.max(14, ctx.measureText(b.name).width + 12);
+        const lines = b.name.split('\n');
+        const w = Math.max(14, Math.max(...lines.map((line) => ctx.measureText(line).width)) + 12);
+        const tall = lines.length * 14 + 2;
         const cx = b.x + b.width / 2;
         const cy = b.y + b.height / 2;
-        mark(cx - w / 2 - 1, cy - 9, cx + w / 2 + 1, cy + 9);
-        rounded(cx - w / 2, cy - 8, w, 16, 4);
+        mark(cx - w / 2 - 1, cy - tall / 2 - 1, cx + w / 2 + 1, cy + tall / 2 + 1);
+        rounded(cx - w / 2, cy - tall / 2, w, tall, 4);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
         ctx.lineWidth = 1;
         ctx.strokeStyle = groupFrameColor(b);
         ctx.stroke();
         ctx.fillStyle = ink;
-        write(b.name, cx, cy, 'center');
+        lines.forEach((line, i) => write(line, cx, cy + (i - (lines.length - 1) / 2) * 14, 'center'));
         continue;
       }
       if (b.kind === 'junction') {
