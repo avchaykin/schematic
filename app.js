@@ -22,6 +22,7 @@
   const SMALL_W = 90;
   const SMALL_H = 70;
   const SIDES = ['top', 'right', 'bottom', 'left'];
+  const SIDE_ORDER = ['left', 'right', 'top', 'bottom']; // the order sides are listed in the panel
   const NORMALS = { top: [0, -1], right: [1, 0], bottom: [0, 1], left: [-1, 0] };
 
   const DEFAULT_PALETTE = [
@@ -3198,7 +3199,7 @@
       // --- connectors, grouped by side
       out.push(h('div', { class: 'section-head' },
         h('h3', {}, 'Connectors'),
-        ...SIDES.map((side) => h('button', {
+        ...SIDE_ORDER.map((side) => h('button', {
           class: 'icon-only',
           title: `Add connector on the ${side} side`,
           onclick: () => {
@@ -3209,7 +3210,7 @@
           },
         }, sideIcon(side))),
       ));
-      for (const side of SIDES) {
+      for (const side of SIDE_ORDER) {
         const list = sideConnectors(block, side);
         if (!list.length) continue;
         out.push(h('div', { class: 'side-group' }, sideIcon(side), side));
