@@ -2352,6 +2352,25 @@
   }
 
   // Multi-line Description field shared by blocks, links and link connectors.
+  // Name of a block, as a text area: Enter starts a new line, which shows as one on the schema.
+  function nameArea(block) {
+    const area = h('textarea', {
+      rows: Math.min(4, Math.max(1, block.name.split('\n').length)),
+      value: block.name,
+      spellcheck: false,
+      title: 'Press Enter for a new line',
+      'data-role': 'block-name',
+    });
+    area.addEventListener('input', () => {
+      block.name = area.value;
+      area.rows = Math.min(4, Math.max(1, block.name.split('\n').length));
+      nameEdited(block);
+      render();
+    });
+    area.addEventListener('change', commit);
+    return area;
+  }
+
   function descriptionField(owner) {
     const area = h('textarea', { rows: 2, value: owner.description || '', spellcheck: false, placeholder: 'Description' });
     area.addEventListener('input', () => { owner.description = area.value; });
@@ -3033,7 +3052,7 @@
 
     out.push(
       h('h3', {}, isGroup ? 'Link group' : 'Block'),
-      field('Name', boundInput(block.name, (v) => { block.name = v; nameEdited(block); }, { 'data-role': 'block-name' })),
+      field('Name', nameArea(block)),
       field('ID', idInput),
       descriptionField(block),
       field('Icon', h('div', { class: 'row', style: 'margin:0' },
@@ -3779,8 +3798,9 @@
       write(name, mid.x, mid.y - 8.5, 'center');
     }
 
-    // --- everything else, in schema order
-    for (const b of schema.blocks) {
+    // --- everything else, in schema order, with comments on top of it all
+    const isComment = (b) => b.kind === 'comment';
+    for (const b of [...schema.blocks.filter((x) => !isComment(x)), ...schema.blocks.filter(isComment)]) {
       if (b.kind === 'frame') continue;
       if (isMinimal(b)) {
         // The name tag on the group's line.

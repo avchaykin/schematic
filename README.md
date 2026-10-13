@@ -23,6 +23,7 @@ Everything else works offline.
 - Any number of custom name/value attributes.
 - Move by dragging; resize by dragging an edge or corner of the selected block.
 - The icon sits above the name. When a block is too small for both, only the icon is shown, centred.
+- A name can have several lines: press Enter in the Name field to start a new one.
 - Icons are picked from a searchable grid or typed in by their Material Symbols name.
 - The ID follows the name (lower case, words joined by dashes, numbered if already taken) until you
   type one yourself; clearing the ID field makes it follow the name again. IDs are always unique.
@@ -80,6 +81,7 @@ Everything else works offline.
 ### Comments
 
 - A sticky note with free text, for remarks about the schema: a coloured sheet with a folded corner.
+  Comments always lie on top of everything else.
 - Text (one or several lines), colour and text size are set in the panel; the note is moved and
   resized like a block. It has no connectors.
 
