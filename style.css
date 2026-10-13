@@ -647,6 +647,10 @@ dialog h2 { margin: 0; font-size: 15px; }
   cursor: pointer;
 }
 .block.ref.missing .ref-jump { color: var(--danger); }
+/* A link connector standing for one in another schema: a dashed ring, and the button up to its left. */
+.block.junction.ref .connector { outline: 1px dashed var(--ink-muted); outline-offset: 3px; }
+.block.junction.ref.missing .connector { opacity: .55; }
+.block.junction .ref-jump { right: calc(var(--junction-size, 12px) / 2 + 2px); top: calc(var(--junction-size, 12px) / -2 - 20px); }
 
 /* ---------- comments (sticky notes) ---------- */
 

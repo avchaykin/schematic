@@ -350,6 +350,14 @@
           borderColor: String(b.borderColor ?? ''),
           axis: b.axis === 'vertical' ? 'vertical' : 'horizontal',
         }));
+        if (b.refSchema) {
+          // A link connector of another schema, shown here as a reference.
+          const dot = out.blocks[out.blocks.length - 1];
+          Object.assign(dot, { refSchema: String(b.refSchema), refBlock: String(b.refBlock ?? '') });
+          if (c.src) dot.connectors[0].src = String(c.src);
+          if (b.auto) dot.auto = true;
+          if (b.missing) dot.missing = true;
+        }
         continue;
       }
 
@@ -1285,8 +1293,16 @@
     return block;
   }
 
-  // The block a reference stands for, in the given library; only ordinary blocks can be referred to.
-  const refTarget = (ref, lib) => lib[ref.refSchema]?.schema?.blocks?.find((b) => b.id === ref.refBlock && !b.kind);
+  // A reference is a block of kind 'ref', standing for an ordinary block, or a link connector
+  // with a refSchema, standing for a link connector.
+  const isReference = (b) => Boolean(b.refSchema) && (b.kind === 'ref' || b.kind === 'junction');
+  // What can be referred to: ordinary blocks and link connectors that are not references themselves.
+  const canBeReferred = (b) => (!b.kind || b.kind === 'junction') && !b.refSchema;
+  // Whether `target` is the kind of element the reference `ref` stands for.
+  const matchesRef = (ref, target) => canBeReferred(target) && (target.kind === 'junction') === (ref.kind === 'junction');
+
+  // The element a reference stands for, in the given library.
+  const refTarget = (ref, lib) => lib[ref.refSchema]?.schema?.blocks?.find((b) => b.id === ref.refBlock && matchesRef(ref, b));
 
   // Makes a reference in schema `s` look like `target`, connectors included. Links on connectors
   // the target no longer has go with them. Without a target it is marked as missing.
@@ -1296,6 +1312,13 @@
       return;
     }
     delete ref.missing;
+    if (ref.kind === 'junction') {
+      // A link connector: its one connector stands for the target's.
+      for (const key of ['name', 'description', 'borderColor', 'axis']) if (target[key] !== undefined) ref[key] = target[key];
+      Object.assign(ref.connectors[0], { color: String(target.connectors?.[0]?.color ?? ''), src: target.connectors?.[0]?.id });
+      followName(ref, s);
+      return;
+    }
     for (const key of REF_SHARED) if (target[key] !== undefined) ref[key] = target[key];
     const mine = new Map(ref.connectors.map((c) => [c.src, c]));
     ref.connectors = (target.connectors || []).map((c) => {
@@ -1310,7 +1333,7 @@
 
   // Brings every reference in a schema up to date with the saved schemas.
   function refreshRefs(s, lib) {
-    for (const b of s.blocks) if (b.kind === 'ref' && b.refSchema && b.refBlock) mirrorBlock(b, refTarget(b, lib), s);
+    for (const b of s.blocks) if (isReference(b) && b.refBlock) mirrorBlock(b, refTarget(b, lib), s);
   }
 
   // Gives the other saved schemas their side of the links between `s` (saved as `name`) and its
@@ -1327,7 +1350,8 @@
       if (!a || !b) continue;
       for (const [r, p] of [[a, b], [b, a]]) {
         const other = r.block.refSchema;
-        if (r.block.kind !== 'ref' || !other || other === name || r.block.missing || !r.conn.src || p.block.kind) continue;
+        // From a reference to something of ours that the other schema can show: a block or a link connector.
+        if (!isReference(r.block) || other === name || r.block.missing || !r.conn.src || !canBeReferred(p.block)) continue;
         if (!wanted.has(other)) wanted.set(other, []);
         wanted.get(other).push({ x: r.block.refBlock, xc: r.conn.src, p: p.block, pc: p.conn, link });
       }
@@ -1335,7 +1359,7 @@
     for (const [other, entry] of Object.entries(lib)) {
       if (other === name || !Array.isArray(entry?.schema?.blocks)) continue;
       const list = wanted.get(other) || [];
-      const ours = (b) => b.kind === 'ref' && b.refSchema === name;
+      const ours = (b) => isReference(b) && b.refSchema === name;
       if (!list.length && !entry.schema.blocks.some(ours) && !(entry.schema.links || []).some((l) => l.auto === name)) continue;
       let t;
       try {
@@ -1347,17 +1371,19 @@
       const keep = new Set(list.map((w) => w.link.id));
       t.links = t.links.filter((l) => l.auto !== name || keep.has(l.srcLink));
       for (const w of list) {
-        const x = t.blocks.find((b) => b.id === w.x && !b.kind);
+        const x = t.blocks.find((b) => b.id === w.x && canBeReferred(b));
         const xc = x?.connectors.find((c) => c.id === w.xc);
         if (!xc) continue;
         // Our block, as a reference in the other schema: beside the block it is linked to.
-        let ref = t.blocks.find((b) => ours(b) && b.refBlock === w.p.id);
+        let ref = t.blocks.find((b) => ours(b) && b.refBlock === w.p.id && matchesRef(b, w.p));
         if (!ref) {
           const px = x.x + x.width + 120;
           let py = x.y;
           while (t.blocks.some((b) => b.x === px && b.y === py)) py += w.p.height + 30;
-          ref = refBlock(freshBlockId(new Set(t.blocks.map((b) => b.id)), 'ref'), px, py,
-            { refSchema: name, refBlock: w.p.id, auto: true, width: w.p.width, height: w.p.height });
+          const taken = new Set(t.blocks.map((b) => b.id));
+          ref = w.p.kind === 'junction'
+            ? Object.assign(junctionBlock(freshBlockId(taken, 'junction'), px, py), { refSchema: name, refBlock: w.p.id, auto: true })
+            : refBlock(freshBlockId(taken, 'ref'), px, py, { refSchema: name, refBlock: w.p.id, auto: true, width: w.p.width, height: w.p.height });
           t.blocks.push(ref);
         }
         mirrorBlock(ref, w.p, t);
@@ -1371,7 +1397,7 @@
         if (link.auto === name) Object.assign(link, { color: w.link.color || '', style: lineStyle(w.link.style), name: w.link.name || '', srcLink: w.link.id });
       }
       // The other schema's references to our blocks follow them; those we put there go once unlinked.
-      for (const b of t.blocks) if (ours(b)) mirrorBlock(b, s.blocks.find((p) => p.id === b.refBlock && !p.kind), t);
+      for (const b of t.blocks) if (ours(b)) mirrorBlock(b, s.blocks.find((p) => p.id === b.refBlock && matchesRef(b, p)), t);
       const linked = (b) => b.connectors.some((c) => t.links.some((l) => l.from === c.id || l.to === c.id));
       t.blocks = t.blocks.filter((b) => !(ours(b) && b.auto && !linked(b)));
       if (JSON.stringify(t) !== before) lib[other] = { ...entry, schema: t };
@@ -1890,6 +1916,15 @@
     if (block.borderColor) dot.style.borderColor = block.borderColor;
     const parts = [dot, h('div', { class: 'mi junction-move', title: 'Drag to move' }, 'open_with')];
     if (block.name) parts.push(h('div', { class: 'conn-label junction-label' }, block.name));
+    el.classList.toggle('ref', Boolean(block.refSchema));
+    el.classList.toggle('missing', Boolean(block.missing));
+    if (block.refSchema) {
+      // A link connector of another schema: marked, with the way there.
+      parts.push(h('button', {
+        class: 'mi ref-jump',
+        title: block.missing ? 'The link connector it stands for was not found' : `A link connector of "${block.refSchema}" — open that schema`,
+      }, block.missing ? 'link_off' : 'open_in_new'));
+    }
     el.replaceChildren(...parts);
   }
 
@@ -3444,6 +3479,12 @@
     const conn = block.connectors[0];
     return [
       h('h3', {}, 'Link connector'),
+      ...(block.refSchema ? [
+        h('p', { class: 'note' }, block.missing
+          ? `Stood for a link connector of the schema "${block.refSchema}", which was not found there.`
+          : `Stands for a link connector of the schema "${block.refSchema}", which has links to this schema. Its name and colour follow the original.`),
+        h('div', { class: 'row' }, h('button', { onclick: () => openRef(block) }, icon('open_in_new'), 'Open its schema')),
+      ] : []),
       field('Name', boundInput(block.name, (v) => { block.name = v; nameEdited(block); }, { 'data-role': 'block-name' })),
       field('ID', idField(block)),
       descriptionField(block),
