@@ -656,6 +656,28 @@ dialog h2 { margin: 0; font-size: 15px; }
   border: 1px solid var(--accent);
   background: rgb(37 99 235 / .08);
   pointer-events: none;
+  overflow: hidden; /* a box too small for the hint just cuts it off */
+}
+.marquee-hint {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.marquee-hint kbd {
+  min-width: 16px;
+  padding: 0 4px;
+  border: 1px solid var(--accent);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--panel);
+  font: 600 10px/14px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  text-align: center;
 }
 .block.multi { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 .block.junction.multi { outline: none; }

@@ -1912,7 +1912,8 @@
     const rect = viewport.getBoundingClientRect();
     const startScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const startWorld = toWorld(e);
-    const box = h('div', { id: 'marquee' });
+    // The box carries a reminder of what F does with it.
+    const box = h('div', { id: 'marquee' }, h('div', { class: 'marquee-hint' }, h('kbd', {}, 'F'), 'frame'));
     viewport.append(box);
     let last = e;
     let finished = false;
