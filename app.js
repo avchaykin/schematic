@@ -1906,20 +1906,35 @@
   }
 
   // Shift+drag on empty canvas: rubber-band selection of elements.
+  let marqueeToFrame = null; // while a selection box is being drawn: turns it into a frame at once
+
   function startMarquee(e) {
     const rect = viewport.getBoundingClientRect();
     const startScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const startWorld = toWorld(e);
     const box = h('div', { id: 'marquee' });
     viewport.append(box);
+    let last = e;
+    let finished = false;
+    // F pressed with the box still being drawn: no need to release the mouse first.
+    marqueeToFrame = () => {
+      finish(last);
+      frameSelection();
+    };
     drag((ev) => {
+      last = ev;
+      if (finished) return;
       const x = ev.clientX - rect.left;
       const y = ev.clientY - rect.top;
       box.style.left = Math.min(x, startScreen.x) + 'px';
       box.style.top = Math.min(y, startScreen.y) + 'px';
       box.style.width = Math.abs(x - startScreen.x) + 'px';
       box.style.height = Math.abs(y - startScreen.y) + 'px';
-    }, (ev) => {
+    }, (ev) => finish(ev));
+    function finish(ev) {
+      if (finished) return;
+      finished = true;
+      marqueeToFrame = null;
       box.remove();
       const end = toWorld(ev);
       const l = Math.min(startWorld.x, end.x);
@@ -1933,7 +1948,7 @@
       });
       select(blockSelection(hit.map((k) => k.id)));
       marqueeRect = { x: l, y: t, width: r - l, height: b - t };
-    });
+    }
   }
 
   // F: a frame where the selection box was just drawn, or, for elements selected some other way,
@@ -2315,7 +2330,9 @@
 
   window.addEventListener('keydown', (e) => {
     const mod = e.ctrlKey || e.metaKey;
-    const key = e.key.toLowerCase();
+    // The letter on the key, or, on a keyboard layout without Latin letters, the letter that
+    // key has on a Latin one, so shortcuts work whichever layout is switched on.
+    const key = /^[a-z]$/i.test(e.key) || !/^Key[A-Z]$/.test(e.code) ? e.key.toLowerCase() : e.code.slice(3).toLowerCase();
     if (mod && key === 's') {
       e.preventDefault();
       saveToLibrary();
@@ -2349,7 +2366,8 @@
     } else if (!mod && !e.altKey && key === 't') {
       toggleTrace();
     } else if (!mod && !e.altKey && key === 'f') {
-      frameSelection();
+      if (marqueeToFrame) marqueeToFrame();
+      else frameSelection();
     } else if (key === 'delete' || key === 'backspace') {
       e.preventDefault();
       deleteSelection();

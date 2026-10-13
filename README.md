@@ -91,8 +91,8 @@ Everything else works offline.
 - Whatever lies entirely inside a frame moves with it; the frame can be resized without moving its contents.
 - Background and border are set as for blocks. By default there is no background and the border is solid grey.
 - A frame is selected and dragged by its title or border; the inside stays free for the elements in it.
-- Pressing F right after drawing a selection box (Shift+drag) puts a frame exactly where the box
-  was. With elements selected another way, F frames them with a margin.
+- Pressing F while drawing a selection box (Shift+drag), or right after it, puts a frame exactly
+  where the box is. With elements selected another way, F frames them with a margin.
 
 ### Clones
 
@@ -181,6 +181,8 @@ Everything else works offline.
   choice. Colours given to elements stay as set, and exported pictures are always on white.
 
 ## Keyboard and mouse
+
+Letter shortcuts go by the key's position, so they also work with a non-Latin keyboard layout switched on.
 
 | Action | Shortcut |
 | --- | --- |
