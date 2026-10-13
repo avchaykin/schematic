@@ -148,7 +148,7 @@
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -304,6 +304,7 @@
     out.groupFrames = raw.groupFrames !== false;
     out.linkShape = LINK_SHAPES.includes(raw.linkShape) ? raw.linkShape : 'curved';
     out.linkBend = clamp(num(raw.linkBend, 50), 0, 150);
+    out.linkAvoid = raw.linkAvoid !== false;
     // Defaults for link groups that do not set these themselves.
     out.groupDisplay = raw.groupDisplay === 'minimal' ? 'minimal' : 'full';
     out.groupFrameColor = isHex(raw.groupFrameColor) ? raw.groupFrameColor.toLowerCase() : '';
@@ -806,7 +807,8 @@
     // A junction has no side; aim() picks its direction per link, along its axis.
     if (found.block.kind === 'junction') return { ...point, nx: 0, ny: 0, axis: found.block.axis };
     const [nx, ny] = NORMALS[found.conn.side];
-    return { ...point, nx, ny };
+    // `box`: the block the connector sits on, which its links can be led around.
+    return { ...point, nx, ny, box: { x: found.block.x, y: found.block.y, width: found.block.width, height: found.block.height } };
   }
 
   // Gives a junction end its direction for one link: along its axis, towards `other`.
@@ -853,9 +855,74 @@
     return [a, p, ...turns, q, b];
   }
 
+  // When the other end of a link lies behind the side of the block its connector is on, the link
+  // would run back under that block. Instead it is led around: out of the connector, along the
+  // side to the nearer corner, and along the next side until it is past the block or level with
+  // the other end. Returns those corners and the point the rest of the link carries on from, or
+  // null if the link can leave directly.
+  function detour(a, b) {
+    if (!schema.linkAvoid || !a.box || (!a.nx && !a.ny)) return null;
+    const m = LINK_STUB;
+    if ((b.x - a.x) * a.nx + (b.y - a.y) * a.ny > -m) return null; // the other end is in front
+    const out = { x: a.x + a.nx * m, y: a.y + a.ny * m };
+    const { x, y, width, height } = a.box;
+    // Round whichever corner makes the shorter way.
+    const nearer = (lo, hi, from, to) => (Math.abs(from - lo) + Math.abs(to - lo) <= Math.abs(from - hi) + Math.abs(to - hi) ? lo : hi);
+    if (a.nx) {
+      const cy = nearer(y - m, y + height + m, a.y, b.y);
+      const cx = a.nx < 0 ? Math.min(x + width + m, b.x) : Math.max(x - m, b.x);
+      // Stopped level with the other end: from there it turns straight towards it.
+      const end = cx === b.x && cy !== b.y ? { x: cx, y: cy, nx: 0, ny: Math.sign(b.y - cy) } : { x: cx, y: cy, nx: -a.nx, ny: 0 };
+      return { corners: [a, out, { x: out.x, y: cy }], end };
+    }
+    const cx = nearer(x - m, x + width + m, a.x, b.x);
+    const cy = a.ny < 0 ? Math.min(y + height + m, b.y) : Math.max(y - m, b.y);
+    const end = cy === b.y && cx !== b.x ? { x: cx, y: cy, nx: Math.sign(b.x - cx), ny: 0 } : { x: cx, y: cy, nx: 0, ny: -a.ny };
+    return { corners: [a, out, { x: cx, y: out.y }], end };
+  }
+
+  // Path data running on from points[0] through the others; corners are rounded if asked.
+  function runOn(points, round) {
+    let d = '';
+    for (let i = 1; i < points.length; i++) {
+      const p = points[i];
+      const prev = points[i - 1];
+      const next = points[i + 1];
+      if (!round || !next) {
+        d += ` L${p.x},${p.y}`;
+        continue;
+      }
+      const r = Math.min(10, Math.hypot(p.x - prev.x, p.y - prev.y) / 2, Math.hypot(next.x - p.x, next.y - p.y) / 2);
+      const towards = (q) => {
+        const len = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+        return { x: p.x + ((q.x - p.x) / len) * r, y: p.y + ((q.y - p.y) / len) * r };
+      };
+      const s = towards(prev);
+      const e = towards(next);
+      d += ` L${s.x},${s.y} Q${p.x},${p.y} ${e.x},${e.y}`;
+    }
+    return d;
+  }
+
   // One stretch of a link from a to b, drawn in the schema's link style: its path data, points
   // that bound it, and the point halfway along (where a name goes).
   function linkStretch(a, b) {
+    const lead = detour(a, b);
+    const tail = detour(b, a);
+    if (!lead && !tail) return directStretch(a, b);
+    // Around the block at either end, and the usual line in between.
+    const core = directStretch(lead ? lead.end : a, tail ? tail.end : b);
+    const round = schema.linkShape === 'curved';
+    const before = lead ? [...lead.corners, lead.end] : [];
+    const after = tail ? [tail.end, ...[...tail.corners].reverse()] : [];
+    return {
+      d: (lead ? `M${a.x},${a.y}${runOn(before, round)} ${core.d.replace(/^M[^CL]*/, '')}` : core.d) + runOn(after, round),
+      points: [...before, ...core.points, ...after],
+      mid: core.mid,
+    };
+  }
+
+  function directStretch(a, b) {
     if (schema.linkShape === 'curved') {
       // A cubic curve whose control points lie on each connector's normal, so both ends meet their
       // side at 90°. They stand off by half the distance between the ends at the default bend of 50%.
@@ -3544,11 +3611,22 @@
     const refresh = (e) => { if (e.type === 'change' || e.target.type !== 'color') renderLinkParams(); };
     groupColors.addEventListener('click', refresh);
     groupColors.addEventListener('change', refresh);
+    const avoid = h('input', {
+      type: 'checkbox',
+      checked: schema.linkAvoid,
+      title: 'A link whose other end lies behind the side its connector is on goes around the block instead of under it',
+      onchange: (e) => {
+        schema.linkAvoid = e.target.checked;
+        commit();
+        render();
+      },
+    });
     const bend = slider(schema.linkBend, 0, 150, (v) => { schema.linkBend = v; }, false, ' %');
     bend.firstChild.disabled = schema.linkShape !== 'curved';
     $('#schema-link-params').replaceChildren(
       h('div', { class: 'field' }, h('span', {}, 'Link style'), h('div', { class: 'segmented' }, ...shapes)),
       field('Curve bend', bend),
+      field('Go around own block', avoid),
       field('Line width', slider(schema.linkWidth, 1, 10, (v) => { schema.linkWidth = v; })),
       field('Link connector size', slider(schema.junctionSize, 6, 32, (v) => { schema.junctionSize = v; })),
       h('div', { class: 'field' }, h('span', {}, 'Groups shown as'), h('div', { class: 'segmented' },

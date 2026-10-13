@@ -136,6 +136,8 @@ Everything else works offline.
 - Link style for all links: curved, straight, or polyline (straight runs with right-angled turns),
   and how strongly curved links bend. Polyline links that would run along the same line, such as
   those of a group, are spaced apart.
+- Whether a link goes around its own block when its other end lies behind the side its connector
+  is on (for example from a block's left side to something on its right), rather than under the block.
 - Line width of all links, and the size of all link connectors.
 - Whether lined-up connectors of grouped links get a frame.
 - Defaults for link groups: shown as a block or as a single link, frame colour and frame width.
