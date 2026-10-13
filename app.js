@@ -1,6 +1,9 @@
 (() => {
   'use strict';
 
+  // Written into every saved schema, to tell which version of the app produced a file.
+  const APP = { name: 'Schematic', version: '1.0', repository: 'https://github.com/avchaykin/schematic' };
+
   const LIB_KEY = 'schematic:library';
   const CUR_KEY = 'schematic:current';
   const CLIP_KEY = 'schematic:clipboard';
@@ -149,7 +152,10 @@
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
-    return { format: 'schematic', version: 1, name, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    const now = new Date().toISOString();
+    // `version` is the file format's; `app` says what wrote the file. `created` and `modified` are
+    // when the schema was started and last changed.
+    return { format: 'schematic', version: 1, app: { ...APP }, name, created: now, modified: now, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -295,6 +301,10 @@
       throw new Error('Not a schematic file: "blocks" array is missing.');
     }
     const out = emptySchema(String(raw.name || 'Untitled'));
+    // Times are kept as the file has them; a file from before they were recorded has none.
+    const time = (v) => (typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : '');
+    out.created = time(raw.created);
+    out.modified = time(raw.modified);
     out.radius = clamp(num(raw.radius, 8), 0, MAX_RADIUS);
     out.junctionSize = clamp(num(raw.junctionSize, 12), 6, 32);
     out.linkWidth = clamp(num(raw.linkWidth, 2), 1, 10);
@@ -725,8 +735,10 @@
 
   function commit() {
     syncClones(selectedBlock());
+    if (JSON.stringify(schema) === lastSnapshot) return;
+    schema.modified = new Date().toISOString();
+    if (!schema.created) schema.created = schema.modified;
     const snap = JSON.stringify(schema);
-    if (snap === lastSnapshot) return;
     undoStack.push(lastSnapshot);
     if (undoStack.length > 200) undoStack.shift();
     redoStack = [];
@@ -1466,7 +1478,10 @@
       for (const b of t.blocks) if (ours(b)) mirrorBlock(b, s.blocks.find((p) => p.id === b.refBlock && matchesRef(b, p)), t);
       const linked = (b) => b.connectors.some((c) => t.links.some((l) => l.from === c.id || l.to === c.id));
       t.blocks = t.blocks.filter((b) => !(ours(b) && b.auto && !linked(b)));
-      if (JSON.stringify(t) !== before) lib[other] = { ...entry, schema: t };
+      if (JSON.stringify(t) !== before) {
+        t.modified = new Date().toISOString();
+        lib[other] = { ...entry, schema: t };
+      }
     }
   }
 
@@ -4638,7 +4653,7 @@
       toast('There are no saved schemas to export.', true);
       return;
     }
-    downloadJson('schematic-library.json', { format: 'schematic-library', version: 1, exportedAt: Date.now(), schemas });
+    downloadJson('schematic-library.json', { format: 'schematic-library', version: 1, app: { ...APP }, exportedAt: Date.now(), schemas });
     toast(`Exported ${count} saved schema(s)`);
   }
 

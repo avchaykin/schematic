@@ -1,5 +1,7 @@
 # Schematic
 
+Version 1.0
+
 A browser-based editor for drawing schemas made of blocks and the links between them.
 Plain HTML, CSS and JavaScript: no build step, no server, no dependencies.
 
@@ -176,6 +178,8 @@ Everything else works offline.
   which version to keep.
 - The working copy is kept automatically, so a reload does not lose unsaved edits.
 - Export to a JSON file and import it back.
+- Every schema file records the app that wrote it (`app`: name, version and repository address)
+  and when the schema was created and last modified (`created`, `modified`, as ISO timestamps).
 - Export the whole schema as a PNG picture or a one-page PDF, on white, at twice screen resolution,
   without the grid or selection marks.
 - **Export all** (in the manage dialog) writes every saved schema to one file; importing that file
