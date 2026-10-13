@@ -857,52 +857,43 @@
   }
 
   // When the other end of a link lies behind the side of the block its connector is on, the link
-  // would run back under that block. Instead it is led around: out of the connector, along the
-  // side to the nearer corner, and along the next side until it is past the block or level with
-  // the other end. Returns those corners and the point the rest of the link carries on from, or
-  // null if the link can leave directly.
+  // would run back under that block. Instead it is led around: out of the connector, round the
+  // nearer corner, and along the next side until it is past the block or level with the other
+  // end. Returns the point the rest of the link carries on from (`end`), with the way there as
+  // square `corners` and as a smooth turn (`over`: where it comes level with the block's corner,
+  // heading `dir`; `reach`: how far the turn swings out). Null if the link can leave directly.
   function detour(a, b) {
     if (!schema.linkAvoid || !a.box || (!a.nx && !a.ny)) return null;
     const m = LINK_STUB;
     if ((b.x - a.x) * a.nx + (b.y - a.y) * a.ny > -m) return null; // the other end is in front
     const out = { x: a.x + a.nx * m, y: a.y + a.ny * m };
     const { x, y, width, height } = a.box;
+    const curved = schema.linkShape === 'curved';
     // Round whichever corner makes the shorter way.
     const nearer = (lo, hi, from, to) => (Math.abs(from - lo) + Math.abs(to - lo) <= Math.abs(from - hi) + Math.abs(to - hi) ? lo : hi);
     if (a.nx) {
       const cy = nearer(y - m, y + height + m, a.y, b.y);
       const cx = a.nx < 0 ? Math.min(x + width + m, b.x) : Math.max(x - m, b.x);
-      // Stopped level with the other end: from there it turns straight towards it.
-      const end = cx === b.x && cy !== b.y ? { x: cx, y: cy, nx: 0, ny: Math.sign(b.y - cy) } : { x: cx, y: cy, nx: -a.nx, ny: 0 };
-      return { corners: [a, out, { x: out.x, y: cy }], end };
+      // A line with corners that stops level with the other end turns straight towards it.
+      const turn = !curved && cx === b.x && cy !== b.y;
+      return {
+        corners: [a, out, { x: out.x, y: cy }],
+        end: turn ? { x: cx, y: cy, nx: 0, ny: Math.sign(b.y - cy) } : { x: cx, y: cy, nx: -a.nx, ny: 0 },
+        over: { x: a.nx < 0 ? x : x + width, y: cy },
+        dir: { x: -a.nx, y: 0 },
+        reach: Math.max(m, Math.abs(cy - a.y) * 0.6),
+      };
     }
     const cx = nearer(x - m, x + width + m, a.x, b.x);
     const cy = a.ny < 0 ? Math.min(y + height + m, b.y) : Math.max(y - m, b.y);
-    const end = cy === b.y && cx !== b.x ? { x: cx, y: cy, nx: Math.sign(b.x - cx), ny: 0 } : { x: cx, y: cy, nx: 0, ny: -a.ny };
-    return { corners: [a, out, { x: cx, y: out.y }], end };
-  }
-
-  // Path data running on from points[0] through the others; corners are rounded if asked.
-  function runOn(points, round) {
-    let d = '';
-    for (let i = 1; i < points.length; i++) {
-      const p = points[i];
-      const prev = points[i - 1];
-      const next = points[i + 1];
-      if (!round || !next) {
-        d += ` L${p.x},${p.y}`;
-        continue;
-      }
-      const r = Math.min(10, Math.hypot(p.x - prev.x, p.y - prev.y) / 2, Math.hypot(next.x - p.x, next.y - p.y) / 2);
-      const towards = (q) => {
-        const len = Math.hypot(q.x - p.x, q.y - p.y) || 1;
-        return { x: p.x + ((q.x - p.x) / len) * r, y: p.y + ((q.y - p.y) / len) * r };
-      };
-      const s = towards(prev);
-      const e = towards(next);
-      d += ` L${s.x},${s.y} Q${p.x},${p.y} ${e.x},${e.y}`;
-    }
-    return d;
+    const turn = !curved && cy === b.y && cx !== b.x;
+    return {
+      corners: [a, out, { x: cx, y: out.y }],
+      end: turn ? { x: cx, y: cy, nx: Math.sign(b.x - cx), ny: 0 } : { x: cx, y: cy, nx: 0, ny: -a.ny },
+      over: { x: cx, y: a.ny < 0 ? y : y + height },
+      dir: { x: 0, y: -a.ny },
+      reach: Math.max(m, Math.abs(cx - a.x) * 0.6),
+    };
   }
 
   // One stretch of a link from a to b, drawn in the schema's link style: its path data, points
@@ -913,11 +904,25 @@
     if (!lead && !tail) return directStretch(a, b);
     // Around the block at either end, and the usual line in between.
     const core = directStretch(lead ? lead.end : a, tail ? tail.end : b);
-    const round = schema.linkShape === 'curved';
-    const before = lead ? [...lead.corners, lead.end] : [];
-    const after = tail ? [tail.end, ...[...tail.corners].reverse()] : [];
+    const curved = schema.linkShape === 'curved';
+    const at = (p) => `${p.x},${p.y}`;
+    // The way round one block, from its connector `c` to where the link carries on. Curved links
+    // swing round the corner in one sweep; the others take it square.
+    const way = (c, det) => {
+      if (!curved) return [...det.corners, det.end];
+      const { over, dir, reach } = det;
+      return [c, { x: c.x + c.nx * reach, y: c.y + c.ny * reach }, { x: over.x - dir.x * reach, y: over.y - dir.y * reach }, over, det.end];
+    };
+    const before = lead ? way(a, lead) : [];
+    const after = tail ? way(b, tail).reverse() : [];
+    const leadD = !lead ? '' : curved
+      ? `M${at(before[0])} C${at(before[1])} ${at(before[2])} ${at(before[3])} L${at(before[4])}`
+      : 'M' + before.map(at).join(' L');
+    const tailD = !tail ? '' : curved
+      ? ` L${at(after[1])} C${at(after[2])} ${at(after[3])} ${at(after[4])}`
+      : after.slice(1).map((p) => ' L' + at(p)).join('');
     return {
-      d: (lead ? `M${a.x},${a.y}${runOn(before, round)} ${core.d.replace(/^M[^CL]*/, '')}` : core.d) + runOn(after, round),
+      d: (lead ? `${leadD} ${core.d.replace(/^M[^CL]*/, '')}` : core.d) + tailD,
       points: [...before, ...core.points, ...after],
       mid: core.mid,
     };
