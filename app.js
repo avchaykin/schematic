@@ -435,7 +435,8 @@
   // readLibrary / writeLibrary, as { name: { savedAt, schema } }.
 
   const canUseFolder = typeof window.showDirectoryPicker === 'function';
-  let folder = null; // { handle, ready, cache, files }: ready once access is granted and its files are read
+  let folder = null; // { handle, ready, cache, files, stamps }: ready once access is granted and its files are read
+  let syncedSnapshot = null; // the open schema as last read from or written to the library
   let folderQueue = Promise.resolve(); // file operations run one after another
 
   function folderJob(job) {
@@ -468,6 +469,7 @@
   async function scanFolder() {
     const cache = {};
     const files = {};
+    const stamps = {}; // when each file was last changed, as far as we know: tells changes made elsewhere
     for await (const [fileName, entry] of folder.handle.entries()) {
       if (entry.kind !== 'file' || !fileName.toLowerCase().endsWith('.json')) continue;
       try {
@@ -478,9 +480,10 @@
         if (cache[name]) continue;
         cache[name] = { savedAt: file.lastModified, schema: raw };
         files[name] = fileName;
+        stamps[name] = file.lastModified;
       } catch { /* unreadable or not JSON: not a schema */ }
     }
-    Object.assign(folder, { cache, files, ready: true });
+    Object.assign(folder, { cache, files, stamps, ready: true });
   }
 
   // The file a schema is kept in: its name made safe for a file name, and not another schema's file.
@@ -502,6 +505,7 @@
       const out = await file.createWritable();
       await out.write(JSON.stringify(entry.schema, null, 2));
       await out.close();
+      if (folder?.handle === handle) folder.stamps[name] = (await file.getFile()).lastModified;
     });
   }
 
@@ -509,6 +513,7 @@
     const handle = folder.handle;
     const fileName = folder.files[name];
     delete folder.files[name];
+    delete folder.stamps[name];
     if (fileName) folderJob(() => handle.removeEntry(fileName));
   }
 
@@ -517,8 +522,10 @@
   async function ensureFolder() {
     if (!folder || folder.ready) return;
     try {
-      if (await folder.handle.requestPermission({ mode: 'readwrite' }) === 'granted') await scanFolder();
-      else toast('No access to the folder: using browser storage for now.', true);
+      if (await folder.handle.requestPermission({ mode: 'readwrite' }) === 'granted') {
+        await scanFolder();
+        await recheckOpenFile();
+      } else toast('No access to the folder: using browser storage for now.', true);
     } catch (err) {
       toast('Could not open the folder: ' + err.message, true);
     }
@@ -571,12 +578,83 @@
     clearTimeout(autosaveTimer);
     const applies = () => folder?.ready && libName !== null && schema.name === libName && Boolean(folder.cache[libName]);
     if (!applies()) return;
-    autosaveTimer = setTimeout(() => {
+    autosaveTimer = setTimeout(async () => {
       if (!applies()) return;
+      if (checkingFile) {
+        autosaveSoon(); // a question about the file is open: wait for the answer
+        return;
+      }
+      if (await syncOpenFile() || !applies()) return; // the version from elsewhere was loaded instead
       writeLibrary({ ...readLibrary(), [libName]: { savedAt: Date.now(), schema: JSON.parse(lastSnapshot) } });
+      syncedSnapshot = lastSnapshot;
+      saveCurrent();
       updateChrome();
     }, 800);
   }
+
+  // The open schema's file may be changed from elsewhere: by this app on another computer sharing
+  // the folder through file sync, or by another program. This looks whether it was, when the
+  // window is returned to and before every save. A changed file is loaded in place of what is
+  // open; if there are changes here that it would lose, the user chooses which version stays.
+  // Returns true if the file's version was loaded.
+  let checkingFile = false;
+  async function syncOpenFile() {
+    if (checkingFile || !folder?.ready || libName === null || !folder.files[libName]) return false;
+    checkingFile = true;
+    try {
+      await folderQueue; // our own writes first, so they are not taken for someone else's
+      const name = libName;
+      const file = await (await folder.handle.getFileHandle(folder.files[name])).getFile();
+      if (file.lastModified === folder.stamps[name]) return false;
+      const raw = JSON.parse(await file.text());
+      if (libName !== name || !folder?.ready) return false;
+      folder.stamps[name] = file.lastModified;
+      const next = normalizeSchema(raw);
+      next.name = name;
+      const incoming = JSON.stringify(next);
+      // Compared in the form a file is read in, so that only real differences count.
+      const asRead = (snap) => (snap ? JSON.stringify(normalizeSchema(JSON.parse(snap))) : null);
+      if (incoming === asRead(lastSnapshot)) {
+        // The file holds what is open here: nothing to do.
+        syncedSnapshot = lastSnapshot;
+        saveCurrent();
+        return false;
+      }
+      const mine = schema.name !== name || lastSnapshot !== syncedSnapshot;
+      if (mine && incoming === asRead(syncedSnapshot)) return false; // the file is as we left it; only this side changed
+      if (mine && !confirm(`"${name}" was changed outside this window (on another computer or by another program), and you have changes here too.\n\nOK: load the other version. Your changes here are lost.\nCancel: keep your version. It replaces the other one when saved.`)) {
+        return false;
+      }
+      schema = next;
+      selection = null;
+      iconPickerOpen = false;
+      colorPickerConn = null;
+      undoStack = [];
+      redoStack = [];
+      lastSnapshot = incoming;
+      syncedSnapshot = lastSnapshot;
+      folder.cache[name] = { savedAt: file.lastModified, schema: JSON.parse(lastSnapshot) };
+      saveCurrent();
+      refreshAll();
+      toast(`"${name}" was changed elsewhere: loaded the new version`);
+      return true;
+    } catch {
+      return false; // the file is gone or unreadable: the next save writes it again
+    } finally {
+      checkingFile = false;
+    }
+  }
+
+  // After the folder has been read afresh (which also refreshed what we know of its files), the
+  // open schema's file is looked at in any case.
+  function recheckOpenFile() {
+    if (!folder?.ready || libName === null || !folder.files[libName]) return false;
+    folder.stamps[libName] = -1;
+    return syncOpenFile();
+  }
+
+  window.addEventListener('focus', syncOpenFile);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) syncOpenFile(); });
 
   function readLibrary() {
     if (folder?.ready) return { ...folder.cache };
@@ -608,7 +686,8 @@
   // Working copy, so a reload does not lose unsaved edits.
   function saveCurrent() {
     try {
-      localStorage.setItem(CUR_KEY, JSON.stringify({ schema, view, libName }));
+      // `synced`: nothing here is waiting to be saved, so a newer file can simply be loaded.
+      localStorage.setItem(CUR_KEY, JSON.stringify({ schema, view, libName, synced: lastSnapshot === syncedSnapshot }));
     } catch { /* storage full or unavailable; the explicit Save reports it */ }
   }
 
@@ -669,6 +748,7 @@
     undoStack = [];
     redoStack = [];
     lastSnapshot = JSON.stringify(schema);
+    syncedSnapshot = name !== null ? lastSnapshot : null;
     refreshAll();
     fitView();
     saveCurrent();
@@ -3427,6 +3507,7 @@
     await ensureFolder();
     commit();
     const name = schema.name.trim() || 'Untitled';
+    if (name === libName && await syncOpenFile()) return; // changed elsewhere, and that version was loaded
     const lib = readLibrary();
     if (lib[name] && name !== libName && !confirm(`A saved schema named "${name}" already exists. Overwrite it?`)) return;
     schema.name = name;
@@ -3434,6 +3515,7 @@
     lib[name] = { savedAt: Date.now(), schema: JSON.parse(lastSnapshot) };
     if (!writeLibrary(lib)) return;
     libName = name;
+    syncedSnapshot = lastSnapshot;
     saveCurrent();
     updateChrome();
     toast(folder?.ready ? `Saved "${name}" in the folder "${folder.handle.name}"` : `Saved "${name}"`);
@@ -3446,6 +3528,7 @@
       // Files may have been added or changed from outside, by another program or by file sync.
       await folderQueue;
       await scanFolder().catch((err) => toast('Could not read the folder: ' + err.message, true));
+      await recheckOpenFile();
       updateChrome();
     }
   }
@@ -4305,6 +4388,7 @@
       schema = normalizeSchema(saved.schema);
       lastSnapshot = JSON.stringify(schema);
       libName = typeof saved.libName === 'string' ? saved.libName : null;
+      if (saved.synced === true) syncedSnapshot = lastSnapshot;
       if (saved.view && [saved.view.x, saved.view.y, saved.view.zoom].every(Number.isFinite)) {
         view = { x: saved.view.x, y: saved.view.y, zoom: clamp(saved.view.zoom, 0.2, 3) };
       }
@@ -4329,7 +4413,10 @@
     handleStore('readonly', (store) => store.get('folder')).then(async (handle) => {
       if (!handle) return;
       folder = { handle, ready: false, cache: {}, files: {} };
-      if (await handle.queryPermission({ mode: 'readwrite' }) === 'granted') await scanFolder();
+      if (await handle.queryPermission({ mode: 'readwrite' }) === 'granted') {
+        await scanFolder();
+        await recheckOpenFile(); // the file may have moved on while the app was closed
+      }
       updateChrome();
     }).catch(() => {});
   }

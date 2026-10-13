@@ -156,6 +156,10 @@ Everything else works offline.
   schema, in the export format. Pick the folder with the toolbar's folder button (or in the manage
   dialog); a schema that has been saved once is then written again automatically after every change.
   After a reload the browser may ask once to confirm access to the folder.
+- If the open schema's file is changed from elsewhere (the same folder used on another computer
+  through file sync, or another program), the app notices when its window is returned to and
+  before each save. It loads the new version, or, if there are unsaved changes here as well, asks
+  which version to keep.
 - The working copy is kept automatically, so a reload does not lose unsaved edits.
 - Export to a JSON file and import it back.
 - Export the whole schema as a PNG picture or a one-page PDF, on white, at twice screen resolution,
