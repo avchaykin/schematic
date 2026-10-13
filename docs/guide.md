@@ -7,7 +7,7 @@ A short tour of the tool. For the full feature list and shortcuts see the [READM
 The screen has three parts: the **toolbar** at the top, the **canvas** in the middle, and the
 **panel** on the right, which shows the settings of whatever is selected.
 
-The toolbar is arranged in groups: the schema file (new, save, load), import and export, the
+The toolbar is arranged in groups: the schema file (new, save, folder), import and export, the
 elements to add, schema tools, undo/redo and zoom. The familiar functions are icons only; hover
 one to see what it does.
 
@@ -136,8 +136,8 @@ Click a palette colour to remove it, or pick a new one and press **Add colour**.
 
 ## 9. Save, share and edit as text
 
-- **Save** (the disk icon) stores the schema in the browser under its name; **Load** drops down the saved schemas to pick one, and its **Manage saved schemas…** entry opens a dialog to delete, export or import them.
-- In Chrome or Edge, the folder button next to Load keeps saved schemas as files in a folder you
+- **Save** (the disk icon) stores the schema in the browser under its name; the arrow at the end of the schema name drops down the saved schemas to pick one, and the **Manage saved schemas…** entry there opens a dialog to delete, export or import them.
+- In Chrome or Edge, the folder button next to Save keeps saved schemas as files in a folder you
   choose, and saves the open one automatically as you work. Without it they are kept in the browser.
 - **Export** downloads a JSON file and **Import** reads one back, for moving schemas between browsers.
 - **PNG** and **PDF** download a picture of the whole schema, for documents and slides. The PDF is

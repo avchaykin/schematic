@@ -21,12 +21,14 @@
 <body>
   <header class="toolbar">
     <span class="brand"><span class="mi">schema</span><span class="brand-text">Schematic</span></span>
-    <input id="schema-name" type="text" placeholder="Schema name" spellcheck="false" aria-label="Schema name">
+    <div class="name-box">
+      <input id="schema-name" type="text" placeholder="Schema name" spellcheck="false" aria-label="Schema name">
+      <button data-action="library" class="icon-only" title="Load a saved schema" aria-label="Load a saved schema" aria-haspopup="menu"><span class="mi">expand_more</span></button>
+    </div>
 
     <div class="tool-group" role="group" aria-label="Schema file">
       <button data-action="new" class="icon-only" title="New schema" aria-label="New schema"><span class="mi">note_add</span></button>
       <button data-action="save" class="icon-only" title="Save to browser storage (Ctrl/⌘+S)" aria-label="Save"><span class="mi">save</span></button>
-      <button data-action="library" class="icon-only" title="Load a saved schema" aria-label="Load"><span class="mi">folder_open</span></button>
       <button data-action="folder" class="icon-only" title="Keep schemas as files in a folder on this computer" aria-label="Folder storage" hidden><span class="mi">folder_special</span></button>
     </div>
 

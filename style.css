@@ -113,7 +113,12 @@ input.invalid { border-color: var(--danger); outline-color: var(--danger); }
 }
 .brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; margin-right: 6px; }
 .brand .mi { color: var(--accent); font-size: 22px; }
-#schema-name { width: 200px; flex: none; font-weight: 500; }
+/* The schema name with, at its end, the arrow that drops down the saved schemas. */
+.name-box { display: inline-flex; flex: none; border: 1px solid var(--line); border-radius: 6px; background: var(--field); overflow: hidden; }
+.name-box button { border: 0; border-radius: 0; background: none; padding: 5px 4px; color: var(--ink-muted); }
+.name-box button:hover { background: var(--hover); color: var(--ink); }
+.name-box input:focus-visible, .name-box button:focus-visible { outline-offset: -2px; }
+#schema-name { width: 200px; flex: none; font-weight: 500; border: 0; border-radius: 0; background: none; }
 /* Unsaved changes: the Save icon turns amber and gets a dot, without moving anything. */
 .toolbar button.unsaved { position: relative; color: #d97706; }
 .toolbar button.unsaved::after {

@@ -3393,7 +3393,7 @@
     }
   }
 
-  // The Load button: a plain list of saved schemas to pick from, newest first. Everything else
+  // The arrow beside the schema name: a plain list of saved schemas to pick from, newest first. Everything else
   // about them (deleting, exporting, the folder) is in the dialog behind "Manage".
   const loadMenu = $('#load-menu');
 
@@ -3418,9 +3418,11 @@
       h('div', { class: 'menu-sep' }),
       h('button', { class: 'menu-item', onclick: close(openLibrary) }, icon('settings'), h('span', { class: 'menu-name' }, 'Manage saved schemas…')),
     );
-    const anchor = $('[data-action="library"]').getBoundingClientRect();
+    // Under the schema name, whose arrow opened it, and at least as wide.
+    const anchor = $('.name-box').getBoundingClientRect();
     loadMenu.style.left = anchor.left + 'px';
-    loadMenu.style.top = anchor.bottom + 6 + 'px';
+    loadMenu.style.top = anchor.bottom + 4 + 'px';
+    loadMenu.style.minWidth = anchor.width + 'px';
     loadMenu.hidden = false;
   }
 
