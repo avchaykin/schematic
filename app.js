@@ -684,14 +684,24 @@
   window.addEventListener('focus', syncOpenFile);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) syncOpenFile(); });
 
+  // The library in browser storage, as this tab last read or wrote it: parsing it again for every
+  // look (the unsaved-changes mark looks after every change) costs more the more is saved.
+  let storedLibrary = null;
+  window.addEventListener('storage', (e) => {
+    if (e.key === LIB_KEY || e.key === null) storedLibrary = null; // changed by another tab
+  });
+
   function readLibrary() {
     if (folder?.ready) return { ...folder.cache };
-    try {
-      const lib = JSON.parse(localStorage.getItem(LIB_KEY) || '{}');
-      return lib && typeof lib === 'object' ? lib : {};
-    } catch {
-      return {};
+    if (!storedLibrary) {
+      try {
+        const lib = JSON.parse(localStorage.getItem(LIB_KEY) || '{}');
+        storedLibrary = lib && typeof lib === 'object' ? lib : {};
+      } catch {
+        storedLibrary = {};
+      }
     }
+    return { ...storedLibrary };
   }
 
   function writeLibrary(lib) {
@@ -704,6 +714,7 @@
     }
     try {
       localStorage.setItem(LIB_KEY, JSON.stringify(lib));
+      storedLibrary = { ...lib };
       return true;
     } catch (err) {
       toast('Could not write to browser storage: ' + err.message, true);
@@ -725,10 +736,14 @@
     saveTimer = setTimeout(saveCurrent, 300);
   }
 
+  // Saved entries are replaced, never changed, so each one's text is worked out once.
+  const entryText = new WeakMap();
+
   function isDirty() {
     const entry = libName !== null ? readLibrary()[libName] : null;
     if (!entry) return schema.blocks.length > 0;
-    return schema.name !== libName || JSON.stringify(entry.schema) !== lastSnapshot;
+    if (!entryText.has(entry)) entryText.set(entry, JSON.stringify(entry.schema));
+    return schema.name !== libName || entryText.get(entry) !== lastSnapshot;
   }
 
   // ---------- history ----------
@@ -790,7 +805,23 @@
   const findLink = (id) => schema.links.find((l) => l.id === id);
   const sideConnectors = (block, side) => block.connectors.filter((c) => c.side === side);
 
+  // While a frame is drawn (or a picture painted) connectors are looked up in an index built for
+  // it, since every link end needs its connector and scanning all blocks each time grows with the
+  // square of the schema's size.
+  let connectorIndex = null;
+
+  function withConnectorIndex(run) {
+    connectorIndex = new Map();
+    for (const block of schema.blocks) for (const conn of block.connectors) connectorIndex.set(conn.id, { block, conn });
+    try {
+      return run();
+    } finally {
+      connectorIndex = null;
+    }
+  }
+
   function findConnector(id) {
+    if (connectorIndex) return connectorIndex.get(id) || null;
     for (const block of schema.blocks) {
       const conn = block.connectors.find((c) => c.id === id);
       if (conn) return { block, conn };
@@ -1054,7 +1085,10 @@
       };
       return {
         d: `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`,
-        points: Array.from({ length: 17 }, (_, i) => at(i / 16)),
+        // Points along the curve, for the area a picture must cover: worked out only if asked for.
+        get points() {
+          return Array.from({ length: 17 }, (_, i) => at(i / 16));
+        },
         mid: at(0.5),
       };
     }
@@ -1902,17 +1936,39 @@
   let endFrames = []; // the frames around grouped links' ends as last drawn, for dragging them
   let frame = 0;
 
+  // render() redraws the schema on the next frame. Panning and zooming change only the view, so
+  // they use renderView(), which moves what is already drawn instead of drawing it again.
+  let drawPending = false;
+
   function render() {
-    if (!frame) frame = requestAnimationFrame(() => { frame = 0; draw(); });
+    drawPending = true;
+    scheduleFrame();
+  }
+
+  function renderView() {
+    scheduleFrame();
+  }
+
+  function scheduleFrame() {
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      if (drawPending) {
+        drawPending = false;
+        draw();
+      } else {
+        applyView();
+      }
+    });
   }
 
   function draw() {
-    syncClones(selectedBlock());
-    trace = traceOn && hover ? tracePath(hover) : null;
-    drawBlocks();
-    drawLinks();
-    world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
-    framesLayer.style.transform = world.style.transform;
+    syncClones(selectedBlock()); // may change connectors, so before the index is built
+    withConnectorIndex(() => {
+      trace = traceOn && hover ? tracePath(hover) : null;
+      drawBlocks();
+      drawLinks();
+    });
     viewport.style.setProperty('--link-width', schema.linkWidth + 'px');
     viewport.style.setProperty('--junction-size', schema.junctionSize + 'px');
     viewport.style.setProperty('--trace-width', schema.traceWidth + 'px');
@@ -1920,6 +1976,13 @@
     else viewport.style.removeProperty('--trace');
     viewport.classList.toggle('trace-none', schema.traceColor === 'none');
     viewport.classList.toggle('trace-own', schema.traceColor === 'link');
+    applyView();
+  }
+
+  // Places what is drawn according to the view: pan, zoom, and the grid that goes with them.
+  function applyView() {
+    world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
+    framesLayer.style.transform = world.style.transform;
     linksG.setAttribute('transform', `translate(${view.x} ${view.y}) scale(${view.zoom})`);
     const cell = GRID * 2 * view.zoom;
     viewport.style.backgroundSize = `${cell}px ${cell}px`;
@@ -2163,7 +2226,9 @@
       shapes.push({
         link,
         d: parts.map((part) => part.d).join(' '),
-        points: parts.flatMap((part) => part.points),
+        get points() {
+          return parts.flatMap((part) => part.points);
+        },
         color: linkColor(link),
         dash: { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style],
         mid: parts[0].mid, // a grouped link is labelled on its way into the group
@@ -2268,7 +2333,7 @@
     view.x = cx - ((cx - view.x) * zoom) / view.zoom;
     view.y = cy - ((cy - view.y) * zoom) / view.zoom;
     view.zoom = zoom;
-    render();
+    renderView();
     saveCurrentSoon();
   }
 
@@ -2319,7 +2384,7 @@
     drag((ev) => {
       view.x = start.vx + ev.clientX - start.x;
       view.y = start.vy + ev.clientY - start.y;
-      render();
+      renderView();
     }, () => {
       viewport.classList.remove('panning');
       saveCurrent();
@@ -2783,7 +2848,7 @@
     } else {
       view.x -= e.deltaX * lines;
       view.y -= e.deltaY * lines;
-      render();
+      renderView();
       saveCurrentSoon();
     }
   }, { passive: false });
@@ -4549,11 +4614,11 @@
     // Icons are text in the icon font, which must be there before the canvas can draw them.
     await document.fonts.load('32px "Material Symbols Outlined"', 'home').catch(() => {});
     let area = null;
-    paintSchema(document.createElement('canvas').getContext('2d'), 1, (x1, y1, x2, y2) => {
+    withConnectorIndex(() => paintSchema(document.createElement('canvas').getContext('2d'), 1, (x1, y1, x2, y2) => {
       area = area
         ? { x1: Math.min(area.x1, x1), y1: Math.min(area.y1, y1), x2: Math.max(area.x2, x2), y2: Math.max(area.y2, y2) }
         : { x1, y1, x2, y2 };
-    });
+    }));
     if (!area) return null;
     const width = Math.ceil(area.x2 - area.x1) + EXPORT_PAD * 2;
     const height = Math.ceil(area.y2 - area.y1) + EXPORT_PAD * 2;
@@ -4567,7 +4632,7 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(scale, scale);
     ctx.translate(EXPORT_PAD - area.x1, EXPORT_PAD - area.y1);
-    paintSchema(ctx, scale, () => {});
+    withConnectorIndex(() => paintSchema(ctx, scale, () => {}));
     return { canvas, width, height };
   }
 
