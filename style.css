@@ -303,8 +303,8 @@ main { flex: 1; display: flex; min-height: 0; }
 }
 .conn-label.left   { transform: translate(calc(-100% - 9px), calc(-100% - 3px)); }
 .conn-label.right  { transform: translate(9px, calc(-100% - 3px)); }
-.conn-label.top    { transform: translate(9px, calc(-100% - 7px)); }
-.conn-label.bottom { transform: translate(9px, 7px); }
+.conn-label.top    { transform: translate(8px, calc(-100% - 2px)); }
+.conn-label.bottom { transform: translate(8px, 2px); }
 
 .handle { position: absolute; display: none; z-index: 1; }
 .block.selected .handle { display: block; }

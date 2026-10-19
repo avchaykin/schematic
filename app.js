@@ -4538,8 +4538,8 @@
         ctx.fillStyle = muted;
         if (conn.side === 'left') write(conn.name, x - 9, y - 9, 'right');
         else if (conn.side === 'right') write(conn.name, x + 9, y - 9);
-        else if (conn.side === 'top') write(conn.name, x + 9, y - 13);
-        else write(conn.name, x + 9, y + 13);
+        else if (conn.side === 'top') write(conn.name, x + 8, y - 8);
+        else write(conn.name, x + 8, y + 8);
       }
     }
   }
