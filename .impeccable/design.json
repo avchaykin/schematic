@@ -1,0 +1,481 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-19T20:20:03.784964+00:00",
+  "title": "Design System: Schematic",
+  "extensions": {
+    "colorMeta": {
+      "signal-blue": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "tonalRamp": [
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#60a5fa",
+          "#93c5fd",
+          "#dbeafe"
+        ]
+      },
+      "blue-wash": {
+        "role": "primary",
+        "displayName": "Blue Wash",
+        "tonalRamp": [
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#60a5fa",
+          "#93c5fd",
+          "#dbeafe"
+        ]
+      },
+      "trace-amber": {
+        "role": "secondary",
+        "displayName": "Trace Amber",
+        "tonalRamp": [
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fcd34d",
+          "#fef3c7"
+        ]
+      },
+      "red-flag": {
+        "role": "tertiary",
+        "displayName": "Red Flag",
+        "tonalRamp": [
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#ef4444",
+          "#f87171",
+          "#fca5a5",
+          "#fee2e2"
+        ]
+      },
+      "drafting-ink": {
+        "role": "neutral",
+        "displayName": "Drafting Ink",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "pencil-grey": {
+        "role": "neutral",
+        "displayName": "Pencil Grey",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "wire-slate": {
+        "role": "neutral",
+        "displayName": "Wire Slate",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "connector-edge": {
+        "role": "neutral",
+        "displayName": "Connector Edge",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "hover-slate": {
+        "role": "neutral",
+        "displayName": "Hover Slate",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "grid-dot": {
+        "role": "neutral",
+        "displayName": "Grid Dot",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "graph-paper": {
+        "role": "neutral",
+        "displayName": "Graph Paper",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "sheet-white": {
+        "role": "neutral",
+        "displayName": "Sheet White",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "night-paper": {
+        "role": "neutral",
+        "displayName": "Night Paper",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "night-sheet": {
+        "role": "neutral",
+        "displayName": "Night Sheet",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "night-hairline": {
+        "role": "neutral",
+        "displayName": "Night Hairline",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "night-pencil": {
+        "role": "neutral",
+        "displayName": "Night Pencil",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "night-blue": {
+        "role": "primary",
+        "displayName": "Night Blue",
+        "tonalRamp": [
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#60a5fa",
+          "#93c5fd",
+          "#dbeafe"
+        ]
+      },
+      "night-wash": {
+        "role": "primary",
+        "displayName": "Night Wash",
+        "tonalRamp": [
+          "#1e3a8a",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#3b82f6",
+          "#60a5fa",
+          "#93c5fd",
+          "#dbeafe"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Dialog headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All controls, panel text and menus."
+      },
+      "body-strong": {
+        "displayName": "Body Strong",
+        "purpose": "Block names, schema name field."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase section headings."
+      },
+      "note": {
+        "displayName": "Note",
+        "purpose": "Help notes and metadata."
+      },
+      "canvas-label": {
+        "displayName": "Canvas Label",
+        "purpose": "Connector and link names on the canvas."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "JSON editor only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "block-lift",
+        "value": "0 1px 3px rgb(15 23 42 / .12)",
+        "purpose": "Blocks on the canvas."
+      },
+      {
+        "name": "popover",
+        "value": "0 8px 24px rgb(15 23 42 / .18)",
+        "purpose": "Saved-schemas menu."
+      },
+      {
+        "name": "picker",
+        "value": "0 2px 8px rgb(15 23 42 / .22)",
+        "purpose": "Connector side picker."
+      },
+      {
+        "name": "toast",
+        "value": "0 4px 16px rgb(15 23 42 / .25)",
+        "purpose": "Notifications."
+      },
+      {
+        "name": "dialog",
+        "value": "0 20px 50px rgb(15 23 42 / .3)",
+        "purpose": "Modal dialogs."
+      },
+      {
+        "name": "selection-ring",
+        "value": "0 0 0 3px rgb(37 99 235 / .35)",
+        "purpose": "Selected blocks, connectors and tags."
+      }
+    ],
+    "motion": [
+      {
+        "name": "connector-hover",
+        "value": "transform .08s",
+        "purpose": "Connector grows on hover; the only chrome motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "labels-collapse",
+        "value": "1400px"
+      },
+      {
+        "name": "brand-text-hidden",
+        "value": "1500px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default toolbar and panel button.",
+      "html": "<button class=\"ds-btn\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z\"/></svg>Save</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;line-height:1.4;cursor:pointer}.ds-btn:hover{background:#f1f5f9}.ds-btn:focus-visible{outline:2px solid #2563eb;outline-offset:1px}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action: adding a block.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z\"/></svg>Block</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:#fff;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;line-height:1.4;cursor:pointer}.ds-btn-primary:hover{background:#1d4ed8}.ds-btn-primary:focus-visible{outline:2px solid #2563eb;outline-offset:1px}"
+    },
+    {
+      "name": "Tool Group",
+      "kind": "custom",
+      "refersTo": "tool-group",
+      "description": "Related toolbar buttons sharing one outline with hairline dividers.",
+      "html": "<div class=\"ds-tools\"><button>Undo</button><button>Redo</button><button class=\"on\">Trace</button></div>",
+      "css": ".ds-tools{display:inline-flex;border:1px solid #e2e8f0;border-radius:8px;background:#fff;overflow:hidden}.ds-tools button{border:0;padding:6px 9px;background:none;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;cursor:pointer}.ds-tools button+button{border-left:1px solid #e2e8f0}.ds-tools button:hover{background:#f1f5f9}.ds-tools button:focus-visible{outline:2px solid #2563eb;outline-offset:-2px}.ds-tools button.on{background:#dbeafe;color:#2563eb}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Panel and toolbar text input.",
+      "html": "<input class=\"ds-input\" value=\"API gateway\">",
+      "css": ".ds-input{width:200px;padding:5px 7px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px}.ds-input:focus-visible{outline:2px solid #2563eb;outline-offset:1px}"
+    },
+    {
+      "name": "Section Label",
+      "kind": "custom",
+      "refersTo": "section-label",
+      "description": "Uppercase heading for panel and dialog sections.",
+      "html": "<h3 class=\"ds-label\">Appearance</h3>",
+      "css": ".ds-label{margin:0;color:#64748b;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}"
+    },
+    {
+      "name": "Menu",
+      "kind": "nav",
+      "refersTo": "menu",
+      "description": "The saved-schemas dropdown.",
+      "html": "<div class=\"ds-menu\"><button class=\"ds-mi\"><span>Payment flow</span><small>10/3/2026</small></button><button class=\"ds-mi cur\"><span>Network</span><small>9/21/2026</small></button></div>",
+      "css": ".ds-menu{width:260px;padding:4px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;box-shadow:0 8px 24px rgb(15 23 42 / .18)}.ds-mi{display:flex;width:100%;gap:10px;padding:6px 10px;border:0;border-radius:6px;background:none;text-align:left;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;cursor:pointer}.ds-mi span{flex:1}.ds-mi small{color:#64748b;font-size:11px}.ds-mi:hover{background:#f1f5f9}.ds-mi:focus-visible{outline:2px solid #2563eb;outline-offset:-2px}.ds-mi.cur{font-weight:600}"
+    },
+    {
+      "name": "Canvas Block",
+      "kind": "card",
+      "refersTo": "connector",
+      "description": "A block on the canvas with connectors and their names.",
+      "html": "<div class=\"ds-block\"><span class=\"ds-name\">API gateway</span><i class=\"ds-conn l\"></i><i class=\"ds-conn r\"></i><em class=\"ds-cl\">HTTPS</em></div>",
+      "css": ".ds-block{position:relative;display:grid;place-items:center;width:140px;height:90px;margin:20px 40px;border:2px solid #334155;border-radius:8px;background:#dbeafe;box-shadow:0 1px 3px rgb(15 23 42 / .12);font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;}.ds-name{font-size:13px;font-weight:500;color:#0f172a}.ds-conn{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;border:2px solid #334155;border-radius:50%;background:#fff;box-sizing:border-box;transition:transform .08s}.ds-conn.l{left:-6px}.ds-conn.r{right:-6px;background:#22c55e;border-color:#16803d}.ds-conn:hover{transform:scale(1.35);background:#2563eb;border-color:#2563eb}.ds-cl{position:absolute;right:-42px;top:28px;font-style:normal;font-size:10px;color:#64748b}"
+    },
+    {
+      "name": "Comment",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Sticky note with a folded corner; always above other elements.",
+      "html": "<div class=\"ds-note\">Check the bus width before release</div>",
+      "css": ".ds-note{position:relative;width:160px;min-height:90px;padding:10px 12px;background:#fef08a;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;line-height:1.35;clip-path:polygon(0 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%);filter:drop-shadow(0 2px 3px rgb(15 23 42 / .22))}.ds-note::after{content:'';position:absolute;right:0;bottom:0;width:14px;height:14px;background:linear-gradient(135deg,rgb(0 0 0 / .18) 50%,transparent 50%)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Engineer's Notebook",
+    "overview": "Schematic is a working page, not a showpiece. The canvas is a sheet of faint graph paper; the toolbar and the settings panel sit at its edges like the margin of a notebook, set in small system type and thin slate lines. Everything around the drawing is quiet and neutral so that the colours the author gives to blocks, connectors and links carry all the meaning. A single blue marks what is selected, pressed or about to happen; amber is reserved for tracing a signal.\n\nThe interface is dense on purpose. Controls are compact, grouped into rounded clusters with hairline dividers, and familiar functions are icons only, with a tooltip for anyone who needs the word. The settings panel reads like a form in a notebook: small uppercase section labels, a narrow caption column, and fields that run to the edge.\n\nThe world has a night version that keeps the same structure and swaps paper for slate. Exports always go out on white, because they leave the notebook for documents.",
+    "keyCharacteristics": [
+      "Neutral slate chrome; colour belongs to the schema, not the interface.",
+      "One accent (Signal Blue) for selection, focus and active states.",
+      "Compact 13px system type; 11px uppercase labels for structure.",
+      "Thin 1px hairlines and small radii; almost no shadow on chrome.",
+      "Light and dark themes with identical layout."
+    ],
+    "rules": [
+      {
+        "name": "The Schema Owns Colour Rule",
+        "body": "Chrome stays slate. Saturated colour appears only where the author put it, plus Signal Blue for state and Trace Amber for tracing.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Accent Rule",
+        "body": "Signal Blue means \"selected, focused or active\" and nothing else; it is never decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Small Steps Rule",
+        "body": "Text sizes stay between 10px and 15px in the chrome; a larger size is only for content the author sets (titles on the canvas, icons on blocks).",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Chrome Rule",
+        "body": "Toolbar, panel and fields never cast shadows; only floating layers and canvas blocks do.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep chrome slate and let the schema's colours be the only strong colour on screen.",
+      "**Do** use Signal Blue only for selected, focused, pressed or active states.",
+      "**Do** group related toolbar actions in one shared outline (8px radius, hairline dividers).",
+      "**Do** make familiar functions icon-only with a tooltip; keep labels for less familiar ones.",
+      "**Do** define every chrome colour as a token with a dark-mode counterpart.",
+      "**Do** keep text between 10px and 15px in the chrome."
+    ],
+    "donts": [
+      "**Don't** add shadows to the toolbar, panel or fields.",
+      "**Don't** use Trace Amber for anything but tracing and the unsaved/pending marks.",
+      "**Don't** change layout between light and dark themes; only the tokens change.",
+      "**Don't** make exports follow the dark theme; pictures always go out on white."
+    ]
+  }
+}
