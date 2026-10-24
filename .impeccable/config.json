@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "material symbols outlined",
+        "createdAt": "2026-10-24T07:53:00.575Z",
+        "reason": "PRODUCT.md brand commitment: icons come from Material Symbols Outlined (icon font, not a text face)"
+      }
+    ]
+  }
+}

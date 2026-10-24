@@ -1,367 +1,705 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-19T20:20:03.784964+00:00",
+  "generatedAt": "2026-10-24T08:06:33+00:00",
   "title": "Design System: Schematic",
   "extensions": {
     "colorMeta": {
-      "signal-blue": {
+      "heritage-green": {
         "role": "primary",
-        "displayName": "Signal Blue",
+        "displayName": "Heritage Green",
+        "canonical": "#1f5a45",
         "tonalRamp": [
-          "#1e3a8a",
-          "#1e40af",
-          "#1d4ed8",
-          "#2563eb",
-          "#3b82f6",
-          "#60a5fa",
-          "#93c5fd",
-          "#dbeafe"
+          "#001305",
+          "#002e1c",
+          "#0c4b37",
+          "#316a55",
+          "#528b74",
+          "#73ad95",
+          "#9bd7bd",
+          "#c2fee4"
         ]
       },
-      "blue-wash": {
+      "on-green": {
         "role": "primary",
-        "displayName": "Blue Wash",
+        "displayName": "On Green",
+        "canonical": "#ffffff",
         "tonalRamp": [
-          "#1e3a8a",
-          "#1e40af",
-          "#1d4ed8",
-          "#2563eb",
-          "#3b82f6",
-          "#60a5fa",
-          "#93c5fd",
-          "#dbeafe"
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c7c7c7",
+          "#eeeeee"
         ]
       },
-      "trace-amber": {
-        "role": "secondary",
-        "displayName": "Trace Amber",
+      "green-wash": {
+        "role": "primary",
+        "displayName": "Green Wash",
+        "canonical": "#e6ece7",
         "tonalRamp": [
-          "#78350f",
-          "#92400e",
-          "#b45309",
-          "#d97706",
-          "#f59e0b",
-          "#fbbf24",
-          "#fcd34d",
-          "#fef3c7"
+          "#080c09",
+          "#212522",
+          "#3c413d",
+          "#5a5f5b",
+          "#797f7a",
+          "#9aa09b",
+          "#c3c9c4",
+          "#eaf0eb"
         ]
       },
-      "red-flag": {
-        "role": "tertiary",
-        "displayName": "Red Flag",
+      "selection-tint": {
+        "role": "primary",
+        "displayName": "Selection Tint",
+        "canonical": "rgb(31 90 69 / .08)",
         "tonalRamp": [
-          "#7f1d1d",
-          "#991b1b",
-          "#b91c1c",
-          "#dc2626",
-          "#ef4444",
-          "#f87171",
-          "#fca5a5",
-          "#fee2e2"
+          "#001305",
+          "#002e1c",
+          "#0c4b37",
+          "#316a55",
+          "#528b74",
+          "#73ad95",
+          "#9bd7bd",
+          "#c2fee4"
         ]
       },
-      "drafting-ink": {
+      "ink": {
         "role": "neutral",
-        "displayName": "Drafting Ink",
+        "displayName": "Ink",
+        "canonical": "#1c2420",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#060d0a",
+          "#1e2622",
+          "#39423e",
+          "#57605b",
+          "#76807b",
+          "#97a19c",
+          "#c0cac5",
+          "#e7f2ec"
         ]
       },
-      "pencil-grey": {
+      "on-ink": {
         "role": "neutral",
-        "displayName": "Pencil Grey",
+        "displayName": "On Ink",
+        "canonical": "#ffffff",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c7c7c7",
+          "#eeeeee"
         ]
       },
-      "wire-slate": {
+      "sage-ground": {
         "role": "neutral",
-        "displayName": "Wire Slate",
+        "displayName": "Sage Ground",
+        "canonical": "#f2f4f1",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
-        ]
-      },
-      "connector-edge": {
-        "role": "neutral",
-        "displayName": "Connector Edge",
-        "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
-        ]
-      },
-      "hairline": {
-        "role": "neutral",
-        "displayName": "Hairline",
-        "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
-        ]
-      },
-      "hover-slate": {
-        "role": "neutral",
-        "displayName": "Hover Slate",
-        "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
-        ]
-      },
-      "grid-dot": {
-        "role": "neutral",
-        "displayName": "Grid Dot",
-        "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
-        ]
-      },
-      "graph-paper": {
-        "role": "neutral",
-        "displayName": "Graph Paper",
-        "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#0a0c0a",
+          "#232422",
+          "#3f403e",
+          "#5c5e5c",
+          "#7c7e7b",
+          "#9d9f9c",
+          "#c6c8c5",
+          "#edefec"
         ]
       },
       "sheet-white": {
         "role": "neutral",
         "displayName": "Sheet White",
+        "canonical": "#ffffff",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c7c7c7",
+          "#eeeeee"
         ]
       },
-      "night-paper": {
+      "sunken-sheet": {
         "role": "neutral",
-        "displayName": "Night Paper",
+        "displayName": "Sunken Sheet",
+        "canonical": "#f6f7f5",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#0b0b0a",
+          "#242423",
+          "#3f403e",
+          "#5d5e5c",
+          "#7d7d7c",
+          "#9e9f9d",
+          "#c7c8c6",
+          "#eeefed"
         ]
       },
-      "night-sheet": {
+      "field-white": {
         "role": "neutral",
-        "displayName": "Night Sheet",
+        "displayName": "Field White",
+        "canonical": "#ffffff",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c7c7c7",
+          "#eeeeee"
         ]
       },
-      "night-hairline": {
+      "hairline": {
         "role": "neutral",
-        "displayName": "Night Hairline",
+        "displayName": "Hairline",
+        "canonical": "#d5dbd5",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#090c09",
+          "#212521",
+          "#3c413c",
+          "#5a5f5a",
+          "#7a7f7a",
+          "#9ba09b",
+          "#c3c9c3",
+          "#eaf0ea"
         ]
       },
-      "night-ink": {
+      "schedule-rule": {
         "role": "neutral",
-        "displayName": "Night Ink",
+        "displayName": "Schedule Rule",
+        "canonical": "#e1e6e1",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#090c09",
+          "#212522",
+          "#3d413d",
+          "#5b5f5b",
+          "#7a7f7a",
+          "#9ba09b",
+          "#c4c9c4",
+          "#ebf0eb"
         ]
       },
-      "night-pencil": {
+      "muted-ink": {
         "role": "neutral",
-        "displayName": "Night Pencil",
+        "displayName": "Muted Ink",
+        "canonical": "#5b665f",
         "tonalRamp": [
-          "#0f172a",
-          "#1e293b",
-          "#334155",
-          "#475569",
-          "#64748b",
-          "#94a3b8",
-          "#cbd5e1",
-          "#f1f5f9"
+          "#050d08",
+          "#1d2721",
+          "#38433c",
+          "#56615a",
+          "#758179",
+          "#96a29a",
+          "#bfcbc3",
+          "#e5f2ea"
         ]
       },
-      "night-blue": {
+      "hover-wash": {
+        "role": "neutral",
+        "displayName": "Hover Wash",
+        "canonical": "#f0f3ef",
+        "tonalRamp": [
+          "#0a0c09",
+          "#232522",
+          "#3e403d",
+          "#5c5e5b",
+          "#7b7e7b",
+          "#9c9f9c",
+          "#c5c8c4",
+          "#ecefeb"
+        ]
+      },
+      "off-sage": {
+        "role": "neutral",
+        "displayName": "Off Sage",
+        "canonical": "#b3bcb5",
+        "tonalRamp": [
+          "#070d08",
+          "#1f2621",
+          "#3a423c",
+          "#58605a",
+          "#778079",
+          "#98a19a",
+          "#c1cac3",
+          "#e8f1ea"
+        ]
+      },
+      "canvas-dot": {
+        "role": "neutral",
+        "displayName": "Canvas Dot",
+        "canonical": "rgb(186 196 188)",
+        "tonalRamp": [
+          "#070d08",
+          "#1f2620",
+          "#3a423c",
+          "#576059",
+          "#778079",
+          "#98a19a",
+          "#c0cac2",
+          "#e7f2e9"
+        ]
+      },
+      "connector-edge": {
+        "role": "neutral",
+        "displayName": "Connector Edge",
+        "canonical": "#3a453f",
+        "tonalRamp": [
+          "#050d09",
+          "#1d2721",
+          "#38433d",
+          "#55615a",
+          "#75817a",
+          "#95a29b",
+          "#becbc4",
+          "#e5f2eb"
+        ]
+      },
+      "warn-amber": {
+        "role": "status",
+        "displayName": "Warn Amber",
+        "canonical": "#9a5b00",
+        "tonalRamp": [
+          "#270000",
+          "#470c00",
+          "#682d00",
+          "#8a4c00",
+          "#ad6c20",
+          "#d18e47",
+          "#fdb771",
+          "#ffde97"
+        ]
+      },
+      "danger-red": {
+        "role": "status",
+        "displayName": "Danger Red",
+        "canonical": "#c62828",
+        "tonalRamp": [
+          "#2d0000",
+          "#4f0000",
+          "#721c1a",
+          "#963e37",
+          "#ba5e56",
+          "#df8076",
+          "#ffa89d",
+          "#ffcfc3"
+        ]
+      },
+      "dark-green": {
         "role": "primary",
-        "displayName": "Night Blue",
+        "displayName": "Dark Heritage Green",
+        "canonical": "#7cc6a4",
         "tonalRamp": [
-          "#1e3a8a",
-          "#1e40af",
-          "#1d4ed8",
-          "#2563eb",
-          "#3b82f6",
-          "#60a5fa",
-          "#93c5fd",
-          "#dbeafe"
-        ]
+          "#001402",
+          "#003017",
+          "#004e32",
+          "#1f6d4f",
+          "#448e6e",
+          "#67b08f",
+          "#90dab7",
+          "#b6ffde"
+        ],
+        "lightCounterpart": "heritage-green"
       },
-      "night-wash": {
+      "dark-on-green": {
         "role": "primary",
-        "displayName": "Night Wash",
+        "displayName": "Dark On Green",
+        "canonical": "#0f1512",
         "tonalRamp": [
-          "#1e3a8a",
-          "#1e40af",
-          "#1d4ed8",
-          "#2563eb",
-          "#3b82f6",
-          "#60a5fa",
-          "#93c5fd",
-          "#dbeafe"
-        ]
+          "#070d0a",
+          "#1f2622",
+          "#3b423e",
+          "#58605c",
+          "#787f7b",
+          "#99a19c",
+          "#c1cac5",
+          "#e8f1ec"
+        ],
+        "lightCounterpart": "on-green"
+      },
+      "dark-wash": {
+        "role": "primary",
+        "displayName": "Dark Green Wash",
+        "canonical": "#1f2b25",
+        "tonalRamp": [
+          "#040e09",
+          "#1b2721",
+          "#36433d",
+          "#54615a",
+          "#73817a",
+          "#94a39b",
+          "#bcccc4",
+          "#e3f3eb"
+        ],
+        "lightCounterpart": "green-wash"
+      },
+      "dark-selection-tint": {
+        "role": "primary",
+        "displayName": "Dark Selection Tint",
+        "canonical": "rgb(124 198 164 / .1)",
+        "tonalRamp": [
+          "#001402",
+          "#003017",
+          "#004e32",
+          "#1f6d4f",
+          "#448e6e",
+          "#67b08f",
+          "#90dab7",
+          "#b6ffde"
+        ],
+        "lightCounterpart": "selection-tint"
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Dark Ink",
+        "canonical": "#e7ece8",
+        "tonalRamp": [
+          "#090c0a",
+          "#212522",
+          "#3d413e",
+          "#5b5f5b",
+          "#7a7f7b",
+          "#9ba09c",
+          "#c4c9c5",
+          "#ebf0ec"
+        ],
+        "lightCounterpart": "ink"
+      },
+      "dark-on-ink": {
+        "role": "neutral",
+        "displayName": "Dark On Ink",
+        "canonical": "#111513",
+        "tonalRamp": [
+          "#080c0a",
+          "#212523",
+          "#3c413f",
+          "#5a5f5c",
+          "#797f7c",
+          "#9aa09d",
+          "#c3c9c6",
+          "#eaf0ed"
+        ],
+        "lightCounterpart": "on-ink"
+      },
+      "dark-ground": {
+        "role": "neutral",
+        "displayName": "Dark Sage Ground",
+        "canonical": "#111513",
+        "tonalRamp": [
+          "#080c0a",
+          "#212523",
+          "#3c413f",
+          "#5a5f5c",
+          "#797f7c",
+          "#9aa09d",
+          "#c3c9c6",
+          "#eaf0ed"
+        ],
+        "lightCounterpart": "sage-ground"
+      },
+      "dark-sheet": {
+        "role": "neutral",
+        "displayName": "Dark Sheet White",
+        "canonical": "#181d1a",
+        "tonalRamp": [
+          "#080c0a",
+          "#202522",
+          "#3c413e",
+          "#595f5c",
+          "#797f7b",
+          "#9aa09c",
+          "#c2c9c5",
+          "#e9f0ec"
+        ],
+        "lightCounterpart": "sheet-white"
+      },
+      "dark-sunken": {
+        "role": "neutral",
+        "displayName": "Dark Sunken Sheet",
+        "canonical": "#141815",
+        "tonalRamp": [
+          "#090c09",
+          "#212522",
+          "#3c413e",
+          "#5a5f5b",
+          "#7a7f7b",
+          "#9ba09c",
+          "#c3c9c5",
+          "#eaf0ec"
+        ],
+        "lightCounterpart": "sunken-sheet"
+      },
+      "dark-field": {
+        "role": "neutral",
+        "displayName": "Dark Field White",
+        "canonical": "#141815",
+        "tonalRamp": [
+          "#090c09",
+          "#212522",
+          "#3c413e",
+          "#5a5f5b",
+          "#7a7f7b",
+          "#9ba09c",
+          "#c3c9c5",
+          "#eaf0ec"
+        ],
+        "lightCounterpart": "field-white"
+      },
+      "dark-hairline": {
+        "role": "neutral",
+        "displayName": "Dark Hairline",
+        "canonical": "#2c3530",
+        "tonalRamp": [
+          "#060d09",
+          "#1e2622",
+          "#39423d",
+          "#57605b",
+          "#76807a",
+          "#97a19b",
+          "#bfcac4",
+          "#e6f2eb"
+        ],
+        "lightCounterpart": "hairline"
+      },
+      "dark-muted": {
+        "role": "neutral",
+        "displayName": "Dark Muted Ink",
+        "canonical": "#9ba69f",
+        "tonalRamp": [
+          "#060d09",
+          "#1e2621",
+          "#39423d",
+          "#56605a",
+          "#76807a",
+          "#97a29b",
+          "#bfcbc3",
+          "#e6f2ea"
+        ],
+        "lightCounterpart": "muted-ink"
+      },
+      "dark-hover": {
+        "role": "neutral",
+        "displayName": "Dark Hover Wash",
+        "canonical": "#202723",
+        "tonalRamp": [
+          "#070d09",
+          "#1f2622",
+          "#3a423d",
+          "#58605b",
+          "#77807b",
+          "#98a19c",
+          "#c1cac5",
+          "#e8f1ec"
+        ],
+        "lightCounterpart": "hover-wash"
+      },
+      "dark-off": {
+        "role": "neutral",
+        "displayName": "Dark Off Sage",
+        "canonical": "#56615a",
+        "tonalRamp": [
+          "#050d08",
+          "#1d2721",
+          "#38433c",
+          "#56615a",
+          "#758179",
+          "#96a29a",
+          "#becbc3",
+          "#e5f2ea"
+        ],
+        "lightCounterpart": "off-sage"
+      },
+      "dark-canvas-dot": {
+        "role": "neutral",
+        "displayName": "Dark Canvas Dot",
+        "canonical": "rgb(58 68 62)",
+        "tonalRamp": [
+          "#060d09",
+          "#1d2721",
+          "#39433d",
+          "#56615a",
+          "#75807a",
+          "#96a29b",
+          "#bfcbc3",
+          "#e6f2ea"
+        ],
+        "lightCounterpart": "canvas-dot"
+      },
+      "dark-connector-edge": {
+        "role": "neutral",
+        "displayName": "Dark Connector Edge",
+        "canonical": "#9ba69f",
+        "tonalRamp": [
+          "#060d09",
+          "#1e2621",
+          "#39423d",
+          "#56605a",
+          "#76807a",
+          "#97a29b",
+          "#bfcbc3",
+          "#e6f2ea"
+        ],
+        "lightCounterpart": "connector-edge"
+      },
+      "dark-warn": {
+        "role": "status",
+        "displayName": "Dark Warn Amber",
+        "canonical": "#e0a060",
+        "tonalRamp": [
+          "#260000",
+          "#451000",
+          "#662f00",
+          "#874e00",
+          "#aa6e2b",
+          "#ce8f4f",
+          "#fab878",
+          "#ffdf9e"
+        ],
+        "lightCounterpart": "warn-amber"
+      },
+      "dark-danger": {
+        "role": "status",
+        "displayName": "Dark Danger Red",
+        "canonical": "#ff7b72",
+        "tonalRamp": [
+          "#2d0000",
+          "#4f0000",
+          "#721c1b",
+          "#963d38",
+          "#ba5e57",
+          "#df7f77",
+          "#ffa89f",
+          "#ffcfc5"
+        ],
+        "lightCounterpart": "danger-red"
       }
     },
     "typographyMeta": {
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "The link count in the schema particulars; the one big number on the side sheet."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Dialog titles."
+      },
       "title": {
         "displayName": "Title",
-        "purpose": "Dialog headings."
+        "purpose": "First side-sheet heading, the brand name, and \"Trace\" in the trace band."
+      },
+      "group": {
+        "displayName": "Group",
+        "purpose": "Parameter group heads in dialogs, each under an ink rule."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Inspector subheads under an ink rule, and the How to fold."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "All controls, panel text and menus."
-      },
-      "body-strong": {
-        "displayName": "Body Strong",
-        "purpose": "Block names, schema name field."
+        "purpose": "All other chrome text; buttons 500, primary 600, signal names 600."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Uppercase section headings."
+        "purpose": "Field labels, schedule column heads, notes, menu meta, the status bar."
       },
-      "note": {
-        "displayName": "Note",
-        "purpose": "Help notes and metadata."
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Key caps and the marquee hint."
       },
-      "canvas-label": {
-        "displayName": "Canvas Label",
-        "purpose": "Connector and link names on the canvas."
+      "canvas-text": {
+        "displayName": "Canvas text",
+        "purpose": "Block names on the canvas, in the face the PNG and PDF exports use."
       },
-      "mono": {
-        "displayName": "Mono",
-        "purpose": "JSON editor only."
+      "canvas-caption": {
+        "displayName": "Canvas caption",
+        "purpose": "Link labels, connector names, reference captions and group tags on the canvas."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "The JSON editor only."
+      }
+    },
+    "iconography": {
+      "family": "Material Symbols Outlined",
+      "settings": "opsz 24, wght 400, FILL 0, GRAD 0",
+      "sizes": {
+        "top-bar": "18px",
+        "trace-band": "18px",
+        "tool-rail": "20px",
+        "icon-grid": "20px",
+        "segmented-tight": "16px",
+        "canvas-buttons": "14px"
       }
     },
     "shadows": [
       {
-        "name": "block-lift",
-        "value": "0 1px 3px rgb(15 23 42 / .12)",
-        "purpose": "Blocks on the canvas."
+        "name": "float",
+        "value": "0 1px 2px rgb(28 36 32 / .06), 0 6px 18px rgb(28 36 32 / .08)",
+        "purpose": "Tool rail, schema list menu, connector side picker. Tint is black in dark mode."
       },
       {
-        "name": "popover",
-        "value": "0 8px 24px rgb(15 23 42 / .18)",
-        "purpose": "Saved-schemas menu."
+        "name": "lift",
+        "value": "0 4px 12px rgb(28 36 32 / .08), 0 24px 64px rgb(28 36 32 / .14)",
+        "purpose": "Dialogs, over a rgb(28 36 32 / .25) backdrop."
       },
       {
-        "name": "picker",
-        "value": "0 2px 8px rgb(15 23 42 / .22)",
-        "purpose": "Connector side picker."
+        "name": "toast-lift",
+        "value": "0 2px 6px rgb(28 36 32 / .14), 0 12px 32px rgb(28 36 32 / .14)",
+        "purpose": "The toast."
       },
       {
-        "name": "toast",
-        "value": "0 4px 16px rgb(15 23 42 / .25)",
-        "purpose": "Notifications."
+        "name": "block-contact",
+        "value": "0 1px 2px rgb(28 36 32 / .1)",
+        "purpose": "Block bodies on the canvas (drawing, not chrome)."
       },
       {
-        "name": "dialog",
-        "value": "0 20px 50px rgb(15 23 42 / .3)",
-        "purpose": "Modal dialogs."
+        "name": "note-drop",
+        "value": "drop-shadow(0 2px 3px rgb(28 36 32 / .2))",
+        "purpose": "Comments, applied as a filter because the note is clipped to a folded corner."
       },
       {
-        "name": "selection-ring",
-        "value": "0 0 0 3px rgb(37 99 235 / .35)",
-        "purpose": "Selected blocks, connectors and tags."
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--mark); outline-offset: 1px",
+        "purpose": "Every focusable control; -2px offset inside the name box."
+      },
+      {
+        "name": "selection-outline",
+        "value": "outline: 1.5px dashed var(--mark); outline-offset: 3px",
+        "purpose": "Selected canvas elements; 2px for linked clones."
       }
     ],
     "motion": [
       {
-        "name": "connector-hover",
-        "value": "transform .08s",
-        "purpose": "Connector grows on hover; the only chrome motion."
+        "name": "state-colour",
+        "value": "150ms (background-color, border-color, color)",
+        "purpose": "Buttons, inputs, name box."
+      },
+      {
+        "name": "trace-band-slide",
+        "value": "transform 180ms cubic-bezier(.2, .8, .2, 1)",
+        "purpose": "Trace band slides down from above the canvas while Trace is on."
+      },
+      {
+        "name": "connector-grow",
+        "value": "transform 80ms, scale 1.35",
+        "purpose": "Hovered or targeted connector."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce removes all transitions",
+        "purpose": "Accessibility."
       }
     ],
     "breakpoints": [
       {
-        "name": "labels-collapse",
-        "value": "1400px"
-      },
-      {
-        "name": "brand-text-hidden",
-        "value": "1500px"
+        "name": "compact-bar",
+        "value": "1100px",
+        "purpose": "At or below: brand name hidden, schema name box 150px."
       }
     ]
   },
@@ -370,112 +708,155 @@
       "name": "Button",
       "kind": "button",
       "refersTo": "button",
-      "description": "Default toolbar and panel button.",
-      "html": "<button class=\"ds-btn\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z\"/></svg>Save</button>",
-      "css": ".ds-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;line-height:1.4;cursor:pointer}.ds-btn:hover{background:#f1f5f9}.ds-btn:focus-visible{outline:2px solid #2563eb;outline-offset:1px}"
+      "description": "Default 30px hairline button on a white ground.",
+      "html": "<button class=\"ds-btn\">Reset to default</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:30px;padding:0 12px;border:1px solid var(--line,#d5dbd5);border-radius:4px;background:var(--sheet,#fff);color:var(--ink,#1c2420);font:500 13px/1.4 \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;} .ds-btn:hover{border-color:var(--ink-muted,#5b665f);} .ds-btn:active{background:var(--hover,#f0f3ef);} .ds-btn:focus-visible{outline:2px solid var(--mark,#1f5a45);outline-offset:1px;}"
     },
     {
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one primary action: adding a block.",
-      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z\"/></svg>Block</button>",
-      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:#fff;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;line-height:1.4;cursor:pointer}.ds-btn-primary:hover{background:#1d4ed8}.ds-btn-primary:focus-visible{outline:2px solid #2563eb;outline-offset:1px}"
+      "description": "The commit action: ink ground, on-ink label, never green.",
+      "html": "<button class=\"ds-btn-primary\"><svg viewBox=\"0 -960 960 960\" width=\"18\" height=\"18\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z\"/></svg>Apply</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:30px;padding:0 12px;border:1px solid var(--line,#d5dbd5);border-radius:4px;background:var(--sheet,#fff);color:var(--ink,#1c2420);font:500 13px/1.4 \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;background:var(--ink,#1c2420);border-color:var(--ink,#1c2420);color:var(--on-ink,#fff);font-weight:600;} .ds-btn-primary:hover{opacity:.86;} .ds-btn-primary:focus-visible{outline:2px solid var(--mark,#1f5a45);outline-offset:1px;}"
     },
     {
-      "name": "Tool Group",
-      "kind": "custom",
-      "refersTo": "tool-group",
-      "description": "Related toolbar buttons sharing one outline with hairline dividers.",
-      "html": "<div class=\"ds-tools\"><button>Undo</button><button>Redo</button><button class=\"on\">Trace</button></div>",
-      "css": ".ds-tools{display:inline-flex;border:1px solid #e2e8f0;border-radius:8px;background:#fff;overflow:hidden}.ds-tools button{border:0;padding:6px 9px;background:none;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;cursor:pointer}.ds-tools button+button{border-left:1px solid #e2e8f0}.ds-tools button:hover{background:#f1f5f9}.ds-tools button:focus-visible{outline:2px solid #2563eb;outline-offset:-2px}.ds-tools button.on{background:#dbeafe;color:#2563eb}"
+      "name": "Open Toggle",
+      "kind": "button",
+      "refersTo": "button-open",
+      "description": "An open toggle or active choice: green text on the green wash with a green border.",
+      "html": "<span class=\"ds-seg\"><button class=\"ds-seg-b ds-on\">Block</button><button class=\"ds-seg-b\">Single link</button></span>",
+      "css": ".ds-seg{display:inline-flex;} .ds-seg-b{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:30px;padding:0 12px;border:1px solid var(--line,#d5dbd5);border-radius:4px;background:var(--sheet,#fff);color:var(--ink,#1c2420);font:500 13px/1.4 \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;font-size:12px;border-radius:0;} .ds-seg-b+.ds-seg-b{margin-left:-1px;} .ds-seg-b:first-child{border-radius:4px 0 0 4px;} .ds-seg-b:last-child{border-radius:0 4px 4px 0;} .ds-seg-b:hover{border-color:var(--ink-muted,#5b665f);position:relative;z-index:1;} .ds-seg-b.ds-on{border-color:var(--mark,#1f5a45);background:var(--wash,#e6ece7);color:var(--mark,#1f5a45);font-weight:600;position:relative;z-index:1;} .ds-seg-b:focus-visible{outline:2px solid var(--mark,#1f5a45);outline-offset:1px;position:relative;z-index:2;}"
     },
     {
       "name": "Text Field",
       "kind": "input",
       "refersTo": "input",
-      "description": "Panel and toolbar text input.",
-      "html": "<input class=\"ds-input\" value=\"API gateway\">",
-      "css": ".ds-input{width:200px;padding:5px 7px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px}.ds-input:focus-visible{outline:2px solid #2563eb;outline-offset:1px}"
+      "description": "28px field with a muted label in the side sheet two-column grid.",
+      "html": "<label class=\"ds-field\"><span>Name</span><input class=\"ds-input\" value=\"Controller\"></label>",
+      "css": ".ds-field{display:grid;grid-template-columns:86px 1fr;align-items:center;gap:8px;width:300px;font:13px/1.4 \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;} .ds-field span{color:var(--ink-muted,#5b665f);font-size:12px;} .ds-input{height:28px;padding:0 7px;border:1px solid var(--line,#d5dbd5);border-radius:4px;background:var(--field,#fff);color:var(--ink,#1c2420);font:inherit;caret-color:var(--mark,#1f5a45);transition:border-color .15s;} .ds-input:hover{border-color:var(--ink-muted,#5b665f);} .ds-input:focus-visible{outline:2px solid var(--mark,#1f5a45);outline-offset:1px;}"
     },
     {
-      "name": "Section Label",
-      "kind": "custom",
-      "refersTo": "section-label",
-      "description": "Uppercase heading for panel and dialog sections.",
-      "html": "<h3 class=\"ds-label\">Appearance</h3>",
-      "css": ".ds-label{margin:0;color:#64748b;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}"
-    },
-    {
-      "name": "Menu",
+      "name": "Tool Rail",
       "kind": "nav",
-      "refersTo": "menu",
-      "description": "The saved-schemas dropdown.",
-      "html": "<div class=\"ds-menu\"><button class=\"ds-mi\"><span>Payment flow</span><small>10/3/2026</small></button><button class=\"ds-mi cur\"><span>Network</span><small>9/21/2026</small></button></div>",
-      "css": ".ds-menu{width:260px;padding:4px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;box-shadow:0 8px 24px rgb(15 23 42 / .18)}.ds-mi{display:flex;width:100%;gap:10px;padding:6px 10px;border:0;border-radius:6px;background:none;text-align:left;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;cursor:pointer}.ds-mi span{flex:1}.ds-mi small{color:#64748b;font-size:11px}.ds-mi:hover{background:#f1f5f9}.ds-mi:focus-visible{outline:2px solid #2563eb;outline-offset:-2px}.ds-mi.cur{font-weight:600}"
+      "refersTo": "tool-rail",
+      "description": "Floating white rail of add tools and Trace; Trace on is a solid green cell.",
+      "html": "<nav class=\"ds-rail\"><button class=\"ds-tool\" aria-label=\"Add a block\"><svg viewBox=\"0 -960 960 960\" width=\"20\" height=\"20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M440-280h80v-160h160v-80H520v-160h-80v160H280v80h160v160ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z\"/></svg></button><span class=\"ds-rule\"></span><button class=\"ds-tool ds-armed\" aria-label=\"Trace\"><svg viewBox=\"0 -960 960 960\" width=\"20\" height=\"20\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M360-120q-66 0-113-47t-47-113v-327q-35-13-57.5-43.5T120-720q0-50 35-85t85-35q50 0 85 35t35 85q0 39-22.5 69.5T280-607v327q0 33 23.5 56.5T360-200q33 0 56.5-23.5T440-280v-400q0-66 47-113t113-47q66 0 113 47t47 113v327q35 13 57.5 43.5T840-240q0 50-35 85t-85 35q-50 0-85-35t-35-85q0-39 22.5-70t57.5-43v-327q0-33-23.5-56.5T600-800q-33 0-56.5 23.5T520-720v400q0 66-47 113t-113 47Z\"/></svg></button></nav>",
+      "css": ".ds-rail{display:inline-flex;flex-direction:column;gap:1px;padding:4px;background:var(--sheet,#fff);border:1px solid var(--line,#d5dbd5);border-radius:6px;box-shadow:0 1px 2px rgb(28 36 32 / .06),0 6px 18px rgb(28 36 32 / .08);} .ds-rule{height:1px;margin:2px 0;background:var(--rule,#e1e6e1);} .ds-tool{display:grid;place-items:center;width:34px;height:28px;padding:0;border:0;border-radius:4px;background:none;color:var(--ink,#1c2420);cursor:pointer;} .ds-tool:hover:not(.ds-armed){background:var(--hover,#f0f3ef);} .ds-tool.ds-armed{background:var(--mark,#1f5a45);color:var(--on-mark,#fff);} .ds-tool:focus-visible{outline:2px solid var(--mark,#1f5a45);outline-offset:1px;}"
     },
     {
-      "name": "Canvas Block",
-      "kind": "card",
-      "refersTo": "connector",
-      "description": "A block on the canvas with connectors and their names.",
-      "html": "<div class=\"ds-block\"><span class=\"ds-name\">API gateway</span><i class=\"ds-conn l\"></i><i class=\"ds-conn r\"></i><em class=\"ds-cl\">HTTPS</em></div>",
-      "css": ".ds-block{position:relative;display:grid;place-items:center;width:140px;height:90px;margin:20px 40px;border:2px solid #334155;border-radius:8px;background:#dbeafe;box-shadow:0 1px 3px rgb(15 23 42 / .12);font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;}.ds-name{font-size:13px;font-weight:500;color:#0f172a}.ds-conn{position:absolute;top:50%;width:12px;height:12px;margin-top:-6px;border:2px solid #334155;border-radius:50%;background:#fff;box-sizing:border-box;transition:transform .08s}.ds-conn.l{left:-6px}.ds-conn.r{right:-6px;background:#22c55e;border-color:#16803d}.ds-conn:hover{transform:scale(1.35);background:#2563eb;border-color:#2563eb}.ds-cl{position:absolute;right:-42px;top:28px;font-style:normal;font-size:10px;color:#64748b}"
-    },
-    {
-      "name": "Comment",
+      "name": "Trace Band",
       "kind": "custom",
-      "refersTo": "",
-      "description": "Sticky note with a folded corner; always above other elements.",
-      "html": "<div class=\"ds-note\">Check the bus width before release</div>",
-      "css": ".ds-note{position:relative;width:160px;min-height:90px;padding:10px 12px;background:#fef08a;color:#0f172a;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;font-size:13px;line-height:1.35;clip-path:polygon(0 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%);filter:drop-shadow(0 2px 3px rgb(15 23 42 / .22))}.ds-note::after{content:'';position:absolute;right:0;bottom:0;width:14px;height:14px;background:linear-gradient(135deg,rgb(0 0 0 / .18) 50%,transparent 50%)}"
+      "refersTo": "trace-band",
+      "description": "Green-wash band over the canvas while Trace is on: pictogram, name, what pointing does, and the T exit.",
+      "html": "<div class=\"ds-band\"><span class=\"ds-pic\"><svg viewBox=\"0 -960 960 960\" width=\"18\" height=\"18\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M360-120q-66 0-113-47t-47-113v-327q-35-13-57.5-43.5T120-720q0-50 35-85t85-35q50 0 85 35t35 85q0 39-22.5 69.5T280-607v327q0 33 23.5 56.5T360-200q33 0 56.5-23.5T440-280v-400q0-66 47-113t113-47q66 0 113 47t47 113v327q35 13 57.5 43.5T840-240q0 50-35 85t-85 35q-50 0-85-35t-35-85q0-39 22.5-70t57.5-43v-327q0-33-23.5-56.5T600-800q-33 0-56.5 23.5T520-720v400q0 66-47 113t-113 47Z\"/></svg></span><b>Trace</b><span class=\"ds-say\">Point at a connector or link to mark the path that shares its name.</span><button class=\"ds-off\"><kbd class=\"ds-kbd\">T</kbd>Turn off</button></div>",
+      "css": ".ds-band{display:flex;align-items:center;gap:12px;width:640px;height:40px;padding:0 6px;background:var(--wash,#e6ece7);border-bottom:1px solid var(--line,#d5dbd5);border-radius:0 0 0 6px;color:var(--ink,#1c2420);font:13px/1.4 \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;white-space:nowrap;overflow:hidden;} .ds-pic{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:4px;background:var(--mark,#1f5a45);color:var(--on-mark,#fff);} .ds-band b{font-size:16px;font-weight:700;letter-spacing:-.01em;color:var(--mark,#1f5a45);} .ds-say{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;} .ds-off{display:inline-flex;align-items:center;gap:8px;min-height:30px;padding:0 10px 0 6px;border:0;border-radius:4px;background:none;color:inherit;font:600 13px \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;cursor:pointer;} .ds-off:hover{background:color-mix(in srgb,var(--ink,#1c2420) 7%,transparent);} .ds-off:focus-visible{outline:2px solid var(--mark,#1f5a45);outline-offset:1px;} .ds-kbd{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 5px;border:1px solid var(--line,#d5dbd5);border-bottom-width:2px;border-radius:4px;background:var(--sheet,#fff);font:600 11px \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;}"
+    },
+    {
+      "name": "Signals Schedule",
+      "kind": "custom",
+      "refersTo": "schedule-row",
+      "description": "The schema particulars: name, link-count figure, and the Signals schedule; pointing at a row traces it.",
+      "html": "<div class=\"ds-part\"><h3>Studio rack wiring</h3><p class=\"ds-fig\">8<small>links between 5 blocks</small></p><table class=\"ds-sched\"><thead><tr><th>Signal</th><th>Links</th><th>Blocks</th></tr></thead><tbody><tr><td>12V</td><td>1</td><td>2</td></tr><tr><td>GND</td><td>2</td><td>3</td></tr><tr class=\"ds-on\"><td>SDA</td><td>2</td><td>3</td></tr><tr><td>TX</td><td>1</td><td>2</td></tr></tbody></table></div>",
+      "css": ".ds-part{width:268px;padding:14px;background:var(--sheet,#fff);color:var(--ink,#1c2420);font:13px/1.4 \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;font-variant-numeric:tabular-nums;} .ds-part h3{margin:0 0 12px;font-size:16px;font-weight:700;letter-spacing:-.01em;} .ds-fig{display:flex;align-items:baseline;gap:6px;margin:-4px 0 12px;font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.02em;} .ds-fig small{color:var(--ink-muted,#5b665f);font-size:13px;font-weight:500;letter-spacing:0;} .ds-sched{width:100%;border-collapse:collapse;border-top:1px solid var(--ink,#1c2420);} .ds-sched th{padding:6px 0 4px;color:var(--ink-muted,#5b665f);font-size:12px;font-weight:500;text-align:right;} .ds-sched th+th,.ds-sched td+td{padding-left:10px;} .ds-sched th:first-child,.ds-sched td:first-child{text-align:left;} .ds-sched td{height:30px;padding:0;border-top:1px solid var(--rule,#e1e6e1);text-align:right;} .ds-sched td:first-child{width:100%;font-weight:600;} .ds-sched td+td{color:var(--ink-muted,#5b665f);} .ds-sched tbody tr{cursor:pointer;} .ds-sched tbody tr:hover td{background:var(--hover,#f0f3ef);} .ds-sched tr.ds-on td{color:var(--mark,#1f5a45);} .ds-sched tr.ds-on td:first-child{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px;}"
+    },
+    {
+      "name": "Schema List Menu",
+      "kind": "nav",
+      "refersTo": "menu-item-current",
+      "description": "The saved-schema menu off the name box; the open schema is green text on the wash.",
+      "html": "<div class=\"ds-menu\"><button class=\"ds-mi ds-cur\"><span>Studio rack wiring</span><small>5 blocks</small></button><button class=\"ds-mi\"><span>Home network</span><small>12 blocks</small></button></div>",
+      "css": ".ds-menu{width:260px;padding:4px;background:var(--sheet,#fff);border:1px solid var(--line,#d5dbd5);border-radius:6px;box-shadow:0 1px 2px rgb(28 36 32 / .06),0 6px 18px rgb(28 36 32 / .08);font:13px/1.4 \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;} .ds-mi{display:flex;width:100%;gap:10px;min-height:30px;align-items:center;padding:0 8px;border:0;border-radius:4px;background:none;color:var(--ink,#1c2420);font:inherit;text-align:left;cursor:pointer;} .ds-mi span{flex:1;} .ds-mi small{color:var(--ink-muted,#5b665f);font-size:12px;font-weight:400;} .ds-mi:hover{background:var(--hover,#f0f3ef);} .ds-mi.ds-cur{background:var(--wash,#e6ece7);color:var(--mark,#1f5a45);font-weight:700;} .ds-mi:focus-visible{outline:2px solid var(--mark,#1f5a45);outline-offset:1px;}"
+    },
+    {
+      "name": "Dialog",
+      "kind": "card",
+      "refersTo": "dialog",
+      "description": "White sheet with the lift shadow; header over a hairline, groups under ink rules.",
+      "html": "<div class=\"ds-dlg\"><header><h2>Schema parameters</h2></header><div class=\"ds-dbody\"><h3>Blocks</h3><p>Corner radius <b>8 px</b></p></div></div>",
+      "css": ".ds-dlg{width:360px;background:var(--sheet,#fff);color:var(--ink,#1c2420);border:1px solid var(--line,#d5dbd5);border-radius:6px;box-shadow:0 4px 12px rgb(28 36 32 / .08),0 24px 64px rgb(28 36 32 / .14);font:13px/1.4 \"Avenir Next\", Avenir, \"Segoe UI\", \"Helvetica Neue\", system-ui, sans-serif;} .ds-dlg header{padding:12px 12px 12px 20px;border-bottom:1px solid var(--line,#d5dbd5);} .ds-dlg h2{margin:0;font-size:18px;font-weight:700;letter-spacing:-.01em;} .ds-dbody{padding:16px 20px 18px;} .ds-dbody h3{margin:0 0 10px;padding-top:7px;border-top:1px solid var(--ink,#1c2420);font-size:14px;font-weight:700;} .ds-dbody p{display:flex;justify-content:space-between;margin:0;color:var(--ink-muted,#5b665f);font-size:12px;} .ds-dbody b{color:var(--ink-muted,#5b665f);font-weight:400;font-size:13px;}"
     }
   ],
   "narrative": {
-    "northStar": "The Engineer's Notebook",
-    "overview": "Schematic is a working page, not a showpiece. The canvas is a sheet of faint graph paper; the toolbar and the settings panel sit at its edges like the margin of a notebook, set in small system type and thin slate lines. Everything around the drawing is quiet and neutral so that the colours the author gives to blocks, connectors and links carry all the meaning. A single blue marks what is selected, pressed or about to happen; amber is reserved for tracing a signal.\n\nThe interface is dense on purpose. Controls are compact, grouped into rounded clusters with hairline dividers, and familiar functions are icons only, with a tooltip for anyone who needs the word. The settings panel reads like a form in a notebook: small uppercase section labels, a narrow caption column, and fields that run to the edge.\n\nThe world has a night version that keeps the same structure and swaps paper for slate. Exports always go out on white, because they leave the notebook for documents.",
+    "northStar": "The Property Particulars",
+    "overview": "**Creative North Star: \"The Property Particulars\"**\n\nSchematic adopts the Property Particulars world first built for Floorplan. The chrome around the drawing reads like a printed particulars sheet: white sheets laid on a soft sage ground, hairline rules between entries, a 1px ink rule over every section, figures set tight to the right margin in tabular columns. One heritage green marks only where you are. The drawing is the subject; the chrome is the sheet that describes it and never competes with it. The schema's own colours (block fills and borders, link and connector colours, the palette, group frame colours, and the trace mark colour) are the author's data, saved with each schema, and sit outside this system. Only the selection, hover and editing marks drawn on top of the drawing belong to it.\n\nThe world is dense and calm. Controls are 30px, inputs 28px, body type is a system brochure sans at 13px with tabular figures, headings are bold and sentence case. The canvas and the side sheet are white sheets inset 10px on the sage ground with 6px top corners, open at the bottom where they meet the status bar. Depth is flat: tonal steps between sage, white and sunken sheet, hairlines, and ink section rules; soft shadows lift only what floats. The one moving part of the chrome is the trace band, which slides down over the canvas in 180ms while Trace is on.\n\nLight mode is white sheets on sage with ink primary actions. Dark mode is a green-black ground with dark sheets, the same roles one for one, the green lifted to a pale mint with a near-black glyph. The system replaces, and refuses, the slate toolbar with a blue accent that most editors default to.",
     "keyCharacteristics": [
-      "Neutral slate chrome; colour belongs to the schema, not the interface.",
-      "One accent (Signal Blue) for selection, focus and active states.",
-      "Compact 13px system type; 11px uppercase labels for structure.",
-      "Thin 1px hairlines and small radii; almost no shadow on chrome.",
-      "Light and dark themes with identical layout."
+      "Heritage green is state only: Trace on, the trace band, open menus and toggles, the current menu row, focus, the pointed-at signal, and every selection, hover and editing mark on the canvas. The brand square's green outline is its one identity use.",
+      "Ink rules (1px, ink) open every section: inspector subheads, the Signals schedule, dialog parameter groups. Hairlines separate everything else.",
+      "With nothing selected the side sheet is the schema's particulars: its name, the link count as the one big figure, then the Signals schedule.",
+      "Brochure sans from the system for the chrome; the drawing itself is set in system-ui, the face its PNG and PDF exports use.",
+      "Material Symbols Outlined for every pictogram: 18px in the top bar and trace band, 20px in the tool rail and icon grid.",
+      "Small radii (4px controls, 6px sheets), soft shadows on floaters only."
     ],
     "rules": [
       {
-        "name": "The Schema Owns Colour Rule",
-        "body": "Chrome stays slate. Saturated colour appears only where the author put it, plus Signal Blue for state and Trace Amber for tracing.",
+        "name": "The One Mark Rule",
+        "body": "Heritage green answers \"where am I\". If an element is not Trace, an open toggle or menu, the current row, focus, the pointed-at signal or a selection or editing mark, it is not green. The brand square outline is the only exception.",
         "section": "colors"
       },
       {
-        "name": "The One Accent Rule",
-        "body": "Signal Blue means \"selected, focused or active\" and nothing else; it is never decoration.",
+        "name": "The Wash, Not Fill Rule",
+        "body": "Open toggles, current rows and active choices are green text on the green wash with a green border, never solid green. Solid green with an on-green glyph is reserved for the armed Trace cell, the trace-band pictogram, the picked icon in the icon grid and a hovered connector.",
         "section": "colors"
       },
       {
-        "name": "The Small Steps Rule",
-        "body": "Text sizes stay between 10px and 15px in the chrome; a larger size is only for content the author sets (titles on the canvas, icons on blocks).",
+        "name": "The Ink Primary Rule",
+        "body": "The primary action is ink with an on-ink label. Primary buttons are never green, so a green element is never mistaken for a commit.",
+        "section": "colors"
+      },
+      {
+        "name": "The Author's Colours Rule",
+        "body": "Block, link, connector, group frame and trace colours belong to the schema and are saved with it. The trace mark defaults to amber (#f59e0b) so a trace stands out over links of any colour, green included; the author may change it per schema, or set it to the link's own colour or none. Chrome tokens never restyle the drawing, and drawing colours never enter the chrome.",
+        "section": "colors"
+      },
+      {
+        "name": "The Same Roles at Night Rule",
+        "body": "Every chrome colour has a light and a dark value with the same role; dark mode lifts the green to mint with a near-black glyph rather than inventing new hues.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "The whole chrome sets tabular figures; counts sit right-aligned in fixed columns (the Signals schedule, slider values in a 40px column) so they line up and do not jitter.",
         "section": "typography"
       },
       {
-        "name": "The Flat Chrome Rule",
-        "body": "Toolbar, panel and fields never cast shadows; only floating layers and canvas blocks do.",
+        "name": "The Sentence Case Rule",
+        "body": "Labels, buttons and headings are sentence case and bold where they lead. No uppercase tracking, no small labels above headings.",
+        "section": "typography"
+      },
+      {
+        "name": "The Export Face Rule",
+        "body": "Anything drawn on the canvas is set in system-ui, never in the chrome's brochure stack, because the PNG and PDF exports draw it that way.",
+        "section": "typography"
+      },
+      {
+        "name": "The Floaters Only Rule",
+        "body": "In the chrome, only the tool rail, menus, dialogs and the toast carry shadows. Sheets, the trace band, buttons, inputs and rows stay flat.",
         "section": "elevation"
+      },
+      {
+        "name": "The One Place Rule",
+        "body": "Each instruction is said once: what pointing does under Trace is on the trace band, how to handle the selection is in the status bar, and neither is repeated in the side sheet.",
+        "section": "components"
       }
     ],
     "dos": [
-      "**Do** keep chrome slate and let the schema's colours be the only strong colour on screen.",
-      "**Do** use Signal Blue only for selected, focused, pressed or active states.",
-      "**Do** group related toolbar actions in one shared outline (8px radius, hairline dividers).",
-      "**Do** make familiar functions icon-only with a tooltip; keep labels for less familiar ones.",
-      "**Do** define every chrome colour as a token with a dark-mode counterpart.",
-      "**Do** keep text between 10px and 15px in the chrome."
+      "Do keep heritage green (#1f5a45, #7cc6a4 in dark mode) for Trace, open toggles and menus, current rows, active choices, focus, the pointed-at signal and the selection and editing marks on the canvas.",
+      "Do put open toggles, current rows and active choices on the green wash with green text and a green border; keep solid green for the armed Trace cell, the trace-band pictogram, the picked icon and a hovered connector.",
+      "Do open every section with a 1px ink rule and separate entries with hairlines or the lighter schedule rule.",
+      "Do use tabular figures right-aligned in fixed columns and bold sentence-case headings; keep body at 13px, controls at 30px and inputs at 28px.",
+      "Do lay content on white sheets inset 10px on the sage ground; reserve chrome shadows for the rail, menus, dialogs and the toast.",
+      "Do set everything drawn on the canvas in system-ui so the screen matches the PNG and PDF exports.",
+      "Do give every chrome colour a light and a dark value with the same role, as custom properties on `:root` and `:root[data-theme=\"dark\"]`.",
+      "Do take every pictogram from Material Symbols Outlined."
     ],
     "donts": [
-      "**Don't** add shadows to the toolbar, panel or fields.",
-      "**Don't** use Trace Amber for anything but tracing and the unsaved/pending marks.",
-      "**Don't** change layout between light and dark themes; only the tokens change.",
-      "**Don't** make exports follow the dark theme; pictures always go out on white."
+      "Don't use green for decoration, emphasis, primary buttons or status.",
+      "Don't introduce a blue (or any other hue) as the interface accent; the slate toolbar with a blue accent is the world this replaced.",
+      "Don't restyle block, link, connector, group frame or trace colours from the chrome system; they are the author's data, saved with the schema.",
+      "Don't load webfonts for the chrome text; the Material Symbols icon font is the only network request.",
+      "Don't use gradient fills, large radii or shadows on in-flow sheets and controls.",
+      "Don't repeat an instruction from the trace band or the status bar in the side sheet."
     ]
   }
 }
