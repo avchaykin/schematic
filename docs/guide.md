@@ -4,16 +4,23 @@ A short tour of the tool. For the full feature list and shortcuts see the [READM
 
 ![A schema with a selected block and its settings panel](images/overview.png)
 
-The screen has three parts: the **toolbar** at the top, the **canvas** in the middle, and the
-**panel** on the right, which shows the settings of whatever is selected.
+The screen has four parts: the **top bar**, the **canvas** with the **tool rail** floating at its
+top left, the **panel** on the right, which shows the settings of whatever is selected, and the
+**status bar** at the bottom with the mouse and key hints.
 
-The toolbar is arranged in groups: the schema file (new, save, folder), import and export, the
-elements to add, schema tools, undo/redo and zoom. The familiar functions are icons only; hover
-one to see what it does.
+The top bar holds the schema name with the list of saved schemas, the schema file (new, save,
+folder), undo/redo, zoom, light/dark mode, JSON, import and export, and **Schema** for the schema's
+parameters. The tool rail adds elements (block, link connector, title, frame, reference, comment)
+and turns Trace on. Most buttons are icons only; hover one to see what it does.
+
+With nothing selected the panel shows the schema's particulars: how many links run between how many
+blocks, and a list of every named signal (the names given to connectors and links) with the number
+of links and blocks carrying it. Point at a signal to trace it on the canvas; click it to select its
+links.
 
 ## 1. Add blocks
 
-- Press **Block** in the toolbar, or double-click empty canvas.
+- Press **Block** in the tool rail, or double-click empty canvas.
 - Drag a block to move it. Select it and drag an edge or corner to resize it.
 - In the panel set its **Name**, **ID**, **Description** and **Icon** (pick from the grid or type a Material Symbols name).
 - Under **Appearance** click **Background** or **Border** to open the palette, and set the border
@@ -56,7 +63,7 @@ A link with no colour of its own takes one from what it is attached to, in this 
 a block connector, a link connector. If two block connectors at its ends have different colours,
 it is drawn black.
 
-To follow a signal across the schema, turn on **Trace** in the toolbar (or press T) and hover a
+To follow a signal across the schema, turn on **Trace** in the tool rail (or press T) and hover a
 connector or a link: every link and connector on the path sharing its name is marked, also where
 the path runs through a block between two connectors of the same name. Unnamed links in between
 belong to the path. The mark's colour and width are set under **Schema**;
@@ -70,7 +77,7 @@ point below.
 
 ![A link connector joining three dashed links](images/junction.png)
 
-- Press **Connector** in the toolbar, or drag a new link, hold Shift and release over empty
+- Press **Connector** in the tool rail, or drag a new link, hold Shift and release over empty
   canvas. A preview dot shows where it will appear; it takes the name and colour of the connector
   the link started from.
 - Drag from the dot to start another link, or drop a link onto it.

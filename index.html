@@ -19,69 +19,84 @@
   </script>
 </head>
 <body>
-  <header class="toolbar">
-    <span class="brand" title="Schematic 1.0"><span class="mi">schema</span><span class="brand-text">Schematic</span></span>
+  <header id="topbar">
+    <span class="brand" title="Schematic 1.0"><i><span class="mi">schema</span></i><span class="brand-text">Schematic</span></span>
     <div class="name-box">
       <input id="schema-name" type="text" placeholder="Schema name" spellcheck="false" aria-label="Schema name">
       <button data-action="library" class="icon-only" title="Load a saved schema" aria-label="Load a saved schema" aria-haspopup="menu"><span class="mi">expand_more</span></button>
     </div>
 
-    <div class="tool-group" role="group" aria-label="Schema file">
+    <div class="btn-group" role="group" aria-label="Schema file">
       <button data-action="new" class="icon-only" title="New schema" aria-label="New schema"><span class="mi">note_add</span></button>
       <button data-action="save" class="icon-only" title="Save to browser storage (Ctrl/⌘+S)" aria-label="Save"><span class="mi">save</span></button>
       <button data-action="folder" class="icon-only" title="Keep schemas as files in a folder on this computer" aria-label="Folder storage" hidden><span class="mi">folder_special</span></button>
     </div>
 
-    <div class="tool-group" role="group" aria-label="Import and export">
-      <button data-action="import" class="icon-only" title="Import a JSON file" aria-label="Import"><span class="mi">upload</span></button>
-      <button data-action="export" class="icon-only" title="Export as a JSON file" aria-label="Export"><span class="mi">download</span></button>
-      <button data-action="json" class="icon-only" title="Show and edit the schema as JSON" aria-label="JSON"><span class="mi">data_object</span></button>
-      <button data-action="export-png" class="icon-only" title="Export the schema as a PNG picture" aria-label="Export PNG"><span class="mi">image</span></button>
-      <button data-action="export-pdf" class="icon-only" title="Export the schema as a PDF page" aria-label="Export PDF"><span class="mi">picture_as_pdf</span></button>
-    </div>
-
-    <div class="tool-group" role="group" aria-label="Add elements">
-      <button data-action="add-block" class="primary collapsible" title="Add a block (or double-click the canvas)"><span class="mi">add_box</span><span class="label">Block</span></button>
-      <button data-action="add-junction" class="collapsible" title="Add a link connector: a free-standing dot where links meet"><span class="mi">adjust</span><span class="label">Connector</span></button>
-      <button data-action="add-title" class="collapsible" title="Add a title: free text without a border"><span class="mi">title</span><span class="label">Title</span></button>
-      <button data-action="add-frame" class="collapsible" title="Add a frame: a titled area behind other elements, which move with it"><span class="mi">crop_free</span><span class="label">Frame</span></button>
-      <button data-action="add-ref" class="collapsible" title="Add a reference: a block of another saved schema, to link to from here"><span class="mi">shortcut</span><span class="label">Reference</span></button>
-      <button data-action="add-comment" class="collapsible" title="Add a comment: a sticky note with free text"><span class="mi">sticky_note_2</span><span class="label">Comment</span></button>
-    </div>
-
-    <div class="tool-group" role="group" aria-label="Schema tools">
-      <button data-action="settings" class="collapsible" title="Schema parameters: corner radius, links, trace, colour palette"><span class="mi">tune</span><span class="label">Schema</span></button>
-      <button data-action="theme" class="icon-only" title="Switch between light and dark mode" aria-label="Dark mode"><span class="mi">dark_mode</span></button>
-      <button data-action="trace" class="collapsible" aria-pressed="false" title="Trace (T): hover a connector or link to mark the whole path sharing its name"><span class="mi">route</span><span class="label">Trace</span></button>
-    </div>
-
     <span class="spacer"></span>
 
-    <div class="tool-group" role="group" aria-label="History">
+    <div class="btn-group" role="group" aria-label="History">
       <button data-action="undo" class="icon-only" title="Undo (Ctrl/⌘+Z)" aria-label="Undo"><span class="mi">undo</span></button>
       <button data-action="redo" class="icon-only" title="Redo (Ctrl/⌘+Shift+Z)" aria-label="Redo"><span class="mi">redo</span></button>
     </div>
 
-    <div class="tool-group" role="group" aria-label="Zoom">
-      <button data-action="zoom-out" class="icon-only" title="Zoom out" aria-label="Zoom out"><span class="mi">remove</span></button>
+    <div class="btn-group" role="group" aria-label="Zoom">
+      <button data-action="zoom-out" class="icon-only" title="Zoom out" aria-label="Zoom out"><span class="mi">zoom_out</span></button>
       <button data-action="zoom-reset" id="zoom-label" title="Reset zoom to 100%">100%</button>
-      <button data-action="zoom-in" class="icon-only" title="Zoom in" aria-label="Zoom in"><span class="mi">add</span></button>
+      <button data-action="zoom-in" class="icon-only" title="Zoom in" aria-label="Zoom in"><span class="mi">zoom_in</span></button>
       <button data-action="fit" class="icon-only" title="Fit schema to view" aria-label="Fit to view"><span class="mi">fit_screen</span></button>
     </div>
+
+    <span class="bar-gap"></span>
+
+    <button data-action="theme" class="icon-only" title="Switch between light and dark mode" aria-label="Dark mode"><span class="mi">dark_mode</span></button>
+    <button data-action="json" class="icon-only" title="Show and edit the schema as JSON" aria-label="JSON"><span class="mi">data_object</span></button>
+
+    <div class="btn-group" role="group" aria-label="Import and export">
+      <button data-action="import" class="icon-only" title="Import a JSON file" aria-label="Import"><span class="mi">upload</span></button>
+      <button data-action="export" class="icon-only" title="Export as a JSON file" aria-label="Export"><span class="mi">download</span></button>
+      <button data-action="export-png" class="icon-only" title="Export the schema as a PNG picture" aria-label="Export PNG"><span class="mi">image</span></button>
+      <button data-action="export-pdf" class="icon-only" title="Export the schema as a PDF page" aria-label="Export PDF"><span class="mi">picture_as_pdf</span></button>
+    </div>
+
+    <button data-action="settings" title="Schema parameters: corner radius, links, trace, colour palette">Schema</button>
   </header>
 
-  <main>
+  <main id="stage">
     <div id="viewport">
       <div id="frames"></div>
       <svg id="links"><g id="links-g"></g></svg>
       <div id="world"></div>
-      <div id="hint">
-        Drag a connector to link · Shift+drag to reattach its links · Alt+drag to move it · Drag background to pan · Shift+drag background to select several · Scroll to zoom · Shift+scroll to pan
-      </div>
-      <div id="toast" hidden></div>
     </div>
-    <aside id="inspector"></aside>
+
+    <nav id="tools" aria-label="Add to the schema">
+      <div class="tgroup">
+        <button data-action="add-block" title="Block (or double-click the canvas)" aria-label="Add a block"><span class="mi">add_box</span></button>
+        <button data-action="add-junction" title="Link connector: a free-standing dot where links meet" aria-label="Add a link connector"><span class="mi">adjust</span></button>
+        <button data-action="add-title" title="Title: free text without a border" aria-label="Add a title"><span class="mi">title</span></button>
+        <button data-action="add-frame" title="Frame: a titled area behind other elements, which move with it" aria-label="Add a frame"><span class="mi">crop_free</span></button>
+        <button data-action="add-ref" title="Reference: a block of another saved schema, to link to from here" aria-label="Add a reference"><span class="mi">shortcut</span></button>
+        <button data-action="add-comment" title="Comment: a sticky note with free text" aria-label="Add a comment"><span class="mi">sticky_note_2</span></button>
+      </div>
+      <div class="tgroup">
+        <button data-action="trace" aria-pressed="false" title="Trace (T): point at a connector or link to mark the whole path sharing its name" aria-label="Trace"><span class="mi">route</span></button>
+      </div>
+    </nav>
+
+    <div id="traceband" aria-hidden="true">
+      <span class="pic"><span class="mi">route</span></span>
+      <b>Trace</b>
+      <span class="say" id="trace-say">Point at a connector or link to mark the path that shares its name.</span>
+      <button data-action="trace" tabindex="-1"><kbd>T</kbd>Turn off</button>
+    </div>
+
+    <div id="toast" hidden></div>
   </main>
+
+  <aside id="inspector"></aside>
+
+  <footer id="statusbar">
+    <span>Drag a connector to link · Shift+drag reattaches its links, Alt+drag moves it · Drag background to pan · Shift+drag to select several, F frames them · Scroll zooms, Shift+scroll pans</span>
+  </footer>
 
   <div id="load-menu" class="menu" role="menu" hidden></div>
 
@@ -104,13 +119,18 @@
       <h2>Schema parameters</h2>
       <button data-action="close-palette" class="icon-only" title="Close"><span class="mi">close</span></button>
     </header>
-    <div class="dialog-body">
-      <h3>Blocks</h3>
-      <div id="schema-params"></div>
-      <h3>Links</h3>
-      <div id="schema-link-params"></div>
-      <h3>Trace</h3>
-      <div id="schema-trace-params"></div>
+    <div class="dialog-body settings-cols">
+      <section>
+        <h3>Blocks</h3>
+        <div id="schema-params"></div>
+        <h3>Trace</h3>
+        <div id="schema-trace-params"></div>
+      </section>
+      <section>
+        <h3>Links</h3>
+        <div id="schema-link-params"></div>
+      </section>
+      <section>
       <h3>Colour palette</h3>
       <p class="note">These colours are offered everywhere in this schema and are saved with it. Click a colour to remove it; blocks, connectors and links already using it keep their colour.</p>
       <div id="palette-list" class="swatches large"></div>
@@ -120,6 +140,7 @@
         <span class="spacer"></span>
         <button data-action="palette-reset" title="Restore the default palette">Reset to default</button>
       </div>
+      </section>
     </div>
   </dialog>
 

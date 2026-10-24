@@ -63,7 +63,7 @@ Everything else works offline.
 
 - A free-standing dot, like a block's connector but placed anywhere on the canvas.
 - Any number of links can start or end at it, all meeting in one point.
-- Created from the toolbar, or by holding Shift while dropping a new link on empty canvas: a preview
+- Created from the tool rail, or by holding Shift while dropping a new link on empty canvas: a preview
   dot shows where the link connector will appear, with the link attached.
 - With several link connectors selected, Shift+drag from one of them onto empty canvas extends them
   all: each gets a new link connector with the same name and colour, laid out the same way, linked
@@ -136,7 +136,10 @@ Everything else works offline.
 
 ### Trace
 
-- **Trace** in the toolbar (or the T key) turns tracing on and off.
+- **Trace** in the tool rail (or the T key) turns tracing on and off. While it is on, a band across
+  the top of the canvas says what pointing does, with a button to turn it off.
+- With nothing selected the panel lists every named signal with the links and blocks carrying it;
+  pointing at one traces it (whether or not Trace is on) and clicking it selects its links.
 - While it is on, hovering a connector or a link marks the whole path that shares its name: links
   and connectors of that name, continuing through a block from one connector to its others of the
   same name. Other links fade back.
@@ -169,7 +172,7 @@ Everything else works offline.
   drops down a list of them to pick from; **Manage saved schemas…** at its end opens the dialog for deleting, exporting and
   importing them and for choosing a folder.
 - In Chrome or Edge, schemas can live in a folder on the computer instead: one JSON file per
-  schema, in the export format. Pick the folder with the toolbar's folder button (or in the manage
+  schema, in the export format. Pick the folder with the top bar's folder button (or in the manage
   dialog); a schema that has been saved once is then written again automatically after every change.
   After a reload the browser may ask once to confirm access to the folder.
 - If the open schema's file is changed from elsewhere (the same folder used on another computer
@@ -188,7 +191,7 @@ Everything else works offline.
 
 ### Canvas
 
-- Pan by dragging the background; zoom with the scroll wheel or the toolbar; Shift+scroll also pans; fit the schema to the view.
+- Pan by dragging the background; zoom with the scroll wheel or the top bar; Shift+scroll also pans; fit the schema to the view.
 - Shift+drag on empty canvas draws a selection box; Shift+click adds or removes single elements.
   Dragging one selected element moves them all, and Delete removes them all.
 - Several selected elements share one panel for their common settings: background, border, border
@@ -203,7 +206,7 @@ Everything else works offline.
 - Resizing a block or a link group block straight after adding it makes that the size of the next
   new ones; the size is remembered by the browser.
 - Undo and redo.
-- Light and dark mode, switched from the toolbar; it starts in the system's mode and remembers the
+- Light and dark mode, switched from the top bar; it starts in the system's mode and remembers the
   choice. Colours given to elements stay as set, and exported pictures are always on white.
 
 ## Keyboard and mouse
@@ -236,7 +239,7 @@ Letter shortcuts go by the key's position, so they also work with a non-Latin ke
 
 ## Files
 
-- `index.html` — page structure, toolbar and dialogs
+- `index.html` — page structure: top bar, tool rail, panel, status bar and dialogs
 - `style.css` — styling
 - `app.js` — the whole application
 - `docs/guide.md` — illustrated guide to working with the tool

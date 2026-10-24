@@ -93,7 +93,7 @@
     return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 > 0.9;
   }
 
-  // The theme is set on the page's root element (by a script in the page head, then by the toolbar).
+  // The theme is set on the page's root element (by a script in the page head, then by the top bar).
   const isDark = () => document.documentElement.dataset.theme === 'dark';
 
   // Whether a line of this colour would be hard to see on the canvas: near white on the light
@@ -123,6 +123,7 @@
   const inspector = $('#inspector');
   const nameInput = $('#schema-name');
   const toastEl = $('#toast');
+  const statusText = $('#statusbar span');
   const libraryDialog = $('#library-dialog');
   const paletteDialog = $('#palette-dialog');
   const jsonDialog = $('#json-dialog');
@@ -149,6 +150,7 @@
   let justCreated = null; // the block or group block just added; resizing it sets the size of the next ones
   let traceOn = false; // the Trace tool: hovering a connector or link marks the path it belongs to
   let hover = null; // { conn } or { link }: what the pointer is over while tracing
+  let signalHover = null; // { start, key }: the signal pointed at in the schedule, traced whether or not Trace is on
   let trace = null; // { links, conns }: ids marked by the trace, worked out on every draw
 
   function emptySchema(name = 'Untitled') {
@@ -1273,7 +1275,7 @@
   const connectorTraceName = ({ block, conn }) => traceName(block.kind === 'junction' ? block.name : conn.name);
   const linksAt = (connId) => schema.links.filter((l) => l.from === connId || l.to === connId);
 
-  function tracePath(start) {
+  function tracePath(start, anyName = schema.traceIgnoreNames) {
     const links = new Set();
     const conns = new Set();
     const names = new Set();
@@ -1295,7 +1297,6 @@
     } else {
       return null;
     }
-    const anyName = schema.traceIgnoreNames;
     const passes = (name) => anyName || !name || names.has(name);
     const visitLink = (l) => {
       if (links.has(l.id) || !passes(traceName(l.name))) return;
@@ -1965,7 +1966,7 @@
   function draw() {
     syncClones(selectedBlock()); // may change connectors, so before the index is built
     withConnectorIndex(() => {
-      trace = traceOn && hover ? tracePath(hover) : null;
+      trace = signalHover ? tracePath(signalHover.start, false) : traceOn && hover ? tracePath(hover) : null;
       drawBlocks();
       drawLinks();
     });
@@ -3269,33 +3270,113 @@
   function renderInspector() {
     const block = selectedBlock();
     const links = selectedLinks();
+    if ((selection || block || links.length) && signalHover) { signalHover = null; render(); } // the schedule is going away
     if (selection?.type === 'blocks') inspector.replaceChildren(...multiInspector(selectedBlocks()).filter(Boolean));
     else if (block) inspector.replaceChildren(...blockInspector(block));
     else if (links.length) inspector.replaceChildren(...linkInspector(links));
     else inspector.replaceChildren(...emptyInspector());
+    updateStatus(block, links);
   }
 
+  // The status bar carries the keys for whatever is selected; the panel does not repeat them.
+  function updateStatus(block, links) {
+    const mod = /Mac|iP/.test(navigator.platform) ? '⌘' : 'Ctrl+';
+    const clip = `${mod}C ${mod}X ${mod}V copy, cut, paste`;
+    let text;
+    if (selection?.type === 'blocks') {
+      text = `Drag to move them together · Alt ignores the grid · F puts a frame around them · ${clip} · Delete removes · Esc deselects`;
+    } else if (block && (!block.kind || block.kind === 'ref')) {
+      text = `Drag to move · drag an edge or corner to resize · Alt ignores the grid · drag a connector to link, Shift+drag to reattach its links, Alt+drag to move it · ${mod}D duplicates · Delete removes · Esc deselects`;
+    } else if (block) {
+      text = `Drag to move · Alt ignores the grid · ${clip} · Delete removes · Esc deselects`;
+    } else if (links.length) {
+      text = `Shift+click to select more links · ${mod}G groups them into a block · Delete removes · Esc deselects`;
+    } else {
+      text = 'Drag a connector to link · Shift+drag reattaches its links, Alt+drag moves it · Drag background to pan · Shift+drag to select several, F frames them · Scroll zooms, Shift+scroll pans';
+    }
+    statusText.textContent = text;
+  }
+
+  // Every name carried by connectors and links, with the links and blocks that carry it. An
+  // unnamed link carries the names of its ends, as it does for the trace.
+  function signalList() {
+    const signals = new Map();
+    const entry = (text) => {
+      const key = traceName(text);
+      if (!key) return null;
+      if (!signals.has(key)) signals.set(key, { key, name: String(text).trim(), links: new Set(), blocks: new Set(), start: null });
+      return signals.get(key);
+    };
+    return withConnectorIndex(() => {
+      for (const block of schema.blocks) {
+        for (const conn of block.connectors) {
+          const signal = entry(block.kind === 'junction' ? block.name : conn.name);
+          if (!signal) continue;
+          if (block.kind !== 'junction') signal.blocks.add(block.id);
+          signal.start ||= { conn: conn.id };
+        }
+      }
+      for (const link of schema.links) {
+        const own = entry(link.name);
+        const carriers = own ? [own] : [link.from, link.to].map((id) => {
+          const end = findConnector(id);
+          return end && entry(connectorTraceName(end));
+        });
+        for (const signal of new Set(carriers.filter(Boolean))) {
+          signal.links.add(link.id);
+          signal.start ||= { link: link.id };
+        }
+      }
+      return [...signals.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    });
+  }
+
+  function setSignalHover(next) {
+    if ((signalHover?.key ?? null) === (next?.key ?? null)) return;
+    signalHover = next;
+    for (const row of inspector.querySelectorAll('tr[data-signal]')) row.classList.toggle('on', row.dataset.signal === next?.key);
+    render();
+  }
+
+  // With nothing selected the panel reads like the schema's particulars: what it holds, then every
+  // named signal. Pointing at a signal traces it on the canvas; clicking selects its links.
   function emptyInspector() {
+    const boxes = schema.blocks.filter((b) => !['junction', 'title', 'frame', 'comment'].includes(b.kind)).length;
+    const signals = signalList();
+    if (signalHover && !signals.some((s) => s.key === signalHover.key)) signalHover = null;
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const schedule = signals.length
+      ? h('table', { class: 'schedule', onpointerleave: () => setSignalHover(null) },
+        h('thead', {}, h('tr', {}, h('th', {}, 'Signal'), h('th', {}, 'Links'), h('th', {}, 'Blocks'))),
+        h('tbody', {}, ...signals.map((signal) => h('tr', {
+          'data-signal': signal.key,
+          class: signal.key === signalHover?.key ? 'on' : '',
+          title: signal.links.size ? 'Click to select its links' : '',
+          onpointerenter: () => setSignalHover({ key: signal.key, start: signal.start }),
+          onclick: () => { if (signal.links.size) select({ type: 'link', ids: [...signal.links] }); },
+        }, h('td', {}, signal.name), h('td', {}, String(signal.links.size)), h('td', {}, String(signal.blocks.size))))))
+      : h('p', { class: 'schedule-empty' }, 'No named signals yet. Name connectors or links to list them here and trace them.');
     return [
-      h('h3', {}, 'Schema'),
-      h('p', {}, `${schema.blocks.length} block(s), ${schema.links.length} link(s)`),
-      h('h3', {}, 'How to'),
-      h('ul', {},
-        h('li', {}, 'Press Block in the toolbar or double-click the canvas to create a block.'),
-        h('li', {}, 'Select a block to edit it here and to resize it by its edges and corners.'),
-        h('li', {}, 'Add connectors in this panel, then drag from one connector to another to link them.'),
-        h('li', {}, 'Shift+drag a connector to pick up its links and reattach them to another connector.'),
-        h('li', {}, 'Alt+drag a connector to move it along or between sides.'),
-        h('li', {}, 'Click a link to select it; Delete removes the selection.'),
-        h('li', {}, 'Shift+click links to select several, then group them into a block they all run through.'),
-        h('li', {}, 'Clone a block to get linked copies that always change together.'),
-        h('li', {}, 'Add a link connector for a free-standing dot where several links meet, or hold Shift when dropping a new link on empty canvas to create one there.'),
-        h('li', {}, 'Title adds free text to the schema.'),
-        h('li', {}, 'Reference stands for a block of another saved schema, to link to it from here and jump there.'),
-        h('li', {}, 'Comment adds a sticky note for remarks about the schema.'),
-        h('li', {}, 'Frame adds a titled area behind the schema; what lies inside it moves with it.'),
-        h('li', {}, 'Shift+drag on empty canvas, or Shift+click elements, to select several and move them together.'),
-        h('li', {}, 'Hold Alt while moving or resizing to ignore the grid.'),
+      h('h3', {}, schema.name || 'Untitled schema'),
+      h('p', { class: 'figure' }, String(schema.links.length), h('small', {}, `${schema.links.length === 1 ? 'link' : 'links'} between ${plural(boxes, 'block')}`)),
+      schedule,
+      h('details', { class: 'fold' },
+        h('summary', {}, 'How to'),
+        h('ul', {},
+          h('li', {}, 'Press Block in the tool rail or double-click the canvas to create a block.'),
+          h('li', {}, 'Select a block to edit it here and to resize it by its edges and corners.'),
+          h('li', {}, 'Add connectors in this panel, then drag from one connector to another to link them.'),
+          h('li', {}, 'Click a link to select it; Delete removes the selection.'),
+          h('li', {}, 'Shift+click links to select several, then group them into a block they all run through.'),
+          h('li', {}, 'Clone a block to get linked copies that always change together.'),
+          h('li', {}, 'Add a link connector for a free-standing dot where several links meet, or hold Shift when dropping a new link on empty canvas to create one there.'),
+          h('li', {}, 'Title adds free text to the schema.'),
+          h('li', {}, 'Reference stands for a block of another saved schema, to link to it from here and jump there.'),
+          h('li', {}, 'Comment adds a sticky note for remarks about the schema.'),
+          h('li', {}, 'Frame adds a titled area behind the schema; what lies inside it moves with it.'),
+          h('li', {}, 'Shift+click elements to select several; the status bar shows the keys for whatever is selected.'),
+          h('li', {}, 'Trace (T) marks the path of whatever connector or link you point at.'),
+        ),
       ),
     ];
   }
@@ -3729,7 +3810,6 @@
         out.push(h('div', { class: 'side-group' }, sideIcon(side), side));
         for (const conn of list) out.push(connectorRow(block, conn));
       }
-      out.push(h('p', { class: 'note' }, 'Alt+drag a connector on the canvas to move or reorder it. Shift+drag it to reattach its links.'));
     }
 
     out.push(...attributesSection(block));
@@ -3887,7 +3967,7 @@
     return out;
   }
 
-  // ---------- toolbar, library, import/export ----------
+  // ---------- top bar, library, import/export ----------
 
   let toastTimer = 0;
   function toast(message, isError = false) {
@@ -3907,8 +3987,12 @@
     saveButton.title = (unsaved ? 'Unsaved changes — save' : 'Save') + ' to ' + (folder?.ready ? `the folder "${folder.handle.name}"` : 'browser storage') + ' (Ctrl/⌘+S)';
     $('[data-action="undo"]').disabled = !undoStack.length;
     $('[data-action="redo"]').disabled = !redoStack.length;
-    $('[data-action="trace"]').classList.toggle('active', traceOn);
-    $('[data-action="trace"]').setAttribute('aria-pressed', traceOn);
+    $('#tools [data-action="trace"]').classList.toggle('active', traceOn);
+    $('#tools [data-action="trace"]').setAttribute('aria-pressed', traceOn);
+    $('#stage').classList.toggle('tracing', traceOn);
+    $('#trace-say').textContent = schema.traceIgnoreNames
+      ? 'Point at a connector or link to mark everything joined to it.'
+      : 'Point at a connector or link to mark the path that shares its name.';
     const folderButton = $('[data-action="folder"]');
     folderButton.hidden = !canUseFolder;
     folderButton.classList.toggle('active', Boolean(folder?.ready));
@@ -4017,6 +4101,9 @@
   document.addEventListener('pointerdown', (e) => {
     if (!e.target.closest?.('#load-menu, [data-action="library"]')) loadMenu.hidden = true;
   });
+  // The arrow that opened the list shows as open while it is.
+  new MutationObserver(() => $('[data-action="library"]').setAttribute('aria-expanded', !loadMenu.hidden))
+    .observe(loadMenu, { attributes: true, attributeFilter: ['hidden'] });
 
   async function openLibrary() {
     await refreshLibrary();
@@ -4024,7 +4111,7 @@
     if (!libraryDialog.open) libraryDialog.showModal();
   }
 
-  // The toolbar's folder button: connect, reconnect, or show what is in the folder.
+  // The top bar's folder button: connect, reconnect, or show what is in the folder.
   async function folderAction() {
     if (!folder) await connectFolder();
     else if (!folder.ready) await ensureFolder();
