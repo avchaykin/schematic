@@ -150,6 +150,12 @@ the panel, and the block appears with its connectors, ready to be linked to. The
 corner jumps to that schema. After saving, the other schema shows your linked blocks as references
 too, so the connection can be followed from both sides.
 
+## Keep a log of changes
+
+With nothing selected, the panel's **Comments** section keeps notes on the schema as a whole. Type
+what you changed and press **Add comment** (or Ctrl/⌘+Enter): it is stamped with the date and time
+and saved with the schema, newest first. Use the pencil to correct a comment and × to delete it.
+
 ## 8. Schema-wide settings
 
 The **Schema** button opens the parameters that apply to the whole schema: the corner radius of

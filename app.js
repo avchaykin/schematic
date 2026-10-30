@@ -157,7 +157,7 @@
     const now = new Date().toISOString();
     // `version` is the file format's; `app` says what wrote the file. `created` and `modified` are
     // when the schema was started and last changed.
-    return { format: 'schematic', version: 1, app: { ...APP }, name, created: now, modified: now, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, zipGroups: false, tieColor: '', tieWidth: 4, palette: [...DEFAULT_PALETTE], blocks: [], links: [], ties: [] };
+    return { format: 'schematic', version: 1, app: { ...APP }, name, created: now, modified: now, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, zipGroups: false, tieColor: '', tieWidth: 4, palette: [...DEFAULT_PALETTE], blocks: [], links: [], ties: [], notes: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -423,6 +423,14 @@
     }
 
     for (const block of out.blocks) if (customIds.has(block.id)) block.customId = true;
+
+    // Comments on the schema as a whole, such as what was changed, each with when it was written.
+    for (const n of Array.isArray(raw.notes) ? raw.notes : []) {
+      if (!n || typeof n !== 'object' || !String(n.text ?? '').trim()) continue;
+      const note = { id: String(n.id || uid('n')), text: String(n.text), at: time(n.at) || new Date().toISOString() };
+      if (time(n.edited)) note.edited = n.edited;
+      out.notes.push(note);
+    }
 
     const tieIds = new Set();
     for (const t of Array.isArray(raw.ties) ? raw.ties : []) {
@@ -2146,6 +2154,8 @@
   const blockEls = new Map();
   let endFrames = []; // the frames around grouped links' ends as last drawn, for dragging them
   let tieTool = false; // the zip-tie tool is on: dragging across links ties them
+  let noteDraft = ''; // a schema comment being written, kept while the panel is redrawn
+  let editingNote = null; // id of the schema comment being edited
   let tieLine = null; // { x1, y1, x2, y2, links: Set of ids } while a tie is being drawn
   let frame = 0;
 
@@ -3750,6 +3760,7 @@
       h('h3', {}, schema.name || 'Untitled schema'),
       h('p', { class: 'figure' }, String(schema.links.length), h('small', {}, `${schema.links.length === 1 ? 'link' : 'links'} between ${plural(boxes, 'block')}`)),
       schedule,
+      ...notesSection(),
       h('details', { class: 'fold' },
         h('summary', {}, 'How to'),
         h('ul', {},
@@ -3768,6 +3779,81 @@
           h('li', {}, 'Trace (T) marks the path of whatever connector or link you point at.'),
         ),
       ),
+    ];
+  }
+
+  // Comments on the schema: a box to write one, then those written, newest first, with their times.
+  function notesSection() {
+    const stamp = (iso) => h('time', { datetime: iso }, new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }));
+    const refocus = (role) => {
+      // The panel is rebuilt now and then; carry on typing where the pointer was.
+      const was = document.activeElement;
+      if (was?.dataset.role !== role) return;
+      const [start, end] = [was.selectionStart, was.selectionEnd];
+      queueMicrotask(() => {
+        const box = inspector.querySelector(`[data-role="${role}"]`);
+        box?.focus();
+        box?.setSelectionRange(start, end);
+      });
+    };
+    const done = () => {
+      commit();
+      renderInspector();
+    };
+    const add = () => {
+      const text = noteDraft.trim();
+      if (!text) return;
+      schema.notes.push({ id: uid('n'), text, at: new Date().toISOString() });
+      noteDraft = '';
+      done();
+    };
+    refocus('note-draft');
+    refocus('note-edit');
+    const draft = h('textarea', {
+      rows: 2,
+      placeholder: 'What changed, and why?',
+      'data-role': 'note-draft',
+      oninput: (e) => { noteDraft = e.target.value; addButton.disabled = !noteDraft.trim(); },
+      onkeydown: (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); add(); } },
+    });
+    draft.value = noteDraft;
+    const addButton = h('button', { disabled: !noteDraft.trim(), onclick: add, title: 'Add the comment (Ctrl/⌘+Enter)' }, icon('add_comment'), 'Add comment');
+    const items = [...schema.notes].reverse().map((note) => {
+      if (editingNote === note.id) {
+        const box = h('textarea', { rows: 3, 'data-role': 'note-edit' });
+        box.value = note.text;
+        const save = () => {
+          const text = box.value.trim();
+          editingNote = null;
+          if (text && text !== note.text) {
+            note.text = text;
+            note.edited = new Date().toISOString();
+          }
+          done();
+        };
+        box.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); save(); }
+          if (e.key === 'Escape') { editingNote = null; renderInspector(); }
+        });
+        return h('li', {}, h('div', { class: 'note-head' }, stamp(note.at)), box,
+          h('div', { class: 'row' }, h('button', { onclick: save }, 'Save'), h('button', { onclick: () => { editingNote = null; renderInspector(); } }, 'Cancel')));
+      }
+      return h('li', {},
+        h('div', { class: 'note-head' },
+          stamp(note.at),
+          note.edited ? h('span', { title: 'Edited ' + new Date(note.edited).toLocaleString() }, 'edited') : null,
+          h('button', { class: 'icon-only', title: 'Edit', 'aria-label': 'Edit comment', onclick: () => {
+            editingNote = note.id;
+            renderInspector();
+            inspector.querySelector('[data-role="note-edit"]')?.focus();
+          } }, icon('edit')),
+          h('button', { class: 'icon-only', title: 'Delete', 'aria-label': 'Delete comment', onclick: () => { schema.notes = schema.notes.filter((n) => n !== note); done(); } }, icon('close'))),
+        h('p', { class: 'note-text' }, note.text));
+    });
+    return [
+      h('h3', {}, schema.notes.length ? `Comments (${schema.notes.length})` : 'Comments'),
+      h('div', { class: 'notes-compose' }, draft, h('div', { class: 'row' }, addButton)),
+      items.length ? h('ol', { class: 'notes' }, ...items) : h('p', { class: 'note' }, 'Note what you change, with the time it was written; comments are saved with the schema.'),
     ];
   }
 

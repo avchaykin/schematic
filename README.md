@@ -150,6 +150,14 @@ Everything else works offline.
   links stay). A link's panel can cut it free of all its ties.
 - Schema → Zip-ties sets the colour and width of all ties; with no colour they take the group frame colour.
 
+### Schema comments
+
+- With nothing selected, the panel has a **Comments** section for remarks on the schema as a whole,
+  such as what was changed and why. Each comment is stamped with the time it was written and saved
+  with the schema; the newest is on top.
+- Write one and press **Add comment** (or Ctrl/⌘+Enter). Comments can be edited (they are then marked
+  as edited, keeping their original time) and deleted.
+
 ### Trace
 
 - **Trace** in the top bar (or the T key) turns tracing on and off. While it is on, a band across

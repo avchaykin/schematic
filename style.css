@@ -618,6 +618,19 @@ input[type="color"].swatch::-webkit-color-swatch { border: none; border-radius: 
 #inspector p.figure small { color: var(--ink-muted); font-size: 13px; font-weight: 500; letter-spacing: 0; }
 
 /* The signal schedule: an ink rule, then one hairline row per signal with its figures tight to the right. */
+/* Schema comments: a box to write one, then a dated list, newest first. */
+.notes-compose textarea { width: 100%; }
+.notes-compose .row { justify-content: flex-end; margin-top: 6px; }
+ol.notes { margin: 12px 0 0; padding: 0; list-style: none; }
+ol.notes li { padding: 8px 0; border-top: 1px solid var(--rule); }
+ol.notes li textarea { width: 100%; margin-top: 4px; }
+ol.notes li .row { margin-top: 6px; }
+.note-head { display: flex; align-items: center; gap: 6px; min-height: 24px; color: var(--ink-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.note-head time { flex: 1; }
+.note-head .icon-only { width: 24px; min-height: 24px; height: 24px; border-color: transparent; background: none; color: var(--ink-muted); }
+.note-head .icon-only:hover { color: var(--ink); background: var(--hover); }
+.note-head .icon-only .mi { font-size: 16px; }
+.note-text { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 table.schedule { width: 100%; margin: 0 0 14px; border-collapse: collapse; border-top: 1px solid var(--ink); }
 table.schedule th { padding: 6px 0 4px; color: var(--ink-muted); font-size: 12px; font-weight: 500; text-align: right; }
 table.schedule th:first-child, table.schedule td:first-child { text-align: left; }
