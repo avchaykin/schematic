@@ -1598,6 +1598,11 @@
       && b.x + b.width <= frame.x + frame.width && b.y + b.height <= frame.y + frame.height);
   }
 
+  // The zip-ties inside a frame, which move with it too.
+  function frameTies(frame) {
+    return schema.ties.filter((t) => t.x >= frame.x && t.y >= frame.y && t.x <= frame.x + frame.width && t.y <= frame.y + frame.height);
+  }
+
   function addJunction() {
     const rect = viewport.getBoundingClientRect();
     let x = snap((rect.width / 2 - view.x) / view.zoom);
@@ -2668,7 +2673,7 @@
     const start = toWorld(e);
     const origin = { x: block.x, y: block.y };
     const group = new Set(others);
-    for (const b of [block, ...others]) if (b.kind === 'frame') for (const inner of frameContents(b)) group.add(inner);
+    for (const b of [block, ...others]) if (b.kind === 'frame') for (const inner of [...frameContents(b), ...frameTies(b)]) group.add(inner);
     group.delete(block);
     const carried = [...group].map((b) => ({ b, x: b.x, y: b.y }));
     let moved = false;
@@ -4002,7 +4007,7 @@
     const blocks = selectedBlocks();
     if (blocks.length < 2) return;
     // A frame takes along the contents that are not themselves being arranged.
-    const carried = new Map(blocks.map((b) => [b, b.kind === 'frame' ? frameContents(b).filter((x) => !blocks.includes(x)) : []]));
+    const carried = new Map(blocks.map((b) => [b, b.kind === 'frame' ? [...frameContents(b).filter((x) => !blocks.includes(x)), ...frameTies(b)] : []]));
     const moveTo = (b, x, y) => {
       const dx = Math.round(x) - b.x;
       const dy = Math.round(y) - b.y;
