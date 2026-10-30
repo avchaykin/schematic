@@ -106,6 +106,17 @@ Several links can be routed through one block, for example to show a bus or a ca
   sits on the line in a small tag: drag the tag to move the line.
 - **Links run** switches the group between horizontal (left to right) and vertical (top to bottom).
 - **Ungroup links** removes the block and leaves the links in place.
+- **Schema → Zip-tie look** draws every group as a bundle: its links side by side between two
+  zip-ties instead of a block. Drag a tie along the links to make the bundle longer or shorter, or
+  the name tag to move it.
+
+### Zip-ties
+
+For links that run the same way without a group block, press **Zip-tie** in the tool rail (or Z)
+and drag a line across them. They are tied where the line crosses them and run side by side through
+the tie. Draw as many ties as you like; a tie drawn across some links of a bundle that is already
+tied holds just those, so they can branch off between the two. Drag a tie to move it. Its panel
+takes single links out of it or removes it; Z or Esc puts the tool away.
 
 ## 6. Clone blocks
 

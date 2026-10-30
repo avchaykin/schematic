@@ -376,6 +376,15 @@ kbd {
 }
 .block.minimal.selected .group-tag, .block.minimal.multi .group-tag { border-color: var(--mark); background: var(--wash); color: var(--mark); font-weight: 600; }
 .link-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+/* With the zip-tie look the tag sits beside the bundle: above it, or to its right when it runs down. */
+.block.minimal.zip .group-tag { transform: translate(-50%, calc(-100% - var(--bundle, 0px))); }
+.block.minimal.zip.vertical .group-tag { transform: translate(var(--bundle, 0px), -50%); }
+/* Zip-ties: a strap across the links it holds, with its lock at one end. Coloured inline. */
+.zip-tie rect { fill: currentColor; }
+.zip-tie .tie-selected { fill: none; stroke: var(--mark); stroke-width: 1.5px; stroke-dasharray: 3 2; }
+.zip-tie .tie-grip { fill: transparent; pointer-events: all; cursor: move; }
+.tie-temp { stroke: var(--mark); stroke-width: 1.5px; stroke-dasharray: 5 4; stroke-linecap: round; }
+#viewport.tying, #viewport.tying .block, #viewport.tying .link-hit, #viewport.tying .connector { cursor: crosshair; }
 .link-temp { fill: none; stroke: var(--mark); stroke-width: var(--link-width, 2px); stroke-dasharray: 6 4; }
 
 /* ---------- blocks ---------- */

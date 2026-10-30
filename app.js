@@ -157,7 +157,7 @@
     const now = new Date().toISOString();
     // `version` is the file format's; `app` says what wrote the file. `created` and `modified` are
     // when the schema was started and last changed.
-    return { format: 'schematic', version: 1, app: { ...APP }, name, created: now, modified: now, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, palette: [...DEFAULT_PALETTE], blocks: [], links: [] };
+    return { format: 'schematic', version: 1, app: { ...APP }, name, created: now, modified: now, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, zipGroups: false, palette: [...DEFAULT_PALETTE], blocks: [], links: [], ties: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -322,6 +322,7 @@
     out.groupDisplay = raw.groupDisplay === 'minimal' ? 'minimal' : 'full';
     out.groupFrameColor = isHex(raw.groupFrameColor) ? raw.groupFrameColor.toLowerCase() : '';
     out.groupFrameWidth = clamp(num(raw.groupFrameWidth, 2), 1, 10);
+    out.zipGroups = raw.zipGroups === true;
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
@@ -420,6 +421,15 @@
 
     for (const block of out.blocks) if (customIds.has(block.id)) block.customId = true;
 
+    const tieIds = new Set();
+    for (const t of Array.isArray(raw.ties) ? raw.ties : []) {
+      if (!t || typeof t !== 'object' || !Number.isFinite(t.x) || !Number.isFinite(t.y)) continue;
+      let id = String(t.id ?? '').trim();
+      if (!id || tieIds.has(id)) id = uid('t');
+      tieIds.add(id);
+      out.ties.push({ id, x: t.x, y: t.y, axis: t.axis === 'vertical' ? 'vertical' : 'horizontal' });
+    }
+
     const linkIds = new Set();
     for (const l of Array.isArray(raw.links) ? raw.links : []) {
       if (!l || typeof l !== 'object') continue;
@@ -441,6 +451,8 @@
       });
       if (out.blocks.some((b) => b.kind === 'group' && b.id === l.via)) out.links[out.links.length - 1].via = l.via;
       if (custom) out.links[out.links.length - 1].customId = true;
+      const ties = [...new Set(Array.isArray(l.ties) ? l.ties.map(String) : [])].filter((id) => tieIds.has(id));
+      if (ties.length) out.links[out.links.length - 1].ties = ties;
       // A link put here on behalf of another schema, which holds the original.
       if (l.auto) Object.assign(out.links[out.links.length - 1], { auto: String(l.auto), srcLink: String(l.srcLink ?? '') });
       for (const key of ['fromDir', 'toDir']) {
@@ -448,6 +460,7 @@
         if (end && LINK_DIRS[l[key]]) out.links[out.links.length - 1][key] = l[key];
       }
     }
+    pruneTies(out);
     // Make clone groups consistent, whatever the file said.
     pruneCloneGroups(out);
     for (const group of new Set(out.blocks.map((b) => b.cloneGroup).filter(Boolean))) {
@@ -752,6 +765,7 @@
 
   function commit() {
     syncClones(selectedBlock());
+    pruneTies();
     if (JSON.stringify(schema) === lastSnapshot) return;
     schema.modified = new Date().toISOString();
     if (!schema.created) schema.created = schema.modified;
@@ -924,12 +938,15 @@
     if (selection?.type === 'link') {
       const ids = selection.ids.filter(findLink);
       selection = ids.length ? { type: 'link', ids } : null;
+    } else if (selection?.type === 'tie') {
+      if (!selectedTie()) selection = null;
     } else if (selection) {
       selection = blockSelection(selectedBlocks().map((b) => b.id));
     }
   }
 
   const selectedLinks = () => (selection?.type === 'link' ? selection.ids.map(findLink).filter(Boolean) : []);
+  const selectedTie = () => (selection?.type === 'tie' ? schema.ties.find((t) => t.id === selection.id) || null : null);
 
   // Connectors are spread evenly along their side.
   function connectorLocal(block, conn) {
@@ -1645,6 +1662,9 @@
       pruneCloneGroups();
     } else if (links.length) {
       schema.links = schema.links.filter((l) => !links.includes(l));
+    } else if (selectedTie()) {
+      // Removing a tie leaves its links as they were, only no longer held together there.
+      untie(schema.links.filter((l) => l.ties?.includes(selection.id)), selection.id);
     } else {
       return;
     }
@@ -1713,6 +1733,7 @@
       if (!link.from || !link.to) continue;
       if (blockMap.has(link.via)) link.via = blockMap.get(link.via);
       else delete link.via;
+      delete link.ties; // the ties stay with the originals
       delete link.customId;
       link.id = freshBlockId(new Set(schema.links.map((l) => l.id)), 'link');
       schema.links.push(link);
@@ -1732,12 +1753,14 @@
 
   const groupBlocks = () => schema.blocks.filter((b) => b.kind === 'group');
 
-  // A group shown in its minimal form: its links appear as one line, and instead of its block there
-  // is a small name tag on that line, at the block's centre. A group without links keeps its block.
-  const isMinimal = (b) => b.kind === 'group' && groupDisplay(b) === 'minimal' && schema.links.some((l) => l.via === b.id);
-
   // A group's own display, frame colour and frame width, or the schema's defaults where it sets none.
-  const groupDisplay = (g) => g.display || schema.groupDisplay;
+  // The schema's zip-tie look ('zip') overrides every group's display.
+  const groupDisplay = (g) => (schema.zipGroups ? 'zip' : g.display || schema.groupDisplay);
+
+  // A group shown in its minimal form (its links appear as one line) or with the zip-tie look has,
+  // instead of its block, a small name tag: on that line at the block's centre, or beside the
+  // bundle. A group without links keeps its block.
+  const isTagged = (b) => b.kind === 'group' && groupDisplay(b) !== 'full' && schema.links.some((l) => l.via === b.id);
   const groupFrameWidth = (g) => g.frameWidth || schema.groupFrameWidth;
   const groupFrameColor = (g) => g.frameColor || schema.groupFrameColor || (g.border && g.border !== 'transparent' ? g.border : '#64748b');
 
@@ -1789,7 +1812,7 @@
     const frames = [];
     for (const [group, ends] of byGroup) {
       const minimal = groupDisplay(group) === 'minimal';
-      if (!minimal && !schema.groupFrames) continue;
+      if (groupDisplay(group) === 'zip' || (!minimal && !schema.groupFrames)) continue;
       for (const points of [ends.a, ends.b]) {
         const unique = points.filter((p, i) => points.findIndex((q) => q.x === p.x && q.y === p.y) === i);
         if (!minimal && unique.length < 2) continue;
@@ -1861,6 +1884,196 @@
       });
     }
     return buses;
+  }
+
+  // ---------- zip-ties ----------
+  // A zip-tie (schema.ties: { id, x, y, axis }) holds links side by side, close together. A link
+  // lists the ties it passes through (link.ties), in order from its 'from' end. Links run through a
+  // tie along its axis: left to right if 'horizontal', top to bottom if 'vertical'. With the
+  // zip-tie look a link group is drawn the same way: a tie at each side of its block, and its links
+  // bundled straight between them.
+
+  const TIE_COLOR = '#64748b';
+  const tiePitch = () => schema.linkWidth + 2; // from one tied link to the next
+  const tieThickness = () => Math.max(4, schema.linkWidth + 2);
+
+  // Half the width of a zip-tie look group's bundle, with room for its ties' locks.
+  const bundleHalf = (g) => ((schema.links.filter((l) => l.via === g.id).length - 1) * tiePitch() + schema.linkWidth) / 2 + tieThickness() + 6;
+
+  // Ties that hold no link any more go.
+  function pruneTies(s = schema) {
+    const used = new Set(s.links.flatMap((l) => l.ties || []));
+    s.ties = s.ties.filter((t) => used.has(t.id));
+  }
+
+  // The bar drawn for a tie holding `count` links: a strap across them, with its lock (the head) at
+  // the top or left end.
+  function tieBar(tie, count) {
+    const across = (count - 1) * tiePitch() + schema.linkWidth + 8;
+    const thick = tieThickness();
+    const head = thick + 4;
+    const vertical = tie.axis === 'vertical'; // links run top to bottom, so the strap lies flat
+    const strap = vertical
+      ? { x: tie.x - across / 2, y: tie.y - thick / 2, width: across, height: thick }
+      : { x: tie.x - thick / 2, y: tie.y - across / 2, width: thick, height: across };
+    const lock = vertical
+      ? { x: strap.x - head + 1, y: tie.y - head / 2, width: head, height: head }
+      : { x: tie.x - head / 2, y: strap.y - head + 1, width: head, height: head };
+    return { strap, lock, r: thick / 2 };
+  }
+
+  // How each link is drawn through its group and ties: the stretches it is made of, as pairs of
+  // ends, and the ties as drawn. A link with neither is the single stretch between its ends.
+  function linkRoutes(routes) {
+    const ties = new Map();
+    const tie = (t) => {
+      if (!ties.has(t.id)) ties.set(t.id, { ...t, items: [] });
+      return ties.get(t.id);
+    };
+    const own = new Map(schema.ties.map((t) => [t.id, { ...t, color: schema.groupFrameColor || TIE_COLOR }]));
+    const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+    const chains = [];
+    for (const link of schema.links) {
+      const from = linkEnd(link, 'from');
+      const to = linkEnd(link, 'to');
+      if (!from || !to) continue;
+      const route = routes.get(link.id);
+      if (route && groupDisplay(route.group) === 'minimal') continue; // drawn as its group's single line
+      // The stops between the ends: nodes { tie } or { fixed } (a point with its direction), and
+      // { gap } where nothing is drawn (inside a group block).
+      let stops = [];
+      if (route) {
+        const g = route.group;
+        if (groupDisplay(g) === 'zip') {
+          const side = (key, p) => tie({ id: `${g.id}:${key}`, ...p, axis: g.axis === 'vertical' ? 'vertical' : 'horizontal', group: g, color: groupFrameColor(g) });
+          const vertical = g.axis === 'vertical';
+          stops = [
+            { tie: side('in', vertical ? { x: g.x + g.width / 2, y: g.y } : { x: g.x, y: g.y + g.height / 2 }) },
+            { tie: side('out', vertical ? { x: g.x + g.width / 2, y: g.y + g.height } : { x: g.x + g.width, y: g.y + g.height / 2 }) },
+          ];
+        } else {
+          stops = [{ fixed: route.entry }, { gap: true }, { fixed: route.exit }];
+        }
+        if (route.a.conn !== link.from) stops.reverse();
+      }
+      const nodes = [{ end: from }, ...(link.ties || []).map((id) => own.get(id)).filter(Boolean).map((t) => ({ tie: tie(t) })), { end: to }];
+      // A grouped link takes its group in among its ties where that makes its way shortest: a
+      // block as a whole, the two ties of the zip-tie look each in turn, so ties can sit between them.
+      const units = !route ? [] : groupDisplay(route.group) === 'zip' ? stops.map((stop) => [stop]) : [stops];
+      let after = 1;
+      for (const unit of units) {
+        let best = after;
+        let shortest = Infinity;
+        for (let i = after; i < nodes.length; i++) {
+          const way = [...nodes.slice(0, i), ...unit, ...nodes.slice(i)].filter((node) => !node.gap).map((node) => node.end || node.fixed || node.tie);
+          const len = way.slice(1).reduce((sum, p, j) => sum + dist(p, way[j]), 0);
+          if (len < shortest - 0.01) {
+            shortest = len;
+            best = i;
+          }
+        }
+        nodes.splice(best, 0, ...unit);
+        after = best + unit.length;
+      }
+      chains.push({ link, nodes });
+    }
+
+    // --- each tie's links, side by side in the order of where they come from
+    const at = (node) => node.end || node.fixed || node.tie;
+    for (const { link, nodes } of chains) {
+      nodes.forEach((node, i) => {
+        if (!node.tie) return;
+        const u = node.tie.axis === 'vertical' ? 'y' : 'x'; // the way links run through it
+        const w = u === 'x' ? 'y' : 'x';
+        // Past other ties, to the first thing on each side that is not one.
+        const beyond = (step) => {
+          let j = i + step;
+          while (nodes[j].tie || nodes[j].gap) j += step;
+          return at(nodes[j]);
+        };
+        const before = beyond(-1);
+        const after = beyond(1);
+        const prev = at(nodes[i - 1].gap ? nodes[i - 2] : nodes[i - 1]);
+        const next = at(nodes[i + 1].gap ? nodes[i + 2] : nodes[i + 1]);
+        const [low, high] = prev[u] <= next[u] ? [before, after] : [after, before];
+        node.tie.items.push({ link, node, keys: [low[w], high[w]] });
+      });
+    }
+    const pitch = tiePitch();
+    const bars = [];
+    for (const t of ties.values()) {
+      if (!t.items.length) continue;
+      t.items.sort((p, q) => p.keys[0] - q.keys[0] || p.keys[1] - q.keys[1]);
+      t.items.forEach(({ node }, i) => {
+        const off = (i - (t.items.length - 1) / 2) * pitch;
+        node.slot = t.axis === 'vertical' ? { x: t.x + off, y: t.y, axis: 'vertical' } : { x: t.x, y: t.y + off, axis: 'horizontal' };
+        node.off = off;
+      });
+      bars.push({ tie: t, ...tieBar(t, t.items.length), links: t.items.map((item) => item.link.id) });
+    }
+
+    // --- the stretches between neighbouring nodes
+    const point = (node) => node.slot || at(node);
+    const items = chains.map(({ link, nodes }) => {
+      const pairs = [];
+      for (let i = 0; i + 1 < nodes.length; i++) {
+        const [p, q] = [nodes[i], nodes[i + 1]];
+        if (p.gap || q.gap) continue;
+        const a = p.fixed || aim(point(p), point(q));
+        const b = q.fixed || aim(point(q), point(p));
+        // Between two ties the links keep together, as a bundle.
+        pairs.push({ a, b, bundle: p.tie && q.tie ? { off: p.off } : null });
+      }
+      return { link, pairs };
+    });
+    return { items, bars };
+  }
+
+  // A polyline stretch between two ties turns where it keeps its bundle together: each link a little
+  // before or after the middle, so the bundle steps sideways without its links crossing.
+  function keepBundle(part, a, b, off) {
+    if (part.points.length !== 6) return;
+    const u = a.nx ? 'x' : 'y';
+    const w = u === 'x' ? 'y' : 'x';
+    const mid = (part.points[1][u] + part.points[4][u]) / 2;
+    const turn = mid - off * Math.sign(b[w] - a[w]) * Math.sign(b[u] - a[u]);
+    part.points[2][u] = turn;
+    part.points[3][u] = turn;
+    Object.assign(part, cornerLine(part.points));
+  }
+
+  // Adds a tie at `at` across `links` (crossed at the given points): each takes it in where it
+  // makes its way through its ties shortest.
+  function addTie(links, at, axis) {
+    const t = { id: uid('t'), x: at.x, y: at.y, axis };
+    schema.ties.push(t);
+    const byId = new Map(schema.ties.map((x) => [x.id, x]));
+    for (const link of links) {
+      const list = link.ties || [];
+      const from = connectorWorld(link.from);
+      const to = connectorWorld(link.to);
+      let best = 0;
+      let shortest = Infinity;
+      for (let i = 0; i <= list.length; i++) {
+        const way = [from, ...list.slice(0, i).map((id) => byId.get(id)), t, ...list.slice(i).map((id) => byId.get(id)), to];
+        const len = way.slice(1).reduce((sum, p, j) => sum + Math.hypot(p.x - way[j].x, p.y - way[j].y), 0);
+        if (len < shortest - 0.01) {
+          shortest = len;
+          best = i;
+        }
+      }
+      link.ties = [...list.slice(0, best), t.id, ...list.slice(best)];
+    }
+    return t;
+  }
+
+  // Takes links out of a tie (out of every tie when `tieId` is null).
+  function untie(links, tieId = null) {
+    for (const l of links) {
+      const rest = (l.ties || []).filter((id) => tieId !== null && id !== tieId);
+      if (rest.length) l.ties = rest;
+      else delete l.ties;
+    }
   }
 
   // Creates a group block between the ends of `links` and routes them through it.
@@ -1935,6 +2148,8 @@
 
   const blockEls = new Map();
   let endFrames = []; // the frames around grouped links' ends as last drawn, for dragging them
+  let tieTool = false; // the zip-tie tool is on: dragging across links ties them
+  let tieLine = null; // { x1, y1, x2, y2, links: Set of ids } while a tie is being drawn
   let frame = 0;
 
   // render() redraws the schema on the next frame. Panning and zooming change only the view, so
@@ -2012,14 +2227,19 @@
       const isSelected = selection?.type === 'block' && selection.id === block.id;
       el.classList.toggle('selected', isSelected);
       el.classList.toggle('multi', selection?.type === 'blocks' && selection.ids.includes(block.id));
-      el.classList.toggle('minimal', isMinimal(block));
+      el.classList.toggle('minimal', isTagged(block));
+      // With the zip-tie look the name tag sits beside the bundle, clear of its links.
+      const zip = isTagged(block) && groupDisplay(block) === 'zip';
+      el.classList.toggle('zip', zip);
+      el.classList.toggle('vertical', zip && block.axis === 'vertical');
+      if (zip) el.style.setProperty('--bundle', bundleHalf(block) + 'px');
       el.classList.toggle('clone-sibling', !isSelected && Boolean(activeGroup) && block.cloneGroup === activeGroup);
 
       // Rebuild the inside only when something visible changed, so elements survive clicks and drags.
       const sig = JSON.stringify([block.name, block.icon, block.background, block.border, block.borderWidth, block.borderStyle, schema.radius,
         block.width, block.height, block.connectors, Boolean(block.cloneGroup),
         block.kind, block.fontSize, block.color, block.align, block.borderColor,
-        isMinimal(block) && groupFrameColor(block), block.refSchema, block.missing]);
+        isTagged(block) && groupFrameColor(block), block.refSchema, block.missing]);
       if (el._sig !== sig) {
         el._sig = sig;
         buildBlock(el, block);
@@ -2117,9 +2337,9 @@
       buildComment(el, block);
       return;
     }
-    if (isMinimal(block)) {
+    if (isTagged(block)) {
       // Just a name tag, sitting on the group's line; dragging it moves the group, and so the line.
-      const tag = h('div', { class: 'group-tag', title: 'Drag to move the grouped link' }, block.name);
+      const tag = h('div', { class: 'group-tag', title: 'Drag to move the grouped links' }, block.name);
       tag.style.borderColor = groupFrameColor(block);
       el.replaceChildren(tag);
       return;
@@ -2194,6 +2414,12 @@
     return p;
   }
 
+  function svgRect({ x, y, width, height }, r = 0) {
+    const rect = document.createElementNS(SVG_NS, 'rect');
+    for (const [key, value] of Object.entries({ x, y, width, height, rx: r })) rect.setAttribute(key, value);
+    return rect;
+  }
+
   // Preview of a link connector about to be created.
   function ghostDot(at) {
     const dot = document.createElementNS(SVG_NS, 'circle');
@@ -2205,22 +2431,20 @@
   }
 
   // What to draw for each link: its line (as path data, with points that bound it), colour, dash
-  // pattern and the point its name is written at.
+  // pattern and the point its name is written at. The zip-ties as drawn come along as `ties`.
   function linkShapes(routes) {
     const shapes = [];
-    const drawn = []; // each link with the stretches it is made of
-    for (const link of schema.links) {
-      const rawA = linkEnd(link, 'from');
-      const rawB = linkEnd(link, 'to');
-      if (!rawA || !rawB) continue;
-      const a = aim(rawA, rawB);
-      const b = aim(rawB, rawA);
-      const route = routes.get(link.id);
-      if (route && groupDisplay(route.group) === 'minimal') continue; // drawn as its group's single line
-      const parts = (route ? [[route.a, route.entry], [route.exit, route.b]] : [[a, b]]).map(([p, q]) => linkStretch(p, q));
-      drawn.push({ link, parts });
+    const { items, bars } = linkRoutes(routes);
+    const drawn = items.map(({ link, pairs }) => ({
+      link,
+      parts: pairs.map(({ a, b, bundle }) => Object.assign(linkStretch(a, b), { a, b, bundle })),
+    }));
+    if (schema.linkShape === 'polyline') {
+      const parts = drawn.flatMap((item) => item.parts);
+      spreadPolylines(parts.filter((part) => !part.bundle));
+      for (const part of parts) if (part.bundle) keepBundle(part, part.a, part.b, part.bundle.off);
     }
-    if (schema.linkShape === 'polyline') spreadPolylines(drawn.flatMap((item) => item.parts));
+    shapes.ties = bars;
     for (const { link, parts } of drawn) {
       // Dash lengths grow with the line width so dashes and dots keep their look.
       const w = schema.linkWidth;
@@ -2232,7 +2456,7 @@
         },
         color: linkColor(link),
         dash: { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style],
-        mid: parts[0].mid, // a grouped link is labelled on its way into the group
+        mid: parts[0].mid, // a grouped or tied link is labelled on its way into the group or first tie
       });
     }
     return shapes;
@@ -2281,8 +2505,9 @@
       hit.dataset.group = bus.group.id;
       nodes.push(line, hit);
     }
-    for (const { link, d, color, dash, mid } of linkShapes(routes)) {
-      if (selection?.type === 'link' && selection.ids.includes(link.id)) nodes.push(svgPath('link-halo', d));
+    const shapes = linkShapes(routes);
+    for (const { link, d, color, dash, mid } of shapes) {
+      if ((selection?.type === 'link' && selection.ids.includes(link.id)) || tieLine?.links.has(link.id)) nodes.push(svgPath('link-halo', d));
       const traced = trace?.links.has(link.id);
       if (traced && schema.traceColor !== 'none') {
         const mark = svgPath('link-trace', d);
@@ -2303,6 +2528,37 @@
       hit.dataset.link = link.id;
       nodes.push(line, hit);
       if (link.name) labels.push(linkLabel(link.name, mid));
+    }
+    // Zip-ties, over the links they hold. Dragging one moves it; a group's moves that side of the group.
+    for (const { tie, strap, lock, r } of shapes.ties) {
+      const g = document.createElementNS(SVG_NS, 'g');
+      g.setAttribute('class', 'zip-tie');
+      g.style.color = tie.color;
+      for (const box of [strap, lock]) g.append(svgRect(box, box === lock ? 1.5 : r));
+      if (tie.group ? selection?.type === 'block' && selection.id === tie.group.id : selection?.type === 'tie' && selection.id === tie.id) {
+        const pad = 3;
+        const x1 = Math.min(strap.x, lock.x) - pad;
+        const y1 = Math.min(strap.y, lock.y) - pad;
+        const ring = svgRect({ x: x1, y: y1, width: strap.x + strap.width + pad - x1, height: strap.y + strap.height + pad - y1 }, 3);
+        ring.setAttribute('class', 'tie-selected');
+        g.append(ring);
+      }
+      const grip = svgRect({ x: strap.x - 4, y: strap.y - 4, width: strap.width + 8, height: strap.height + 8 }, 4);
+      grip.setAttribute('class', 'tie-grip');
+      if (tie.group) {
+        grip.dataset.tieGroup = tie.group.id;
+        grip.dataset.side = tie.id.slice(tie.id.lastIndexOf(':') + 1);
+      } else {
+        grip.dataset.tie = tie.id;
+      }
+      g.append(grip);
+      nodes.push(g);
+    }
+    if (tieLine) {
+      const line = document.createElementNS(SVG_NS, 'line');
+      line.setAttribute('class', 'tie-temp');
+      for (const [key, value] of Object.entries({ x1: tieLine.x1, y1: tieLine.y1, x2: tieLine.x2, y2: tieLine.y2 })) line.setAttribute(key, value);
+      nodes.push(line);
     }
     if (tempLink) {
       const a = connectorWorld(tempLink.from);
@@ -2725,6 +2981,118 @@
     });
   }
 
+  // ---------- zip-tie tool ----------
+
+  function toggleTieTool(on = !tieTool) {
+    tieTool = on;
+    updateChrome();
+    updateStatus(selectedBlock(), selectedLinks());
+  }
+
+  // Drags a tie anywhere; its links follow.
+  function startTieMove(e, tie) {
+    const start = toWorld(e);
+    const origin = { x: tie.x, y: tie.y };
+    let moved = false;
+    drag((ev) => {
+      const p = toWorld(ev);
+      moved = moved || Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) >= 3;
+      if (!moved) return;
+      tie.x = origin.x + p.x - start.x;
+      tie.y = origin.y + p.y - start.y;
+      render();
+    }, () => {
+      if (moved) commit();
+    });
+  }
+
+  // Drags one tie of a group with the zip-tie look: along its links it moves that side of the group
+  // (so the bundle gets longer or shorter); across them it moves the whole group.
+  function startTieSideMove(e, g, side) {
+    const start = toWorld(e);
+    const origin = { x: g.x, y: g.y, width: g.width, height: g.height };
+    const vertical = g.axis === 'vertical';
+    const [u, size, w] = vertical ? ['y', 'height', 'x'] : ['x', 'width', 'y'];
+    let moved = false;
+    drag((ev) => {
+      const p = toWorld(ev);
+      moved = moved || Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) >= 3;
+      if (!moved) return;
+      const fit = (v) => (ev.altKey ? v : snap(v));
+      const along = p[u] - start[u];
+      if (side === 'in') {
+        const far = origin[u] + origin[size];
+        g[u] = Math.min(fit(origin[u] + along), far - MIN_SIZE);
+        g[size] = far - g[u];
+      } else {
+        g[size] = Math.max(MIN_SIZE, fit(origin[u] + origin[size] + along) - origin[u]);
+      }
+      g[w] = fit(origin[w] + p[w] - start[w]);
+      render();
+    }, () => {
+      if (moved) commit();
+    });
+  }
+
+  // Points along each drawn link, for finding the links a tie is drawn across.
+  function linkSamples() {
+    return [...linksG.querySelectorAll('path.link-hit[data-link]')].map((el) => {
+      const len = el.getTotalLength();
+      const n = Math.max(2, Math.ceil(len / 4));
+      return { id: el.dataset.link, points: Array.from({ length: n + 1 }, (_, i) => el.getPointAtLength((len * i) / n)) };
+    });
+  }
+
+  // Where segment p1–p2 crosses q1–q2, or null.
+  function crossing(p1, p2, q1, q2) {
+    const d = (p2.x - p1.x) * (q2.y - q1.y) - (p2.y - p1.y) * (q2.x - q1.x);
+    if (Math.abs(d) < 1e-9) return null;
+    const t = ((q1.x - p1.x) * (q2.y - q1.y) - (q1.y - p1.y) * (q2.x - q1.x)) / d;
+    const s = ((q1.x - p1.x) * (p2.y - p1.y) - (q1.y - p1.y) * (p2.x - p1.x)) / d;
+    return t >= 0 && t <= 1 && s >= 0 && s <= 1 ? { x: p1.x + (p2.x - p1.x) * t, y: p1.y + (p2.y - p1.y) * t } : null;
+  }
+
+  // With the tool on, a line dragged across links ties them where it crosses them.
+  function startTieLine(e) {
+    const start = toWorld(e);
+    const samples = linkSamples();
+    let hits = new Map();
+    tieLine = { x1: start.x, y1: start.y, x2: start.x, y2: start.y, links: new Set() };
+    render();
+    drag((ev) => {
+      const p = toWorld(ev);
+      Object.assign(tieLine, { x2: p.x, y2: p.y });
+      hits = new Map();
+      const a = { x: tieLine.x1, y: tieLine.y1 };
+      for (const { id, points } of samples) {
+        for (let i = 1; i < points.length; i++) {
+          const hit = crossing(a, p, points[i - 1], points[i]);
+          if (hit) {
+            hits.set(id, hit);
+            break;
+          }
+        }
+      }
+      tieLine.links = new Set(hits.keys());
+      render();
+    }, () => {
+      const { x1, y1, x2, y2 } = tieLine;
+      tieLine = null;
+      const links = [...hits.keys()].map(findLink).filter(Boolean);
+      if (links.length < 2) {
+        if (Math.hypot(x2 - x1, y2 - y1) > 4) toast('Draw the line across two or more links');
+        render();
+        return;
+      }
+      const points = [...hits.values()];
+      const at = { x: points.reduce((sum, q) => sum + q.x, 0) / points.length, y: points.reduce((sum, q) => sum + q.y, 0) / points.length };
+      // A line drawn up and down ties links that run left to right, and the other way round.
+      const tie = addTie(links, at, Math.abs(y2 - y1) >= Math.abs(x2 - x1) ? 'horizontal' : 'vertical');
+      select({ type: 'tie', id: tie.id });
+      commit();
+    });
+  }
+
   viewport.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.button !== 1) return;
     // Flush any pending inspector edit (fires its change handler) before selection moves on.
@@ -2739,6 +3107,25 @@
     if (target.closest('.ref-jump')) {
       // The button on a reference: select it here; the click that follows opens its schema.
       select({ type: 'block', id: target.closest('.block').dataset.id });
+      return;
+    }
+    const tieEl = target.closest('[data-tie], [data-tie-group]');
+    if (tieEl?.dataset.tie) {
+      const tie = schema.ties.find((t) => t.id === tieEl.dataset.tie);
+      if (!tie) return;
+      select({ type: 'tie', id: tie.id });
+      startTieMove(e, tie);
+      return;
+    }
+    if (tieEl) {
+      const group = findBlock(tieEl.dataset.tieGroup);
+      if (!group) return;
+      select({ type: 'block', id: group.id });
+      startTieSideMove(e, group, tieEl.dataset.side);
+      return;
+    }
+    if (tieTool) {
+      startTieLine(e);
       return;
     }
     const blockEl = target.closest('.block');
@@ -2828,7 +3215,7 @@
   });
 
   viewport.addEventListener('dblclick', (e) => {
-    if (e.target.closest('.connector, [data-link], [data-group], [data-frame]')) return;
+    if (tieTool || e.target.closest('.connector, [data-link], [data-group], [data-frame], [data-tie], [data-tie-group]')) return;
     if (e.target.closest('.block')) {
       const input = inspector.querySelector('[data-role="block-name"]');
       input?.focus();
@@ -2891,6 +3278,8 @@
       groupLinks(selectedLinks());
     } else if (!mod && !e.altKey && key === 't') {
       toggleTrace();
+    } else if (!mod && !e.altKey && key === 'z') {
+      toggleTieTool();
     } else if (!mod && !e.altKey && key === 'f') {
       if (marqueeToFrame) marqueeToFrame();
       else frameSelection();
@@ -2899,6 +3288,7 @@
       deleteSelection();
     } else if (key === 'escape') {
       loadMenu.hidden = true;
+      if (tieTool) toggleTieTool(false);
       select(null);
     }
   });
@@ -3274,6 +3664,7 @@
     if (selection?.type === 'blocks') inspector.replaceChildren(...multiInspector(selectedBlocks()).filter(Boolean));
     else if (block) inspector.replaceChildren(...blockInspector(block));
     else if (links.length) inspector.replaceChildren(...linkInspector(links));
+    else if (selectedTie()) inspector.replaceChildren(...tieInspector(selectedTie()));
     else inspector.replaceChildren(...emptyInspector());
     updateStatus(block, links);
   }
@@ -3283,7 +3674,11 @@
     const mod = /Mac|iP/.test(navigator.platform) ? '⌘' : 'Ctrl+';
     const clip = `${mod}C ${mod}X ${mod}V copy, cut, paste`;
     let text;
-    if (selection?.type === 'blocks') {
+    if (tieTool) {
+      text = 'Drag a line across links to tie them together · Drag a tie to move it · Z or Esc puts the tool away';
+    } else if (selectedTie()) {
+      text = 'Drag the tie to move it · Draw another tie across some of its links to tie those again · Delete removes it · Esc deselects';
+    } else if (selection?.type === 'blocks') {
       text = `Drag to move them together · Alt ignores the grid · F puts a frame around them · ${clip} · Delete removes · Esc deselects`;
     } else if (block && (!block.kind || block.kind === 'ref')) {
       text = `Drag to move · drag an edge or corner to resize · Alt ignores the grid · drag a connector to link, Shift+drag to reattach its links, Alt+drag to move it · ${mod}D duplicates · Delete removes · Esc deselects`;
@@ -3292,7 +3687,7 @@
     } else if (links.length) {
       text = `Shift+click to select more links · ${mod}G groups them into a block · Delete removes · Esc deselects`;
     } else {
-      text = 'Drag a connector to link · Shift+drag reattaches its links, Alt+drag moves it · Drag background to pan · Shift+drag to select several, F frames them · Scroll zooms, Shift+scroll pans';
+      text = 'Drag a connector to link · Shift+drag reattaches its links, Alt+drag moves it · Drag background to pan · Shift+drag to select several, F frames them · Z ties links · Scroll zooms, Shift+scroll pans';
     }
     statusText.textContent = text;
   }
@@ -3864,7 +4259,9 @@
       ], (v) => { block.axis = v; }),
       ...colorField('Links colour', 'block:linkColor', block.linkColor || '', (c) => { block.linkColor = c; }, ''),
       h('h3', {}, 'Display'),
-      h('div', { class: 'field' }, h('span', {}, 'Show as'), h('div', { class: 'segmented' },
+      schema.zipGroups
+        ? h('p', { class: 'note' }, 'Shown with the zip-tie look, set for the whole schema (Schema button): its links run as a bundle between two ties. Drag a tie along the links to move that end, or the name tag to move the group.')
+        : h('div', { class: 'field' }, h('span', {}, 'Show as'), h('div', { class: 'segmented' },
         ...[['', 'Default', `As set for the schema: ${schema.groupDisplay === 'minimal' ? 'single link' : 'block'}`],
           ['full', 'Block', 'A block the links run through'],
           ['minimal', 'Single link', 'Minimal: no block, one line between the frames around the links\' ends']].map(([mode, label, title]) => h('button', {
@@ -3880,7 +4277,7 @@
       )),
       ...colorField('Frame colour', 'block:frameColor', block.frameColor || '', (c) => { block.frameColor = c; }, ''),
       field('Frame width', slider(block.frameWidth || 0, 0, 10, (v) => { block.frameWidth = v; })),
-      h('p', { class: 'note' }, 'Frame colour and width apply to the frames around the links\' ends and, when shown as a single link, to that link. No colour and a width of 0 use the schema\'s defaults for groups (Schema button); with no default colour either, the border colour is used. Click the single link to select the group.'),
+      h('p', { class: 'note' }, 'Frame colour and width apply to the frames around the links\' ends and, when shown as a single link, to that link. The colour is also that of its zip-ties. No colour and a width of 0 use the schema\'s defaults for groups (Schema button); with no default colour either, the border colour is used. Click the single link to select the group.'),
     ];
     for (const link of links) {
       const key = 'link:' + link.id;
@@ -3910,6 +4307,42 @@
       out.push(h('p', { class: 'note' }, 'A link uses its own colour if it has one, then the group\'s links colour, then a block connector\'s colour, then a link connector\'s colour.'));
     }
     if (!links.length) out.push(h('p', {}, 'No links pass through this group. Select a link to add it here.'));
+    return out;
+  }
+
+  function tieInspector(tie) {
+    const links = schema.links.filter((l) => l.ties?.includes(tie.id));
+    const out = [
+      h('h3', {}, 'Zip-tie'),
+      h('p', { class: 'figure' }, String(links.length), h('small', {}, `${links.length === 1 ? 'link' : 'links'} held together`)),
+      choiceButtons('Links run', tie.axis, [
+        ['horizontal', 'swap_horiz', 'Left to right through the tie'],
+        ['vertical', 'swap_vert', 'Top to bottom through the tie'],
+      ], (v) => { tie.axis = v; }),
+      h('h3', {}, `Tied links (${links.length})`),
+    ];
+    for (const link of links) {
+      out.push(h('div', { class: 'row' },
+        h('span', { class: 'grow' }, describeLink(link)),
+        h('button', {
+          class: 'icon-only',
+          title: 'Take this link out of the tie',
+          onclick: () => {
+            untie([link], tie.id);
+            commit();
+            validateSelection();
+            render();
+            renderInspector();
+          },
+        }, icon('close')),
+      ));
+    }
+    out.push(
+      h('p', { class: 'note' }, 'Ties take their colour from the schema\'s group frame colour (Schema button).'),
+      h('h3', {}, 'Actions'),
+      h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Remove zip-tie')),
+      h('p', { class: 'note' }, 'Its links stay as they are, only no longer held together here.'),
+    );
     return out;
   }
 
@@ -3949,6 +4382,24 @@
         ? 'Shift+click more links to select several, then group them.'
         : 'Shift+click a link to add it to or remove it from the selection.'),
     );
+
+    // --- zip-ties
+    const tied = links.filter((l) => l.ties?.length);
+    if (tied.length) {
+      const count = new Set(tied.flatMap((l) => l.ties)).size;
+      out.push(
+        h('h3', {}, 'Zip-ties'),
+        h('p', {}, single ? `Runs through ${count} zip-tie${count === 1 ? '' : 's'}.` : `${tied.length} of these run through ${count} zip-tie${count === 1 ? '' : 's'}.`),
+        h('div', { class: 'row' }, h('button', {
+          onclick: () => {
+            untie(tied);
+            commit();
+            render();
+            renderInspector();
+          },
+        }, icon('content_cut'), single ? 'Cut it free' : 'Cut them free')),
+      );
+    }
 
     // --- appearance
     const color = links.every((l) => l.color === links[0].color) ? links[0].color || '' : null;
@@ -3990,6 +4441,9 @@
     $('#tools [data-action="trace"]').classList.toggle('active', traceOn);
     $('#tools [data-action="trace"]').setAttribute('aria-pressed', traceOn);
     $('#stage').classList.toggle('tracing', traceOn);
+    $('#tools [data-action="zip-tie"]').classList.toggle('active', tieTool);
+    $('#tools [data-action="zip-tie"]').setAttribute('aria-pressed', tieTool);
+    viewport.classList.toggle('tying', tieTool);
     $('#trace-say').textContent = schema.traceIgnoreNames
       ? 'Point at a connector or link to mark everything joined to it.'
       : 'Point at a connector or link to mark the path that shares its name.';
@@ -4240,6 +4694,7 @@
       h('div', { class: 'field' }, h('span', {}, 'Groups shown as'), h('div', { class: 'segmented' },
         ...[['full', 'Block', 'A block the links run through'], ['minimal', 'Single link', 'One line between the frames around the links\' ends']].map(([mode, label, title]) => h('button', {
           class: schema.groupDisplay === mode ? 'active' : '',
+          disabled: schema.zipGroups,
           title,
           onclick: () => {
             schema.groupDisplay = mode;
@@ -4250,6 +4705,18 @@
           },
         }, label)),
       )),
+      field('Zip-tie look', h('input', {
+        type: 'checkbox',
+        checked: schema.zipGroups,
+        title: 'Draw each group as its links bundled side by side between two zip-ties, instead of a block or a single link',
+        onchange: (e) => {
+          schema.zipGroups = e.target.checked;
+          commit();
+          render();
+          renderInspector();
+          renderLinkParams();
+        },
+      })),
       field('Group frame colour', groupColors),
       field('Group frame width', slider(schema.groupFrameWidth, 1, 10, (v) => { schema.groupFrameWidth = v; })),
       field('Frame grouped ends', h('input', {
@@ -4561,6 +5028,14 @@
       ctx.stroke(path);
     }
     ctx.restore();
+    for (const { tie, strap, lock, r } of shapes.ties) {
+      for (const box of [strap, lock]) {
+        mark(box.x, box.y, box.x + box.width, box.y + box.height);
+        rounded(box.x, box.y, box.width, box.height, box === lock ? 1.5 : r);
+        ctx.fillStyle = tie.color;
+        ctx.fill();
+      }
+    }
     for (const { link: { name }, mid } of shapes) {
       if (!name) continue;
       font(500, 10);
@@ -4580,14 +5055,16 @@
     const isComment = (b) => b.kind === 'comment';
     for (const b of [...schema.blocks.filter((x) => !isComment(x)), ...schema.blocks.filter(isComment)]) {
       if (b.kind === 'frame') continue;
-      if (isMinimal(b)) {
-        // The name tag on the group's line.
+      if (isTagged(b)) {
+        // The name tag on the group's line, or beside its bundle with the zip-tie look.
         font(500, 10);
         const lines = b.name.split('\n');
         const w = Math.max(14, Math.max(...lines.map((line) => ctx.measureText(line).width)) + 12);
         const tall = lines.length * 14 + 2;
-        const cx = b.x + b.width / 2;
-        const cy = b.y + b.height / 2;
+        const zip = groupDisplay(b) === 'zip';
+        const vertical = b.axis === 'vertical';
+        const cx = b.x + b.width / 2 + (zip && vertical ? bundleHalf(b) + w / 2 : 0);
+        const cy = b.y + b.height / 2 - (zip && !vertical ? bundleHalf(b) + tall / 2 : 0);
         mark(cx - w / 2 - 1, cy - tall / 2 - 1, cx + w / 2 + 1, cy + tall / 2 + 1);
         rounded(cx - w / 2, cy - tall / 2, w, tall, 4);
         ctx.fillStyle = '#ffffff';
@@ -4875,6 +5352,7 @@
     'undo': undo,
     'redo': redo,
     'trace': toggleTrace,
+    'zip-tie': () => toggleTieTool(),
     'theme': toggleTheme,
     'zoom-in': () => zoomCentered(1.2),
     'zoom-out': () => zoomCentered(1 / 1.2),

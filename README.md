@@ -133,6 +133,22 @@ Everything else works offline.
 - The group block has the usual block settings (name, icon, colours, attributes) and can set a colour
   for all its links or for each one.
 - Links can be moved into or out of a group; ungrouping removes the block and keeps the links.
+- With the **zip-tie look** (under Schema → Links) every group is drawn as its links bundled side by
+  side between two zip-ties, at the sides of its (hidden) block, with its name in a tag beside the
+  bundle. Dragging a tie along the links moves that end of the bundle; across them, it moves the group.
+  The ties take the group's frame colour.
+
+### Zip-ties
+
+- **Zip-tie** in the tool rail (or the Z key) turns the tool on. Drag a line across links and they
+  are tied together where the line crosses them: drawn side by side, close together, as they pass
+  through the tie. The tool stays on for more ties until Z or Esc.
+- A link can pass through any number of ties, in order along its way, so a bundle can be tied again
+  further on, wholly or only some of its links, which then branch off between the ties.
+- Ties are moved freely by dragging; their links follow. A tie's panel lists its links, takes one out,
+  switches whether links run through it left to right or top to bottom, and removes the tie (its
+  links stay). A link's panel can cut it free of all its ties.
+- Ties take the schema's group frame colour.
 
 ### Trace
 
@@ -160,7 +176,7 @@ Everything else works offline.
 - Line width of all links, and the size of all link connectors.
 - Whether lined-up connectors of grouped links get a frame.
 - Defaults for link groups: shown as a block or as a single link, frame colour and frame width.
-  They apply to every group that does not set its own.
+  They apply to every group that does not set its own. The zip-tie look overrides how every group is shown.
 - Colour and width of the trace mark. With no colour there is no mark and the other links just
   fade; **Same as link** marks each link in its own colour, making traced links bolder.
 - A colour palette stored with the schema and offered wherever a colour is chosen.
@@ -227,6 +243,7 @@ Letter shortcuts go by the key's position, so they also work with a non-Latin ke
 | Select several links | Shift+click (or Ctrl/⌘+click) |
 | Frame the selection box just drawn (or the selected elements) | F |
 | Group selected links | Ctrl/⌘+G |
+| Tie links together | Z, then drag a line across them |
 | Copy / cut / paste selected elements | Ctrl/⌘+C / Ctrl/⌘+X / Ctrl/⌘+V |
 | Duplicate the selected block | Ctrl/⌘+D |
 | Delete the selection | Delete or Backspace |
