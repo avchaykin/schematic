@@ -157,7 +157,7 @@
     const now = new Date().toISOString();
     // `version` is the file format's; `app` says what wrote the file. `created` and `modified` are
     // when the schema was started and last changed.
-    return { format: 'schematic', version: 1, app: { ...APP }, name, created: now, modified: now, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, zipGroups: false, palette: [...DEFAULT_PALETTE], blocks: [], links: [], ties: [] };
+    return { format: 'schematic', version: 1, app: { ...APP }, name, created: now, modified: now, radius: 8, junctionSize: 12, linkWidth: 2, traceColor: TRACE_COLOR, traceWidth: 2, traceIgnoreNames: false, groupFrames: true, linkShape: 'curved', linkBend: 50, linkAvoid: true, groupDisplay: 'full', groupFrameColor: '', groupFrameWidth: 2, zipGroups: false, tieColor: '', tieWidth: 4, palette: [...DEFAULT_PALETTE], blocks: [], links: [], ties: [] };
   }
 
   function freshBlockId(taken, prefix = 'block') {
@@ -323,6 +323,9 @@
     out.groupFrameColor = isHex(raw.groupFrameColor) ? raw.groupFrameColor.toLowerCase() : '';
     out.groupFrameWidth = clamp(num(raw.groupFrameWidth, 2), 1, 10);
     out.zipGroups = raw.zipGroups === true;
+    // Zip-ties: a colour for all of them ('' takes the group frame colour), and the strap's thickness.
+    out.tieColor = isHex(raw.tieColor) ? raw.tieColor.toLowerCase() : '';
+    out.tieWidth = clamp(num(raw.tieWidth, 4), 2, 16);
     if (Array.isArray(raw.palette)) {
       out.palette = [...new Set(raw.palette.map((c) => String(c).toLowerCase()).filter(isHex))];
     }
@@ -1895,7 +1898,7 @@
 
   const TIE_COLOR = '#64748b';
   const tiePitch = () => schema.linkWidth + 2; // from one tied link to the next
-  const tieThickness = () => Math.max(4, schema.linkWidth + 2);
+  const tieThickness = () => schema.tieWidth;
 
   // Half the width of a zip-tie look group's bundle with its ties, and a little room.
   const bundleHalf = (g) => ((schema.links.filter((l) => l.via === g.id).length - 1) * tiePitch() + schema.linkWidth) / 2 + 8;
@@ -1924,7 +1927,7 @@
       if (!ties.has(t.id)) ties.set(t.id, { ...t, items: [] });
       return ties.get(t.id);
     };
-    const own = new Map(schema.ties.map((t) => [t.id, { ...t, color: schema.groupFrameColor || TIE_COLOR }]));
+    const own = new Map(schema.ties.map((t) => [t.id, { ...t, color: schema.tieColor || schema.groupFrameColor || TIE_COLOR }]));
     const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
     const chains = [];
     for (const link of schema.links) {
@@ -1939,7 +1942,7 @@
       if (route) {
         const g = route.group;
         if (groupDisplay(g) === 'zip') {
-          const side = (key, p) => tie({ id: `${g.id}:${key}`, ...p, axis: g.axis === 'vertical' ? 'vertical' : 'horizontal', group: g, color: groupFrameColor(g) });
+          const side = (key, p) => tie({ id: `${g.id}:${key}`, ...p, axis: g.axis === 'vertical' ? 'vertical' : 'horizontal', group: g, color: schema.tieColor || groupFrameColor(g) });
           const vertical = g.axis === 'vertical';
           stops = [
             { tie: side('in', vertical ? { x: g.x + g.width / 2, y: g.y } : { x: g.x, y: g.y + g.height / 2 }) },
@@ -4269,7 +4272,7 @@
       )),
       ...colorField('Frame colour', 'block:frameColor', block.frameColor || '', (c) => { block.frameColor = c; }, ''),
       field('Frame width', slider(block.frameWidth || 0, 0, 10, (v) => { block.frameWidth = v; })),
-      h('p', { class: 'note' }, 'Frame colour and width apply to the frames around the links\' ends and, when shown as a single link, to that link. The colour is also that of its zip-ties. No colour and a width of 0 use the schema\'s defaults for groups (Schema button); with no default colour either, the border colour is used. Click the single link to select the group.'),
+      h('p', { class: 'note' }, 'Frame colour and width apply to the frames around the links\' ends and, when shown as a single link, to that link. The colour is also that of its zip-ties, unless a zip-tie colour is set for the schema. No colour and a width of 0 use the schema\'s defaults for groups (Schema button); with no default colour either, the border colour is used. Click the single link to select the group.'),
     ];
     for (const link of links) {
       const key = 'link:' + link.id;
@@ -4330,7 +4333,7 @@
       ));
     }
     out.push(
-      h('p', { class: 'note' }, 'Ties take their colour from the schema\'s group frame colour (Schema button).'),
+      h('p', { class: 'note' }, 'Colour and width of all zip-ties are set under Schema → Zip-ties.'),
       h('h3', {}, 'Actions'),
       h('div', { class: 'row' }, h('button', { class: 'danger', onclick: deleteSelection }, icon('delete'), 'Remove zip-tie')),
       h('p', { class: 'note' }, 'Its links stay as they are, only no longer held together here.'),
@@ -4632,6 +4635,7 @@
       field('Corner radius', slider(schema.radius, 0, MAX_RADIUS, (v) => { schema.radius = v; })),
     );
     renderLinkParams();
+    renderTieParams();
     renderTraceParams();
     renderPalette();
     paletteDialog.showModal();
@@ -4697,18 +4701,6 @@
           },
         }, label)),
       )),
-      field('Zip-tie look', h('input', {
-        type: 'checkbox',
-        checked: schema.zipGroups,
-        title: 'Draw each group as its links bundled side by side between two zip-ties, instead of a block or a single link',
-        onchange: (e) => {
-          schema.zipGroups = e.target.checked;
-          commit();
-          render();
-          renderInspector();
-          renderLinkParams();
-        },
-      })),
       field('Group frame colour', groupColors),
       field('Group frame width', slider(schema.groupFrameWidth, 1, 10, (v) => { schema.groupFrameWidth = v; })),
       field('Frame grouped ends', h('input', {
@@ -4721,6 +4713,30 @@
           render();
         },
       })),
+    );
+  }
+
+  function renderTieParams() {
+    const colors = swatches(schema.tieColor, (c) => { schema.tieColor = c; }, '');
+    colors.firstChild.title = 'None: the group frame colour';
+    const refresh = (e) => { if (e.type === 'change' || e.target.type !== 'color') renderTieParams(); };
+    colors.addEventListener('click', refresh);
+    colors.addEventListener('change', refresh);
+    $('#schema-tie-params').replaceChildren(
+      field('Zip-tie look', h('input', {
+        type: 'checkbox',
+        checked: schema.zipGroups,
+        title: 'Draw each group as its links bundled side by side between two zip-ties, instead of a block or a single link',
+        onchange: (e) => {
+          schema.zipGroups = e.target.checked;
+          commit();
+          render();
+          renderInspector();
+          renderLinkParams();
+        },
+      })),
+      field('Colour', colors),
+      field('Width', slider(schema.tieWidth, 2, 16, (v) => { schema.tieWidth = v; })),
     );
   }
 

@@ -133,10 +133,10 @@ Everything else works offline.
 - The group block has the usual block settings (name, icon, colours, attributes) and can set a colour
   for all its links or for each one.
 - Links can be moved into or out of a group; ungrouping removes the block and keeps the links.
-- With the **zip-tie look** (under Schema → Links) every group is drawn as its links bundled side by
+- With the **zip-tie look** (under Schema → Zip-ties) every group is drawn as its links bundled side by
   side between two zip-ties, at the sides of its (hidden) block, with its name in a tag beside the
   bundle. Dragging a tie along the links moves that end of the bundle; across them, it moves the group.
-  The ties take the group's frame colour.
+  The ties take the group's frame colour unless a zip-tie colour is set.
 
 ### Zip-ties
 
@@ -148,7 +148,7 @@ Everything else works offline.
 - Ties are moved freely by dragging; their links follow. A tie's panel lists its links, takes one out,
   switches whether links run through it left to right or top to bottom, and removes the tie (its
   links stay). A link's panel can cut it free of all its ties.
-- Ties take the schema's group frame colour.
+- Schema → Zip-ties sets the colour and width of all ties; with no colour they take the group frame colour.
 
 ### Trace
 
