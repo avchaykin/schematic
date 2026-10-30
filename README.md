@@ -152,7 +152,7 @@ Everything else works offline.
 
 ### Trace
 
-- **Trace** in the tool rail (or the T key) turns tracing on and off. While it is on, a band across
+- **Trace** in the top bar (or the T key) turns tracing on and off. While it is on, a band across
   the top of the canvas says what pointing does, with a button to turn it off.
 - With nothing selected the panel lists every named signal with the links and blocks carrying it;
   pointing at one traces it (whether or not Trace is on) and clicking it selects its links.

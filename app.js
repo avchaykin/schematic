@@ -1897,8 +1897,8 @@
   const tiePitch = () => schema.linkWidth + 2; // from one tied link to the next
   const tieThickness = () => Math.max(4, schema.linkWidth + 2);
 
-  // Half the width of a zip-tie look group's bundle, with room for its ties' locks.
-  const bundleHalf = (g) => ((schema.links.filter((l) => l.via === g.id).length - 1) * tiePitch() + schema.linkWidth) / 2 + tieThickness() + 6;
+  // Half the width of a zip-tie look group's bundle with its ties, and a little room.
+  const bundleHalf = (g) => ((schema.links.filter((l) => l.via === g.id).length - 1) * tiePitch() + schema.linkWidth) / 2 + 8;
 
   // Ties that hold no link any more go.
   function pruneTies(s = schema) {
@@ -1906,20 +1906,14 @@
     s.ties = s.ties.filter((t) => used.has(t.id));
   }
 
-  // The bar drawn for a tie holding `count` links: a strap across them, with its lock (the head) at
-  // the top or left end.
+  // The bar drawn for a tie holding `count` links: a round-ended strap across them.
   function tieBar(tie, count) {
     const across = (count - 1) * tiePitch() + schema.linkWidth + 8;
     const thick = tieThickness();
-    const head = thick + 4;
-    const vertical = tie.axis === 'vertical'; // links run top to bottom, so the strap lies flat
-    const strap = vertical
+    const strap = tie.axis === 'vertical' // links run top to bottom, so the strap lies flat
       ? { x: tie.x - across / 2, y: tie.y - thick / 2, width: across, height: thick }
       : { x: tie.x - thick / 2, y: tie.y - across / 2, width: thick, height: across };
-    const lock = vertical
-      ? { x: strap.x - head + 1, y: tie.y - head / 2, width: head, height: head }
-      : { x: tie.x - head / 2, y: strap.y - head + 1, width: head, height: head };
-    return { strap, lock, r: thick / 2 };
+    return { strap, r: thick / 2 };
   }
 
   // How each link is drawn through its group and ties: the stretches it is made of, as pairs of
@@ -2530,16 +2524,14 @@
       if (link.name) labels.push(linkLabel(link.name, mid));
     }
     // Zip-ties, over the links they hold. Dragging one moves it; a group's moves that side of the group.
-    for (const { tie, strap, lock, r } of shapes.ties) {
+    for (const { tie, strap, r } of shapes.ties) {
       const g = document.createElementNS(SVG_NS, 'g');
       g.setAttribute('class', 'zip-tie');
       g.style.color = tie.color;
-      for (const box of [strap, lock]) g.append(svgRect(box, box === lock ? 1.5 : r));
+      g.append(svgRect(strap, r));
       if (tie.group ? selection?.type === 'block' && selection.id === tie.group.id : selection?.type === 'tie' && selection.id === tie.id) {
         const pad = 3;
-        const x1 = Math.min(strap.x, lock.x) - pad;
-        const y1 = Math.min(strap.y, lock.y) - pad;
-        const ring = svgRect({ x: x1, y: y1, width: strap.x + strap.width + pad - x1, height: strap.y + strap.height + pad - y1 }, 3);
+        const ring = svgRect({ x: strap.x - pad, y: strap.y - pad, width: strap.width + 2 * pad, height: strap.height + 2 * pad }, r + pad);
         ring.setAttribute('class', 'tie-selected');
         g.append(ring);
       }
@@ -4438,8 +4430,8 @@
     saveButton.title = (unsaved ? 'Unsaved changes — save' : 'Save') + ' to ' + (folder?.ready ? `the folder "${folder.handle.name}"` : 'browser storage') + ' (Ctrl/⌘+S)';
     $('[data-action="undo"]').disabled = !undoStack.length;
     $('[data-action="redo"]').disabled = !redoStack.length;
-    $('#tools [data-action="trace"]').classList.toggle('active', traceOn);
-    $('#tools [data-action="trace"]').setAttribute('aria-pressed', traceOn);
+    $('#topbar [data-action="trace"]').classList.toggle('active', traceOn);
+    $('#topbar [data-action="trace"]').setAttribute('aria-pressed', traceOn);
     $('#stage').classList.toggle('tracing', traceOn);
     $('#tools [data-action="zip-tie"]').classList.toggle('active', tieTool);
     $('#tools [data-action="zip-tie"]').setAttribute('aria-pressed', tieTool);
@@ -5028,13 +5020,11 @@
       ctx.stroke(path);
     }
     ctx.restore();
-    for (const { tie, strap, lock, r } of shapes.ties) {
-      for (const box of [strap, lock]) {
-        mark(box.x, box.y, box.x + box.width, box.y + box.height);
-        rounded(box.x, box.y, box.width, box.height, box === lock ? 1.5 : r);
-        ctx.fillStyle = tie.color;
-        ctx.fill();
-      }
+    for (const { tie, strap, r } of shapes.ties) {
+      mark(strap.x, strap.y, strap.x + strap.width, strap.y + strap.height);
+      rounded(strap.x, strap.y, strap.width, strap.height, r);
+      ctx.fillStyle = tie.color;
+      ctx.fill();
     }
     for (const { link: { name }, mid } of shapes) {
       if (!name) continue;
