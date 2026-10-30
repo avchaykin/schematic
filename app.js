@@ -3285,6 +3285,8 @@
       toggleTrace();
     } else if (!mod && !e.altKey && key === 'z') {
       toggleTieTool();
+    } else if (!mod && !e.altKey && key === 'v') {
+      toggleTieTool(false);
     } else if (!mod && !e.altKey && key === 'f') {
       if (marqueeToFrame) marqueeToFrame();
       else frameSelection();
@@ -3680,7 +3682,7 @@
     const clip = `${mod}C ${mod}X ${mod}V copy, cut, paste`;
     let text;
     if (tieTool) {
-      text = 'Drag a line across links to tie them together · Drag a tie to move it · Z or Esc puts the tool away';
+      text = 'Drag a line across links to tie them together · Drag a tie to move it · V, Z or Esc goes back to the pointer';
     } else if (selectedTie()) {
       text = 'Drag the tie to move it · Draw another tie across some of its links to tie those again · Delete removes it · Esc deselects';
     } else if (selection?.type === 'blocks') {
@@ -3692,7 +3694,7 @@
     } else if (links.length) {
       text = `Shift+click to select more links · ${mod}G groups them into a block · Delete removes · Esc deselects`;
     } else {
-      text = 'Drag a connector to link · Shift+drag reattaches its links, Alt+drag moves it · Drag background to pan · Shift+drag to select several, F frames them · Z ties links · Scroll zooms, Shift+scroll pans';
+      text = 'Drag a connector to link · Shift+drag reattaches its links, Alt+drag moves it · Drag background to pan · Shift+drag to select several, F frames them · V pointer, Z ties links · Scroll zooms, Shift+scroll pans';
     }
     statusText.textContent = text;
   }
@@ -4525,6 +4527,8 @@
     $('#tools [data-action="zip-tie"]').classList.toggle('active', tieTool);
     $('#tools [data-action="zip-tie"]').setAttribute('aria-pressed', tieTool);
     viewport.classList.toggle('tying', tieTool);
+    $('#tools [data-action="pointer"]').classList.toggle('active', !tieTool);
+    $('#tools [data-action="pointer"]').setAttribute('aria-pressed', !tieTool);
     $('#trace-say').textContent = schema.traceIgnoreNames
       ? 'Point at a connector or link to mark everything joined to it.'
       : 'Point at a connector or link to mark the path that shares its name.';
@@ -5445,6 +5449,7 @@
     'redo': redo,
     'trace': toggleTrace,
     'zip-tie': () => toggleTieTool(),
+    'pointer': () => toggleTieTool(false),
     'theme': toggleTheme,
     'zoom-in': () => zoomCentered(1.2),
     'zoom-out': () => zoomCentered(1 / 1.2),

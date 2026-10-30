@@ -116,7 +116,7 @@ For links that run the same way without a group block, press **Zip-tie** in the 
 and drag a line across them. They are tied where the line crosses them and run side by side through
 the tie. Draw as many ties as you like; a tie drawn across some links of a bundle that is already
 tied holds just those, so they can branch off between the two. Drag a tie to move it. Its panel
-takes single links out of it or removes it; Z or Esc puts the tool away.
+takes single links out of it or removes it; Z, V or Esc (or the **Pointer** above it) goes back to the Pointer, the default tool for selecting, moving and panning.
 **Schema → Zip-ties** sets the colour and width of every tie.
 
 ## 6. Clone blocks

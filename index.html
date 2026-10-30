@@ -72,7 +72,11 @@
       <div id="world"></div>
     </div>
 
-    <nav id="tools" aria-label="Add to the schema">
+    <nav id="tools" aria-label="Tools">
+      <div class="tgroup">
+        <button data-action="pointer" class="active" aria-pressed="true" title="Pointer (V): select, move and pan" aria-label="Pointer"><span class="mi">arrow_selector_tool</span></button>
+        <button data-action="zip-tie" aria-pressed="false" title="Zip-tie (Z): drag a line across links to tie them together" aria-label="Zip-tie"><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M11,16H10C8.39,16 6,14.94 6,12C6,9.07 8.39,8 10,8H11V10H10C9.54,10 8,10.17 8,12C8,13.9 9.67,14 10,14H11V16M15,11V13H9V11H15M14,16H13V14H14C14.46,14 16,13.83 16,12C16,10.1 14.33,10 14,10H13V8H14C15.61,8 18,9.07 18,12C18,14.94 15.61,16 14,16Z"/></svg></button>
+      </div>
       <div class="tgroup">
         <button data-action="add-block" title="Block (or double-click the canvas)" aria-label="Add a block"><span class="mi">add_box</span></button>
         <button data-action="add-junction" title="Link connector: a free-standing dot where links meet" aria-label="Add a link connector"><span class="mi">adjust</span></button>
@@ -80,9 +84,6 @@
         <button data-action="add-frame" title="Frame: a titled area behind other elements, which move with it" aria-label="Add a frame"><span class="mi">crop_free</span></button>
         <button data-action="add-ref" title="Reference: a block of another saved schema, to link to from here" aria-label="Add a reference"><span class="mi">shortcut</span></button>
         <button data-action="add-comment" title="Comment: a sticky note with free text" aria-label="Add a comment"><span class="mi">sticky_note_2</span></button>
-      </div>
-      <div class="tgroup">
-        <button data-action="zip-tie" aria-pressed="false" title="Zip-tie (Z): drag a line across links to tie them together" aria-label="Zip-tie"><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M11,16H10C8.39,16 6,14.94 6,12C6,9.07 8.39,8 10,8H11V10H10C9.54,10 8,10.17 8,12C8,13.9 9.67,14 10,14H11V16M15,11V13H9V11H15M14,16H13V14H14C14.46,14 16,13.83 16,12C16,10.1 14.33,10 14,10H13V8H14C15.61,8 18,9.07 18,12C18,14.94 15.61,16 14,16Z"/></svg></button>
       </div>
     </nav>
 
@@ -99,7 +100,7 @@
   <aside id="inspector"></aside>
 
   <footer id="statusbar">
-    <span>Drag a connector to link · Shift+drag reattaches its links, Alt+drag moves it · Drag background to pan · Shift+drag to select several, F frames them · Z ties links · Scroll zooms, Shift+scroll pans</span>
+    <span>Drag a connector to link · Shift+drag reattaches its links, Alt+drag moves it · Drag background to pan · Shift+drag to select several, F frames them · V pointer, Z ties links · Scroll zooms, Shift+scroll pans</span>
   </footer>
 
   <div id="load-menu" class="menu" role="menu" hidden></div>

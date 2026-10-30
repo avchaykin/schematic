@@ -138,11 +138,16 @@ Everything else works offline.
   bundle. Dragging a tie along the links moves that end of the bundle; across them, it moves the group.
   The ties take the group's frame colour unless a zip-tie colour is set.
 
+### Tools
+
+- The **Pointer** (top of the tool rail, or V) is the default tool: click to select, drag to move,
+  drag the background to pan. Other tools return to it with V, Esc or a click on the Pointer.
+
 ### Zip-ties
 
 - **Zip-tie** in the tool rail (or the Z key) turns the tool on. Drag a line across links and they
   are tied together where the line crosses them: drawn side by side, close together, as they pass
-  through the tie. The tool stays on for more ties until Z or Esc.
+  through the tie. The tool stays on for more ties until Z, V or Esc brings back the Pointer.
 - A link can pass through any number of ties, in order along its way, so a bundle can be tied again
   further on, wholly or only some of its links, which then branch off between the ties.
 - Ties are moved freely by dragging; their links follow. A tie's panel lists its links, takes one out,
