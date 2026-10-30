@@ -462,6 +462,7 @@
       });
       if (out.blocks.some((b) => b.kind === 'group' && b.id === l.via)) out.links[out.links.length - 1].via = l.via;
       if (custom) out.links[out.links.length - 1].customId = true;
+      if (l.color2) out.links[out.links.length - 1].color2 = String(l.color2);
       const ties = [...new Set(Array.isArray(l.ties) ? l.ties.map(String) : [])].filter((id) => tieIds.has(id));
       if (ties.length) out.links[out.links.length - 1].ties = ties;
       // A link put here on behalf of another schema, which holds the original.
@@ -1535,7 +1536,7 @@
           link = { id: freshBlockId(new Set(t.links.map((l) => l.id)), 'link'), from: rc.id, to: xc.id, description: '', attributes: [], auto: name, srcLink: w.link.id };
           t.links.push(link);
         }
-        if (link.auto === name) Object.assign(link, { color: w.link.color || '', style: lineStyle(w.link.style), name: w.link.name || '', srcLink: w.link.id });
+        if (link.auto === name) Object.assign(link, { color: w.link.color || '', color2: w.link.color2 || '', style: lineStyle(w.link.style), name: w.link.name || '', srcLink: w.link.id });
       }
       // The other schema's references to our blocks follow them; those we put there go once unlinked.
       for (const b of t.blocks) if (ours(b)) mirrorBlock(b, s.blocks.find((p) => p.id === b.refBlock && matchesRef(b, p)), t);
@@ -2462,7 +2463,9 @@
           return parts.flatMap((part) => part.points);
         },
         color: linkColor(link),
-        dash: { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style],
+        // With a second colour the line is dashed in the first over the second, solid if no style is chosen.
+        color2: link.color2 || '',
+        dash: { dashed: `${3.5 * w} ${3 * w}`, dotted: `0.01 ${2.75 * w}` }[link.style] || (link.color2 ? `${3.5 * w} ${3 * w}` : undefined),
         mid: parts[0].mid, // a grouped or tied link is labelled on its way into the group or first tie
       });
     }
@@ -2513,7 +2516,7 @@
       nodes.push(line, hit);
     }
     const shapes = linkShapes(routes);
-    for (const { link, d, color, dash, mid } of shapes) {
+    for (const { link, d, color, color2, dash, mid } of shapes) {
       if ((selection?.type === 'link' && selection.ids.includes(link.id)) || tieLine?.links.has(link.id)) nodes.push(svgPath('link-halo', d));
       const traced = trace?.links.has(link.id);
       if (traced && schema.traceColor !== 'none') {
@@ -2526,10 +2529,16 @@
       if (color) line.style.stroke = color;
       // Lines close to the canvas colour get a thin grey edge so they stay visible.
       if (dash) line.setAttribute('stroke-dasharray', dash);
-      if (isFaint(color)) {
+      if (isFaint(color) || isFaint(color2)) {
         const outline = svgPath(trace && !traced ? 'link-outline dimmed' : 'link-outline', d);
-        if (dash) outline.setAttribute('stroke-dasharray', dash);
+        if (dash && !color2) outline.setAttribute('stroke-dasharray', dash);
         nodes.push(outline);
+      }
+      // The second colour runs solid under the dashes of the first.
+      if (color2) {
+        const under = svgPath(trace && !traced ? 'link dimmed' : 'link', d);
+        under.style.stroke = color2;
+        nodes.push(under);
       }
       const hit = svgPath('link-hit', d);
       hit.dataset.link = link.id;
@@ -4487,11 +4496,19 @@
     // --- appearance
     const color = links.every((l) => l.color === links[0].color) ? links[0].color || '' : null;
     const style = links.every((l) => l.style === links[0].style) ? links[0].style : null;
+    const color2 = links.every((l) => (l.color2 || '') === (links[0].color2 || '')) ? links[0].color2 || '' : null;
     out.push(
       h('h3', {}, 'Appearance'),
       styleField('Line style', style, (v) => { for (const l of links) l.style = v; }),
       swatches(color, (c) => { for (const l of links) l.color = c; }, ''),
       h('p', { class: 'note' }, 'With no colour set (crossed swatch) a link takes, in this order: its group\'s links colour, the colour of a block connector it ends at, the colour of a link connector it ends at. Two block connectors (or two link connectors) with different colours give black.'),
+      ...colorField('Second colour', 'links:color2', color2, (c) => {
+        for (const l of links) {
+          if (c) l.color2 = c;
+          else delete l.color2;
+        }
+      }, ''),
+      h('p', { class: 'note' }, 'A second colour makes the line dashed: dashes of the first colour over the second. Dotted keeps its dots.'),
     );
     if (single) out.push(...attributesSection(links[0]));
     out.push(
@@ -5111,15 +5128,21 @@
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    for (const { points, d, color, dash } of shapes) {
+    for (const { points, d, color, color2, dash } of shapes) {
       const w = schema.linkWidth;
       for (const p of points) mark(p.x - w, p.y - w, p.x + w, p.y + w);
       const path = new Path2D(d);
-      ctx.setLineDash(dash ? dash.split(' ').map(Number) : []);
-      if (isPale(color)) {
+      ctx.setLineDash(dash && !color2 ? dash.split(' ').map(Number) : []);
+      if (isPale(color) || isPale(color2)) {
         ctx.strokeStyle = '#94a3b8';
         ctx.lineWidth = w + 2;
         ctx.stroke(path);
+      }
+      if (color2) {
+        ctx.strokeStyle = color2;
+        ctx.lineWidth = w;
+        ctx.stroke(path);
+        ctx.setLineDash(dash.split(' ').map(Number));
       }
       ctx.strokeStyle = color || '#475569';
       ctx.lineWidth = w;

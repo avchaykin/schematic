@@ -47,6 +47,8 @@ Everything else works offline.
   If some of those links are selected, only they move; otherwise all of them do.
 - Each link has a name (drawn on the link), an ID, a description, a colour, a line style (solid, dashed or dotted)
   and custom attributes.
+- A second colour makes a link two-coloured: dashes of its colour over a solid line of the second
+  (dotted links keep their dots). A white or very pale colour gets a thin grey edge, as a plain white link does.
 - Colour priority: the link's own colour, then its group's links colour, then the colour of a block
   connector it ends at, then the colour of a link connector it ends at. Two block connectors (or two
   link connectors) with different colours give a black link.

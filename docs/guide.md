@@ -53,7 +53,8 @@ Connectors on the same side are always spread evenly.
 
 - Drag from one connector to another to link them.
 - Click a link to select it. Its panel has a **Name** (shown on the link), **ID**, line style,
-  colour and attributes.
+  colour and attributes. A **Second colour** draws the link dashed in two colours: its colour in dashes
+  over the second; if either is white, the line gets a thin grey edge so it stays visible.
 - To move a link to a different connector, Shift+drag from the connector it is on and drop on the new one.
 - Delete or Backspace removes the selected link or block.
 
