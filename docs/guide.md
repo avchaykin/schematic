@@ -172,6 +172,8 @@ Click a palette colour to remove it, or pick a new one and press **Add colour**.
 - **Save** (the disk icon) stores the schema in the browser under its name; the arrow at the end of the schema name drops down the saved schemas to pick one, and the **Manage saved schemas…** entry there opens a dialog to delete, export or import them.
 - In Chrome or Edge, the folder button next to Save keeps saved schemas as files in a folder you
   choose, and saves the open one automatically as you work. Without it they are kept in the browser.
+- When the app is run from a server (`node server.js <folder>`), saved schemas are always files in
+  that folder on the server, saved as you work; the server icon next to Save says which folder.
 - **Export** downloads a JSON file and **Import** reads one back, for moving schemas between browsers.
 - **PNG** and **PDF** download a picture of the whole schema, for documents and slides. The PDF is
   one page the size of the schema.

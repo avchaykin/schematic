@@ -5,10 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 Schematic: a browser editor for schemas of blocks, connectors and links. Plain HTML, CSS and
-JavaScript: no build step, no package manager, no server, no dependencies, no test suite. Run it by
+JavaScript: no build step, no package manager, no server required, no dependencies, no test suite. Run it by
 opening `index.html` in a browser (icons come from the Material Symbols font on Google Fonts; the
 rest works offline). Verify changes by loading the page, e.g. a headless Chrome screenshot with a
 schema seeded into `localStorage` (`schematic:current` holds `{ schema, ... }`) before `app.js` runs.
+
+`node server.js [folder] [--port 8080] [--host 127.0.0.1]` serves the same app with schemas kept as
+JSON files in a folder on the server (Node built-ins only).
 
 ## Files
 
@@ -57,7 +60,9 @@ schema seeded into `localStorage` (`schematic:current` holds `{ schema, ... }`) 
   handler and go by key position, so they work with non-Latin layouts.
 - **Storage.** The library of saved schemas is in `localStorage` (`schematic:*` keys). Chrome and
   Edge can use a folder of JSON files instead (File System Access API), with conflict detection
-  when a file changes from elsewhere.
+  when a file changes from elsewhere. Served by `server.js`, the page gets `window.SCHEMATIC_SERVER`
+  and `serverFolder()` stands in for the browser's directory handle over the `/api/files` endpoints,
+  so the server version runs the same folder code. There is one app; never fork it for the server.
 
 ## Conventions
 

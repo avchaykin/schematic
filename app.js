@@ -488,6 +488,7 @@
   // readLibrary / writeLibrary, as { name: { savedAt, schema } }.
 
   const canUseFolder = typeof window.showDirectoryPicker === 'function';
+  const server = window.SCHEMATIC_SERVER || null; // { folder }: set by server.js, which keeps the schemas
   let folder = null; // { handle, ready, cache, files, stamps }: ready once access is granted and its files are read
   let syncedSnapshot = null; // the open schema as last read from or written to the library
   let folderQueue = Promise.resolve(); // file operations run one after another
@@ -512,6 +513,42 @@
         tx.onerror = () => reject(tx.error);
       };
     });
+  }
+
+  // Run by server.js, the app keeps its schemas in a folder on the server. It is reached through an
+  // object that answers like the folder handle a browser gives, so the folder code serves both.
+  function serverFolder(name) {
+    const url = (fileName) => 'api/files/' + encodeURIComponent(fileName);
+    const check = async (res) => {
+      if (!res.ok) throw new Error((await res.text()) || res.statusText);
+      return res;
+    };
+    const fileHandle = (fileName) => ({
+      kind: 'file',
+      async getFile() {
+        const res = await check(await fetch(url(fileName), { cache: 'no-store' }));
+        const text = await res.text();
+        return { lastModified: Number(res.headers.get('X-Last-Modified')), text: async () => text };
+      },
+      async createWritable() {
+        let body = '';
+        return {
+          write: async (data) => { body += data; },
+          close: async () => { await check(await fetch(url(fileName), { method: 'PUT', body })); },
+        };
+      },
+    });
+    return {
+      name,
+      async *entries() {
+        const res = await check(await fetch('api/files', { cache: 'no-store' }));
+        for (const fileName of await res.json()) yield [fileName, fileHandle(fileName)];
+      },
+      getFileHandle: async (fileName) => fileHandle(fileName),
+      removeEntry: async (fileName) => { await check(await fetch(url(fileName), { method: 'DELETE' })); },
+      queryPermission: async () => 'granted',
+      requestPermission: async () => 'granted',
+    };
   }
 
   function rememberFolder(handle) {
@@ -4555,10 +4592,12 @@
       ? 'Point at a connector or link to mark everything joined to it.'
       : 'Point at a connector or link to mark the path that shares its name.';
     const folderButton = $('[data-action="folder"]');
-    folderButton.hidden = !canUseFolder;
+    folderButton.hidden = !canUseFolder && !server;
     folderButton.classList.toggle('active', Boolean(folder?.ready));
     folderButton.classList.toggle('pending', Boolean(folder && !folder.ready));
-    folderButton.title = !folder ? 'Keep schemas as files in a folder on this computer'
+    folderButton.querySelector('.mi').textContent = server ? 'dns' : 'folder_special';
+    folderButton.title = server ? `Schemas are files in the folder "${server.folder}" on the server, kept up to date as you work`
+      : !folder ? 'Keep schemas as files in a folder on this computer'
       : folder.ready ? `Working in the folder "${folder.handle.name}": saved schemas are files there and are kept up to date as you work`
         : `Click to reconnect to the folder "${folder.handle.name}"`;
     $('[data-action="theme"] .mi').textContent = isDark() ? 'light_mode' : 'dark_mode';
@@ -4682,7 +4721,12 @@
   // Where saved schemas are kept, with the buttons to change that.
   function renderLibraryWhere() {
     const where = $('#library-where');
-    if (!canUseFolder) {
+    if (server) {
+      where.replaceChildren(
+        icon('dns'),
+        h('span', { class: 'grow' }, `Files in the folder "${server.folder}" on the server, saved automatically as you work.`),
+      );
+    } else if (!canUseFolder) {
       where.replaceChildren(h('span', { class: 'note' }, 'Kept in this browser\'s storage.'));
     } else if (folder?.ready) {
       where.replaceChildren(
@@ -5532,7 +5576,15 @@
 
   // Back to the folder used last time. If the browser still grants access its files are read
   // straight away; otherwise the first Save or Load asks for it.
-  if (canUseFolder) {
+  if (server) {
+    folder = { handle: serverFolder(server.folder), ready: false, cache: {}, files: {} };
+    scanFolder()
+      .then(recheckOpenFile)
+      .catch((err) => toast('Could not read the schemas on the server: ' + err.message, true))
+      .finally(updateChrome);
+    // Others may be working on the same schemas: the open one is looked at every few seconds.
+    setInterval(() => { if (!document.hidden) syncOpenFile(); }, 5000);
+  } else if (canUseFolder) {
     handleStore('readonly', (store) => store.get('folder')).then(async (handle) => {
       if (!handle) return;
       folder = { handle, ready: false, cache: {}, files: {} };

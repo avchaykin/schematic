@@ -16,6 +16,22 @@ Open `index.html` in a browser.
 Icons come from the Material Symbols font on Google Fonts, so they need an internet connection.
 Everything else works offline.
 
+### Server version
+
+```
+node server.js [folder] [--port 8080] [--host 127.0.0.1]
+```
+
+serves the same app at `http://127.0.0.1:8080/`, with the saved schemas kept as JSON files in
+`folder` on the server (default `./schemas`, created if missing). It needs Node and nothing else.
+The app is identical; only where schemas are saved differs. They behave as in a local folder:
+a schema saved once is written again after every change, files added or changed in the folder
+appear in the list, and an open schema changed from elsewhere (another browser using the same
+server, or another program) is reloaded within a few seconds, or, if it has unsaved changes here
+too, you choose which version stays. Any browser works, not only Chrome and Edge.
+The server listens only on this computer unless `--host` is given (for example `0.0.0.0`); it has
+no login, so anyone who can reach it can read and change the schemas.
+
 ## Features
 
 ### Blocks
@@ -274,4 +290,5 @@ Letter shortcuts go by the key's position, so they also work with a non-Latin ke
 - `index.html` — page structure: top bar, tool rail, panel, status bar and dialogs
 - `style.css` — styling
 - `app.js` — the whole application
+- `server.js` — the optional server: serves the app and the schemas in a folder
 - `docs/guide.md` — illustrated guide to working with the tool
