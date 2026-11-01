@@ -167,6 +167,9 @@ colour palette offered wherever a colour is chosen.
 
 Click a palette colour to remove it, or pick a new one and press **Add colour**.
 
+On a phone the panel is hidden so the canvas has the whole screen. The panel button at the right
+end of the top bar slides it in and out; the top bar itself scrolls sideways to reach the rest.
+
 ## 9. Save, share and edit as text
 
 - **Save** (the disk icon) stores the schema in the browser under its name; the arrow at the end of the schema name drops down the saved schemas to pick one, and the **Manage saved schemas…** entry there opens a dialog to delete, export or import them.

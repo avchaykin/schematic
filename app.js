@@ -3347,6 +3347,7 @@
     } else if (key === 'escape') {
       loadMenu.hidden = true;
       if (tieTool) toggleTieTool(false);
+      togglePanel(false);
       select(null);
     }
   });
@@ -4711,6 +4712,16 @@
     if (!libraryDialog.open) libraryDialog.showModal();
   }
 
+  // On small screens the panel is a drawer over the canvas, opened and closed from the top bar.
+  function togglePanel(open = !document.body.classList.contains('panel-open')) {
+    document.body.classList.toggle('panel-open', open);
+    const button = $('#panel-toggle');
+    button.classList.toggle('active', open);
+    button.setAttribute('aria-expanded', open);
+    button.title = open ? 'Hide the panel' : 'Show the panel';
+    button.querySelector('.mi').textContent = open ? 'right_panel_close' : 'right_panel_open';
+  }
+
   // The top bar's folder button: connect, reconnect, or show what is in the folder.
   async function folderAction() {
     if (!folder) await connectFolder();
@@ -5500,6 +5511,7 @@
     'folder': folderAction,
     'close-library': () => libraryDialog.close(),
     'settings': openSettings,
+    'panel': () => togglePanel(),
     'close-palette': () => paletteDialog.close(),
     'palette-add': addPaletteColor,
     'palette-reset': () => { schema.palette = [...DEFAULT_PALETTE]; paletteChanged(); },

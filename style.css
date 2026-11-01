@@ -219,6 +219,7 @@ kbd {
   #schema-name { width: 150px; }
 }
 
+
 /* ---------- stage: the canvas is a white sheet on the ground ---------- */
 
 #stage {
@@ -900,3 +901,44 @@ dialog footer .note { flex: 1; margin: 0; }
 .block.junction.multi .connector { outline: 1.5px dashed var(--mark); outline-offset: 3px; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+
+/* Small screens (phones): the canvas takes the whole width. The panel is a drawer over it, opened
+   from the top bar, which scrolls sideways with that button kept in view at its end. */
+#panel-toggle { display: none; }
+@media (max-width: 720px) {
+  body { grid-template: 48px minmax(0, 1fr) / minmax(0, 1fr); grid-template-areas: "top" "stage"; }
+  #topbar { overflow-x: auto; scrollbar-width: none; padding-right: 0; }
+  #topbar::-webkit-scrollbar { display: none; }
+  #schema-name { width: 120px; }
+  #panel-toggle {
+    display: inline-grid;
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    margin-left: auto;
+    border-radius: 0;
+    border-width: 0 0 0 1px;
+    min-height: 47px;
+    width: 46px;
+    background: var(--sheet);
+  }
+  #panel-toggle.active { background: var(--wash); color: var(--mark); }
+  #stage { margin: 6px 6px 0; }
+  #statusbar { display: none; }
+  #inspector {
+    position: fixed;
+    top: 48px;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    width: min(340px, calc(100vw - 32px));
+    margin: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--r-sheet) 0 0 0;
+    box-shadow: var(--lift);
+    transform: translateX(calc(100% + 16px));
+    visibility: hidden;
+    transition: transform .2s ease, visibility 0s .2s;
+  }
+  body.panel-open #inspector { transform: none; visibility: visible; transition: transform .2s ease; }
+}

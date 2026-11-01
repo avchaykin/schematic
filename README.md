@@ -253,6 +253,9 @@ no login, so anyone who can reach it can read and change the schemas.
 - Resizing a block or a link group block straight after adding it makes that the size of the next
   new ones; the size is remembered by the browser.
 - Undo and redo.
+- On small screens such as phones (under 720 px wide) the canvas takes the whole width and the
+  panel is hidden; the panel button at the end of the top bar slides it in over the canvas and
+  out again. The top bar scrolls sideways, and the status bar with its keyboard hints is left out.
 - Light and dark mode, switched from the top bar; it starts in the system's mode and remembers the
   choice. Colours given to elements stay as set, and exported pictures are always on white.
 
