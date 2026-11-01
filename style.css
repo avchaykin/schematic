@@ -679,6 +679,8 @@ dialog footer .note { flex: 1; margin: 0; }
 .settings-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); column-gap: 28px; align-items: start; }
 .settings-cols .row { flex-wrap: wrap; }
 .dialog-body .field { grid-template-columns: 130px minmax(0, 1fr); }
+/* A control too wide to sit beside its label goes under it. */
+.field.stacked, .dialog-body .field.stacked { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .dialog-body .field input[type="checkbox"] { justify-self: start; width: 15px; height: 15px; margin: 0; accent-color: var(--mark); }
 .swatches.large .swatch { width: 28px; height: 28px; display: grid; place-items: center; border-radius: var(--r); }
 .swatch.removable .mi { font-size: 16px; opacity: 0; }

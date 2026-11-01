@@ -107,7 +107,7 @@ Several links can be routed through one block, for example to show a bus or a ca
   sits on the line in a small tag: drag the tag to move the line.
 - **Links run** switches the group between horizontal (left to right) and vertical (top to bottom).
 - **Ungroup links** removes the block and leaves the links in place.
-- **Schema → Zip-ties → Zip-tie look** draws every group as a bundle: its links side by side between two
+- **Show as → Zip-ties** draws the group as a bundle: its links side by side between two
   zip-ties instead of a block. Drag a tie along the links to make the bundle longer or shorter, or
   the name tag to move it.
 

@@ -151,7 +151,7 @@ no login, so anyone who can reach it can read and change the schemas.
 - The group block has the usual block settings (name, icon, colours, attributes) and can set a colour
   for all its links or for each one.
 - Links can be moved into or out of a group; ungrouping removes the block and keeps the links.
-- With the **zip-tie look** (under Schema → Zip-ties) every group is drawn as its links bundled side by
+- Shown as **zip-ties**, a group is drawn as its links bundled side by
   side between two zip-ties, at the sides of its (hidden) block, with its name in a tag beside the
   bundle. Dragging a tie along the links moves that end of the bundle; across them, it moves the group.
   The ties take the group's frame colour unless a zip-tie colour is set.
@@ -206,8 +206,8 @@ no login, so anyone who can reach it can read and change the schemas.
   is on (for example from a block's left side to something on its right), rather than under the block.
 - Line width of all links, and the size of all link connectors.
 - Whether lined-up connectors of grouped links get a frame.
-- Defaults for link groups: shown as a block or as a single link, frame colour and frame width.
-  They apply to every group that does not set its own. The zip-tie look overrides how every group is shown.
+- Defaults for link groups: shown as a block, as a single link or as zip-ties, frame colour and frame width.
+  They apply to every group that does not set its own.
 - Colour and width of the trace mark. With no colour there is no mark and the other links just
   fade; **Same as link** marks each link in its own colour, making traced links bolder.
 - A colour palette stored with the schema and offered wherever a colour is chosen.
