@@ -902,6 +902,13 @@ dialog footer .note { flex: 1; margin: 0; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
+/* View mode: what edits is put away; dragging anywhere pans. */
+body.viewing [data-edit], body.viewing #tools, body.viewing .block .handle { display: none; }
+body.viewing #viewport, body.viewing #viewport * { cursor: grab; }
+body.viewing .btn-group > [data-action="folder"] { border-radius: var(--r); } /* the rest of its group is put away */
+body.viewing .btn-group > [data-action="export"] { border-radius: var(--r) 0 0 var(--r); }
+body.viewing #viewport.panning, body.viewing #viewport.panning * { cursor: grabbing; }
+
 /* Small screens (phones): the canvas takes the whole width. The panel is a drawer over it, opened
    from the top bar, which scrolls sideways with that button kept in view at its end. */
 #panel-toggle { display: none; }

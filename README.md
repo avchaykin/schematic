@@ -253,6 +253,11 @@ no login, so anyone who can reach it can read and change the schemas.
 - Resizing a block or a link group block straight after adding it makes that the size of the next
   new ones; the size is remembered by the browser.
 - Undo and redo.
+- **View mode** (the eye button beside the schema name) is for looking without changing anything:
+  the tool rail and editing buttons are put away, dragging anywhere pans, the wheel or a two-finger
+  pinch zooms, and a click or tap selects, so the panel shows the details (its controls are
+  disabled). With Trace on, a tap marks the path of the connector or link tapped. Phones and other
+  small screens open in view mode; press the eye to edit.
 - On small screens such as phones (under 720 px wide) the canvas takes the whole width and the
   panel is hidden; the panel button at the end of the top bar slides it in over the canvas and
   out again. The top bar scrolls sideways, and the status bar with its keyboard hints is left out.
@@ -287,6 +292,7 @@ Letter shortcuts go by the key's position, so they also work with a non-Latin ke
 | Ignore the grid | Hold Alt while dragging |
 | Zoom | Scroll (or pinch on a trackpad) |
 | Pan | Drag the background, or Shift+scroll |
+| Pan and zoom in view mode | Drag anywhere; pinch with two fingers |
 
 ## Files
 

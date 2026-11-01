@@ -26,15 +26,17 @@
       <button data-action="library" class="icon-only" title="Load a saved schema" aria-label="Load a saved schema" aria-haspopup="menu"><span class="mi">expand_more</span></button>
     </div>
 
+    <button data-action="view-mode" class="icon-only" aria-pressed="false" title="View mode: look around without changing anything" aria-label="View mode"><span class="mi">visibility</span></button>
+
     <div class="btn-group" role="group" aria-label="Schema file">
-      <button data-action="new" class="icon-only" title="New schema" aria-label="New schema"><span class="mi">note_add</span></button>
-      <button data-action="save" class="icon-only" title="Save to browser storage (Ctrl/⌘+S)" aria-label="Save"><span class="mi">save</span></button>
+      <button data-edit data-action="new" class="icon-only" title="New schema" aria-label="New schema"><span class="mi">note_add</span></button>
+      <button data-edit data-action="save" class="icon-only" title="Save to browser storage (Ctrl/⌘+S)" aria-label="Save"><span class="mi">save</span></button>
       <button data-action="folder" class="icon-only" title="Keep schemas as files in a folder on this computer" aria-label="Folder storage" hidden><span class="mi">folder_special</span></button>
     </div>
 
     <span class="spacer"></span>
 
-    <div class="btn-group" role="group" aria-label="History">
+    <div data-edit class="btn-group" role="group" aria-label="History">
       <button data-action="undo" class="icon-only" title="Undo (Ctrl/⌘+Z)" aria-label="Undo"><span class="mi">undo</span></button>
       <button data-action="redo" class="icon-only" title="Redo (Ctrl/⌘+Shift+Z)" aria-label="Redo"><span class="mi">redo</span></button>
     </div>
@@ -53,16 +55,16 @@
     <span class="bar-gap"></span>
 
     <button data-action="theme" class="icon-only" title="Switch between light and dark mode" aria-label="Dark mode"><span class="mi">dark_mode</span></button>
-    <button data-action="json" class="icon-only" title="Show and edit the schema as JSON" aria-label="JSON"><span class="mi">data_object</span></button>
+    <button data-edit data-action="json" class="icon-only" title="Show and edit the schema as JSON" aria-label="JSON"><span class="mi">data_object</span></button>
 
     <div class="btn-group" role="group" aria-label="Import and export">
-      <button data-action="import" class="icon-only" title="Import a JSON file" aria-label="Import"><span class="mi">upload</span></button>
+      <button data-edit data-action="import" class="icon-only" title="Import a JSON file" aria-label="Import"><span class="mi">upload</span></button>
       <button data-action="export" class="icon-only" title="Export as a JSON file" aria-label="Export"><span class="mi">download</span></button>
       <button data-action="export-png" class="icon-only" title="Export the schema as a PNG picture" aria-label="Export PNG"><span class="mi">image</span></button>
       <button data-action="export-pdf" class="icon-only" title="Export the schema as a PDF page" aria-label="Export PDF"><span class="mi">picture_as_pdf</span></button>
     </div>
 
-    <button data-action="settings" title="Schema parameters: corner radius, links, trace, colour palette">Schema</button>
+    <button data-edit data-action="settings" title="Schema parameters: corner radius, links, trace, colour palette">Schema</button>
 
     <button data-action="panel" id="panel-toggle" class="icon-only" title="Show the panel" aria-label="Panel" aria-expanded="false" aria-controls="inspector"><span class="mi">right_panel_open</span></button>
   </header>

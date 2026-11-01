@@ -2197,6 +2197,7 @@
   const blockEls = new Map();
   let endFrames = []; // the frames around grouped links' ends as last drawn, for dragging them
   let tieTool = false; // the zip-tie tool is on: dragging across links ties them
+  let viewMode = false; // for looking, not editing; phones start in it
   let noteDraft = ''; // a schema comment being written, kept while the panel is redrawn
   let editingNote = null; // id of the schema comment being edited
   let tieLine = null; // { x1, y1, x2, y2, links: Set of ids } while a tie is being drawn
@@ -3149,6 +3150,97 @@
     });
   }
 
+  // ---------- view mode ----------
+  // For looking, not editing: a drag pans whatever it starts on, two fingers pinch to zoom, and a
+  // tap selects, so the panel shows the particulars without letting them change. It takes the
+  // pointer before the editing handler below can.
+  const fingers = new Map(); // pointerId → { x, y }, for each pointer down on the canvas
+  let gesture = null; // { tap, moved, last: { x, y, dist, n } } while any is down
+
+  function setViewMode(on = !viewMode) {
+    viewMode = on;
+    if (on && tieTool) toggleTieTool(false);
+    document.body.classList.toggle('viewing', on);
+    nameInput.readOnly = on;
+    updateChrome();
+    renderInspector();
+    render();
+  }
+
+  // Where the pointers are: their middle, and the spread of the first two.
+  function fingerSpan() {
+    const [a, b] = [...fingers.values()];
+    if (!b) return { x: a.x, y: a.y, dist: 0, n: 1 };
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, dist: Math.hypot(a.x - b.x, a.y - b.y), n: fingers.size };
+  }
+
+  function viewMove(e) {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const now = fingerSpan();
+    const last = gesture.last;
+    gesture.last = now;
+    if (now.n !== last.n) return; // a finger came or went: start again from here
+    gesture.moved = gesture.moved || Math.hypot(e.clientX - gesture.tap.x, e.clientY - gesture.tap.y) > 6 || now.n > 1;
+    if (!gesture.moved) return;
+    view.x += now.x - last.x;
+    view.y += now.y - last.y;
+    if (now.n > 1 && last.dist > 0) {
+      const rect = viewport.getBoundingClientRect();
+      zoomAt(now.x - rect.left, now.y - rect.top, now.dist / last.dist);
+    } else {
+      renderView();
+      saveCurrentSoon();
+    }
+  }
+
+  function viewUp(e) {
+    if (!fingers.delete(e.pointerId)) return;
+    if (fingers.size) {
+      gesture.last = fingerSpan();
+      return;
+    }
+    window.removeEventListener('pointermove', viewMove);
+    window.removeEventListener('pointerup', viewUp);
+    window.removeEventListener('pointercancel', viewUp);
+    viewport.classList.remove('panning');
+    if (!gesture.moved && e.type === 'pointerup') viewTap(gesture.tap.target);
+    gesture = null;
+  }
+
+  // A tap selects what it lands on; with Trace on it also marks that path, as hovering does.
+  function viewTap(target) {
+    const block = target.closest('.block');
+    const link = target.closest('[data-link]');
+    const conn = target.closest('.connector');
+    const tie = target.closest('[data-tie]');
+    const bus = target.closest('[data-group]') || target.closest('[data-tie-group]');
+    if (traceOn) setHover(conn ? { conn: conn.dataset.conn } : link ? { link: link.dataset.link } : null);
+    if (tie) select({ type: 'tie', id: tie.dataset.tie });
+    else if (bus) select({ type: 'block', id: bus.dataset.group || bus.dataset.tieGroup });
+    else if (block) select({ type: 'block', id: block.dataset.id });
+    else if (link) select({ type: 'link', ids: [link.dataset.link] });
+    else select(null);
+  }
+
+  viewport.addEventListener('pointerdown', (e) => {
+    if (!viewMode) return;
+    e.stopImmediatePropagation();
+    if (e.button > 1) return;
+    if (inspector.contains(document.activeElement)) document.activeElement.blur();
+    if (e.target.closest('.ref-jump')) return; // its click opens the referenced schema
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (gesture) {
+      gesture.last = fingerSpan();
+      return;
+    }
+    gesture = { tap: { x: e.clientX, y: e.clientY, target: e.target }, moved: false, last: fingerSpan() };
+    viewport.classList.add('panning');
+    window.addEventListener('pointermove', viewMove);
+    window.addEventListener('pointerup', viewUp);
+    window.addEventListener('pointercancel', viewUp);
+  }, { capture: true });
+
   viewport.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 && e.button !== 1) return;
     // Flush any pending inspector edit (fires its change handler) before selection moves on.
@@ -3271,7 +3363,7 @@
   });
 
   viewport.addEventListener('dblclick', (e) => {
-    if (tieTool || e.target.closest('.connector, [data-link], [data-group], [data-frame], [data-tie], [data-tie-group]')) return;
+    if (viewMode || tieTool || e.target.closest('.connector, [data-link], [data-group], [data-frame], [data-tie], [data-tie-group]')) return;
     if (e.target.closest('.block')) {
       const input = inspector.querySelector('[data-role="block-name"]');
       input?.focus();
@@ -3308,6 +3400,8 @@
       return;
     }
     if (e.target.closest('input, select, textarea, dialog')) return;
+    // In view mode only the keys that change nothing: copy, Trace, Esc.
+    if (viewMode && !((mod && key === 'c') || (!mod && key === 't') || key === 'escape')) return;
 
     if (mod && key === 'z') {
       e.preventDefault();
@@ -3725,6 +3819,10 @@
     else if (links.length) inspector.replaceChildren(...linkInspector(links));
     else if (selectedTie()) inspector.replaceChildren(...tieInspector(selectedTie()));
     else inspector.replaceChildren(...emptyInspector());
+    // In view mode the panel shows the particulars; its controls stay put.
+    if (viewMode) {
+      for (const el of inspector.querySelectorAll('input, textarea, select, button')) el.disabled = true;
+    }
     updateStatus(block, links);
   }
 
@@ -3733,7 +3831,9 @@
     const mod = /Mac|iP/.test(navigator.platform) ? '⌘' : 'Ctrl+';
     const clip = `${mod}C ${mod}X ${mod}V copy, cut, paste`;
     let text;
-    if (tieTool) {
+    if (viewMode) {
+      text = 'View mode: drag to pan · scroll or pinch to zoom · click something to see its details · the eye button goes back to editing';
+    } else if (tieTool) {
       text = 'Drag a line across links to tie them together · Drag a tie to move it · V, Z or Esc goes back to the pointer';
     } else if (selectedTie()) {
       text = 'Drag the tie to move it · Draw another tie across some of its links to tie those again · Delete removes it · Esc deselects';
@@ -4587,6 +4687,9 @@
     $('#tools [data-action="zip-tie"]').classList.toggle('active', tieTool);
     $('#tools [data-action="zip-tie"]').setAttribute('aria-pressed', tieTool);
     viewport.classList.toggle('tying', tieTool);
+    $('[data-action="view-mode"]').classList.toggle('active', viewMode);
+    $('[data-action="view-mode"]').setAttribute('aria-pressed', viewMode);
+    $('[data-action="view-mode"]').title = viewMode ? 'View mode is on: click to edit' : 'View mode: look around without changing anything';
     $('#tools [data-action="pointer"]').classList.toggle('active', !tieTool);
     $('#tools [data-action="pointer"]').setAttribute('aria-pressed', !tieTool);
     $('#trace-say').textContent = schema.traceIgnoreNames
@@ -5512,6 +5615,7 @@
     'close-library': () => libraryDialog.close(),
     'settings': openSettings,
     'panel': () => togglePanel(),
+    'view-mode': () => setViewMode(),
     'close-palette': () => paletteDialog.close(),
     'palette-add': addPaletteColor,
     'palette-reset': () => { schema.palette = [...DEFAULT_PALETTE]; paletteChanged(); },
@@ -5585,6 +5689,7 @@
   } catch { /* storage unavailable: trace starts off */ }
 
   refreshAll();
+  if (matchMedia('(max-width: 720px)').matches) setViewMode(true); // phones open the schema to look at
 
   // Back to the folder used last time. If the browser still grants access its files are read
   // straight away; otherwise the first Save or Load asks for it.

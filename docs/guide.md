@@ -167,6 +167,10 @@ colour palette offered wherever a colour is chosen.
 
 Click a palette colour to remove it, or pick a new one and press **Add colour**.
 
+The eye button beside the schema name switches to **view mode**, for looking at a schema without
+changing it: drag anywhere to pan, scroll or pinch to zoom, and tap something to see its details
+in the panel. Press the eye again to edit. Phones open in view mode.
+
 On a phone the panel is hidden so the canvas has the whole screen. The panel button at the right
 end of the top bar slides it in and out; the top bar itself scrolls sideways to reach the rest.
 
